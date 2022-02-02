@@ -75,7 +75,10 @@ In addition, you can use the following options to change some of the parameters:
     - `--p4`: Damysus
     - `--p5`: chained base protocol, i.e., chained HotStuff
     - `--p6`: chained Damysus
-- `--netlat n` is to change the network latency to `n`ms
+- `--netlat n` to change the network latency to `n`ms
+- `--clients1 n` to change the number of clients to `n` for the non-chained protocols
+- `--clients2 n` to change the number of clients to `n` for the chained protocols
+- `--tvl` to compute a "max throughput" graph
 
 ### Examples
 

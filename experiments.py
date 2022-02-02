@@ -859,7 +859,7 @@ def execute(protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFa
             if runDocker:
                 rem = remaining
                 for (t,i,p) in rem:
-                    cFile = cFileBase + "-" + str(cid) + "*"
+                    cFile = cFileBase + "-" + str(i) + "*"
                     dockerInstance = dockerBase + "c" + str(i)
                     cmd = "find /app/" + statsdir + " -name " + cFile + " | wc -l"
                     out = int(subprocess.run(docker + " exec -t " + dockerInstance + " bash -c \"" + cmd + "\"", shell=True, capture_output=True, text=True).stdout)
@@ -922,16 +922,18 @@ def execute(protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFa
 
     # kill processes
     if runDocker:
-        # if running in docker mode, we kill the processes & copy the stats file to this machine
+        # if running in docker mode, we kill the processes & copy+remove the stats file to this machine
         for i in lall:
             dockerInstance = dockerBase + i
-            cmd = "killall -q sgxserver sgxclient server client; fuser -k " + ports
-            subprocess.run([docker + " exec -t " + dockerInstance + " bash -c \"" + cmd + "\""], shell=True) #, check=True)
+            kcmd = "killall -q sgxserver sgxclient server client; fuser -k " + ports
+            subprocess.run([docker + " exec -t " + dockerInstance + " bash -c \"" + kcmd + "\""], shell=True) #, check=True)
             #print("*** copying stat files ***")
             #subprocess.run([docker + " exec -t " + dockerInstance + " bash -c \"ls /app/" + statsdir + "\""], shell=True) #, check=True)
             src = dockerInstance + ":/app/" + statsdir + "/."
             dst = statsdir + "/"
             subprocess.run([docker + " cp " + src + " " + dst], shell=True, check=True)
+            rcmd = "rm /app/" + statsdir + "/*"
+            subprocess.run([docker + " exec -t " + dockerInstance + " bash -c \"" + rcmd + "\""], shell=True) #, check=True)
     else:
         subprocess.run(["killall -q sgxserver sgxclient server client; fuser -k " + ports], shell=True) #, check=True)
 ## End of execute
@@ -1017,6 +1019,59 @@ def computeStats(protocol,numFaults,instance,repeats):
 ## End of computeStats
 
 
+def startContainers(numReps,numClients):
+    print("running in docker mode, starting" , numReps, "containers for the replicas and", numClients, "for the clients")
+
+    global ipsOfNodes
+
+    lr = list(map(lambda x: (True, str(x)), list(range(numReps))))            # replicas
+    lc = list(map(lambda x: (False, "c" + str(x)), list(range(numClients))))  # clients
+    lall = lr + lc
+
+    for (isRep, i) in lall:
+        instance = dockerBase + i
+        # We stop and remove the Doker instance if it is still exists
+        subprocess.run([docker + " stop " + instance], shell=True) #, check=True)
+        subprocess.run([docker + " rm " + instance], shell=True) #, check=True)
+        # TODO: make sure to cover all the ports
+        opt1 = "--expose=8000-9999"
+        opt2 = "--network=\"bridge\""
+        opt3 = "--cap-add=NET_ADMIN"
+        opt4 = "--name " + instance
+        opts = " ".join([opt1, opt2, opt3, opt4])
+        # We start the Docker instance
+        subprocess.run([docker + " run -td " + opts + " " + dockerBase], shell=True, check=True)
+        subprocess.run([docker + " exec -t " + instance + " bash -c \"" + srcsgx + "; mkdir " + statsdir + "\""], shell=True, check=True)
+        # Set the network latency
+        if 0 < networkLat:
+            print("----changing network latency to " + str(networkLat) + "ms")
+            latcmd = "tc qdisc add dev eth0 root netem delay " + str(networkLat) + "ms"
+            subprocess.run([docker + " exec -t " + instance + " bash -c \"" + latcmd + "\""], shell=True, check=True)
+        # Extract the IP address of the container
+        ipcmd = docker + " inspect " + instance + " | jq '.[].NetworkSettings.Networks.bridge.IPAddress'"
+        srch = re.search('\"(.+?)\"', subprocess.run(ipcmd, shell=True, capture_output=True, text=True).stdout)
+        if srch:
+            out = srch.group(1)
+            print("----container's address:" + out)
+            if isRep:
+                ipsOfNodes.update({int(i):out})
+## End of startContainers
+
+
+def stopContainers(numReps,numClients):
+    print("stopping and removing docker containers")
+
+    lr = list(map(lambda x: (True, str(x)), list(range(numReps))))            # replicas
+    lc = list(map(lambda x: (False, "c" + str(x)), list(range(numClients))))  # clients
+    lall = lr + lc
+
+    for (isRep, i) in lall:
+        instance = dockerBase + i
+        subprocess.run([docker + " stop " + instance], shell=True, check=True)
+        subprocess.run([docker + " rm " + instance], shell=True, check=True)
+## End of stopContainers
+
+
 # if 'recompile' is true, the application will be recompiled (default=true)
 def computeAvgStats(recompile,protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFaults,numRepeats):
     print("<<<<<<<<<<<<<<<<<<<<",
@@ -1033,41 +1088,10 @@ def computeAvgStats(recompile,protocol,constFactor,numClTrans,sleepTime,numViews
     throughputHandles=[]
     latencyHandles=[]
 
-    global ipsOfNodes
-
     numReps = (constFactor * numFaults) + 1
-    lr = list(map(lambda x: (True, str(x)), list(range(numReps))))            # replicas
-    lc = list(map(lambda x: (False, "c" + str(x)), list(range(numClients))))  # clients
-    lall = lr + lc
+
     if runDocker:
-        print("running in docker mode, starting" , numReps, "containers for the replicas and", numClients, "for the clients")
-        for (isRep, i) in lall:
-            instance = dockerBase + i
-            # We stop and remove the Doker instance if it is still exists
-            subprocess.run([docker + " stop " + instance], shell=True) #, check=True)
-            subprocess.run([docker + " rm " + instance], shell=True) #, check=True)
-            # TODO: make sure to cover all the ports
-            opt1 = "--expose=8000-9999"
-            opt2 = "--network=\"bridge\""
-            opt3 = "--cap-add=NET_ADMIN"
-            opt4 = "--name " + instance
-            opts = " ".join([opt1, opt2, opt3, opt4])
-            # We start the Docker instance
-            subprocess.run([docker + " run -td " + opts + " " + dockerBase], shell=True, check=True)
-            subprocess.run([docker + " exec -t " + instance + " bash -c \"" + srcsgx + "; mkdir " + statsdir + "\""], shell=True, check=True)
-            # Set the network latency
-            if 0 < networkLat:
-                print("----changing network latency to " + str(networkLat) + "ms")
-                latcmd = "tc qdisc add dev eth0 root netem delay " + str(networkLat) + "ms"
-                subprocess.run([docker + " exec -t " + instance + " bash -c \"" + latcmd + "\""], shell=True, check=True)
-            # Extract the IP address of the container
-            ipcmd = docker + " inspect " + instance + " | jq '.[].NetworkSettings.Networks.bridge.IPAddress'"
-            srch = re.search('\"(.+?)\"', subprocess.run(ipcmd, shell=True, capture_output=True, text=True).stdout)
-            if srch:
-                out = srch.group(1)
-                print("----container's address:" + out)
-                if isRep:
-                    ipsOfNodes.update({int(i):out})
+        startContainers(numReps,numClients)
 
     # building App with correct parameters
     if recompile:
@@ -1097,11 +1121,7 @@ def computeAvgStats(recompile,protocol,constFactor,numClTrans,sleepTime,numViews
             goodValues += 1
 
     if runDocker:
-        print("stopping and removing docker containers")
-        for (isRep, i) in lall:
-            instance = dockerBase + i
-            subprocess.run([docker + " stop " + instance], shell=True, check=True)
-            subprocess.run([docker + " rm " + instance], shell=True, check=True)
+        stopContainers(numReps,numClients)
 
     throughputView   = sum(throughputViews)/goodValues   if goodValues > 0 else 0.0
     latencyView      = sum(latencyViews)/goodValues      if goodValues > 0 else 0.0
@@ -1806,6 +1826,11 @@ def createTVLplot(cFile,instances):
 
 
 def oneTVL(protocol,constFactor,numFaults,numTransPerBlock,payloadSize,numClTrans,numViews,cutOffBound,sleepTimes,repeats):
+    numReps = (constFactor * numFaults) + 1
+
+    if runDocker:
+        startContainers(numReps,numClients)
+
     mkApp(protocol,constFactor,numFaults,numTransPerBlock,payloadSize)
     for sleepTime in sleepTimes:
         clearStatsDir()
@@ -1821,6 +1846,9 @@ def oneTVL(protocol,constFactor,numFaults,numTransPerBlock,payloadSize,numClTran
             time.sleep(2)
             execute(protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFaults,i)
         computeClientStats(protocol,numClTrans,sleepTime,numFaults)
+
+    if runDocker:
+        stopContainers(numReps,numClients)
 # End of oneTVL
 
 
@@ -1837,11 +1865,11 @@ def TVL():
 
     # Values for the non-chained versions
     #numClTrans   = 110000
-    numClTrans   = 250000 #250000 #260000 #500000 # - 100000 seems fine for basic versions
+    numClTrans   = 100000 #250000 #260000 #500000 # - 100000 seems fine for basic versions
     #numClients   = 5 #2 #16 #1 # --- 1 seems fine for basic versions
 
     # Values for the chained version
-    numClTransCh = 50000 #250000 #260000 #500000 # - 100000 seems fine for basic versions
+    numClTransCh = 100000 #250000 #260000 #500000 # - 100000 seems fine for basic versions
     #numClientsCh = 6 #4 #16 #1 # --- 1 seems fine for basic versions
 
     numFaults        = 1
@@ -1856,7 +1884,7 @@ def TVL():
 
 
     if test:
-        sleepTimes = [50,10,5,1,0]
+        sleepTimes = [200,100,50,10,5,1,0]
         #sleepTimes = [900,500,50,10]
     else:
         sleepTimes = [900,700,500,100,50,10,5,0] #[500,50,0] #
@@ -1871,6 +1899,7 @@ def TVL():
             "rates="+str(sleepTimes)+"\n")
     f.close()
 
+    ## TODO : make this a parameter instead
     global numClients
     numClients = numNonChCls
 
@@ -2280,7 +2309,7 @@ parser.add_argument("--p3",       action="store_true",  help="sets runQuick to T
 parser.add_argument("--p4",       action="store_true",  help="sets runComb to True (Damysus)")
 parser.add_argument("--p5",       action="store_true",  help="sets runChBase to True (chained base protocol, i.e., chained HotStuff")
 parser.add_argument("--p6",       action="store_true",  help="sets runChComb to True (chained Damysus)")
-parser.add_argument("--pall",     action="store_true",  help="sets all runXXX to True")
+parser.add_argument("--pall",     action="store_true",  help="sets all runXXX to True, i.e., all protocols will be executed")
 parser.add_argument("--netlat",   type=int, default=0,  help="network latency in ms")
 parser.add_argument("--clients1", type=int, default=0,  help="number of clients for the non-chained versions")
 parser.add_argument("--clients2", type=int, default=0,  help="number of clients for the chained versions")

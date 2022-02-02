@@ -35,7 +35,7 @@
 #define DEBUG1  false
 #define DEBUG2  false
 // to, in particular, print 'EXECUTE' messages
-#define DEBUGE  false //true
+#define DEBUGE  true
 // to, in particular, print client messages
 #define DEBUGC  false
 
