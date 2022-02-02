@@ -12,7 +12,21 @@ The software is under ongoing development.
 
 To tests our protocols, we provide a Python script, called
 `experiments.py`, as well as a `Dockerfile` to create a Docker
-container.
+container. We use the
+[Salticidae](https://github.com/Determinant/salticidae) library, which
+is added here as git submodule.
+
+### Salticidae
+
+After cloning the repository you need to type this to initialize the
+Salticidae git submodule:
+
+    `git submodule init`
+
+followed by:
+
+    `git submodule update`
+
 
 ### Python
 
