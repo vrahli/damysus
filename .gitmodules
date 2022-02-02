@@ -1,0 +1,3 @@
+[submodule "salticidae"]
+	path = salticidae
+	url = https://github.com/Determinant/salticidae.git
