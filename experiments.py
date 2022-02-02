@@ -1884,7 +1884,7 @@ def TVL():
 
 
     if test:
-        sleepTimes = [200,50,10,5,1,0]
+        sleepTimes = [500,100,50,10,5,0]
         #sleepTimes = [900,500,50,10]
     else:
         sleepTimes = [900,700,500,100,50,10,5,0] #[500,50,0] #
