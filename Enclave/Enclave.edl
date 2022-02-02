@@ -1,0 +1,49 @@
+enclave {
+    from "sgx_tsgxssl.edl" import *;
+
+    include "../App/config.h"
+    include "../App/types.h"
+    include "../App/key.h"
+    include "../Enclave/user_types.h"
+
+
+    trusted {
+        /* define ECALLs here. */
+        /* shared */
+        public sgx_status_t initialize_variables([in] PID *me, [in] pids_t *others, [in] unsigned int *q);
+
+        /* Cheap */
+        public sgx_status_t TEEsign([out] just_t *just);
+        public sgx_status_t TEEprepare([in] hash_t *hash, [in] just_t *just, [out] just_t *res);
+        public sgx_status_t TEEstore([in] just_t *just, [out] just_t *res);
+
+        /* Quick */
+        public sgx_status_t TEEaccum([in] votes_t *vs, [out] accum_t *res);
+        public sgx_status_t TEEaccumSp([in] uvote_t *vote, [out] accum_t *res);
+
+        /* Cheap&Quick */
+        public sgx_status_t COMB_TEEsign([out] just_t *just);
+        public sgx_status_t COMB_TEEprepare([in] hash_t *hash, [in] accum_t *acc, [out] just_t *res);
+        public sgx_status_t COMB_TEEstore([in] just_t *just, [out] just_t *res);
+        public sgx_status_t COMB_TEEaccum([in] onejusts_t *js, [out] accum_t *res);
+        public sgx_status_t COMB_TEEaccumSp([in] just_t *just, [out] accum_t *res);
+
+        /* Chained-Cheap */
+        public sgx_status_t CH_TEEsign([out] just_t *just);
+        public sgx_status_t CH_TEEprepare([in] jblock_t *block, [in] jblock_t *block0, [in] jblock_t *block1, [out] just_t *res);
+
+        /* Chained-Cheap&Quick */
+        public sgx_status_t CH_COMB_TEEsign([out] just_t *just);
+        public sgx_status_t CH_COMB_TEEprepare([in] cblock_t *block, [in] hash_t *hash, [out] just_t *res);
+        public sgx_status_t CH_COMB_TEEaccum([in] onejusts_t *js, [out] accum_t *res);
+        public sgx_status_t CH_COMB_TEEaccumSp([in] just_t *just, [out] accum_t *res);
+    };
+
+    untrusted {
+        /* define OCALLs here. */
+        void ocall_print([in, string] const char* str);
+        //void ocall_load_private_key([in] PID *id, [out] KEY *priv);
+        //void ocall_load_public_key([in] PID *id, [out] KEY *pub);
+        void ocall_test([in] KEY *key);
+    };
+};
