@@ -132,7 +132,8 @@ value between 2 and 10 to get an idea of the results you will obtain.
 
 # Acknowledgments
 
-[//]: # Acknowledge Jiangshan's funding
+This work was partially supported by the Australian Research Council
+(ARC) under project DE210100019.
 
 
 
