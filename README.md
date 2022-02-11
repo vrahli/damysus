@@ -119,14 +119,16 @@ repetitions will take quite a long time. You can start with a smaller
 value between 2 and 10 to get an idea of the results you will obtain.
 
 - Run all protocols with a 0ms network latency, 0B payloads, for
-  f=1,2,4,10, with 10 repetitions per experiment
+  f=1,2,4,10, with 100 repetitions per experiment (consider
+  using less repetitions)
 
     `python3 experiments.py --docker --pall --netlat 0 --payload 0 --faults 1,2,4,10 --repeats 100`
 
 - Run all protocols with a 100ms network latency, 256B payloads, for
-  f=1,2,4,10, with 10 repetitions per experiment
+  f=1,2,4,10, with 100 repetitions per experiment (consider
+  using less repetitions)
 
-    `python3 experiments.py --docker --pall --netlat 1000 --payload 256 --faults 1,2,4,10 --repeats 100`
+    `python3 experiments.py --docker --pall --netlat 100 --payload 256 --faults 1,2,4,10 --repeats 100`
 
 
 
