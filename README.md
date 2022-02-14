@@ -27,6 +27,10 @@ followed by:
 
     `git submodule update`
 
+Then, to instance Salticidae, type:
+    `(cd salticidae; cmake . -DCMAKE_INSTALL_PREFIX=.; make; make install)`
+
+
 
 ### Python
 
