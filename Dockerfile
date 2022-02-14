@@ -75,7 +75,16 @@ COPY experiments.py /app
 COPY enclave.token  /app
 COPY App            /app/App
 COPY Enclave        /app/Enclave
-COPY salticidae     /app/salticidae
+#COPY salticidae     /app/salticidae
+
+RUN cd /app \
+    && git clone https://github.com/Determinant/salticidae.git \
+    && cd salticidae \
+    && cmake . -DCMAKE_INSTALL_PREFIX=. \
+    && make \
+    && make install \
+    && pwd
+
 
 #RUN . /opt/intel/sgxsdk/environment && make
 
