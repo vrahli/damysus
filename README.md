@@ -19,7 +19,8 @@ is added here as git submodule.
 ### Salticidae
 
 You won't need to follow this step if you are using our Docker
-container, as it is done when building the container, and can jump to next (Python section).
+container, as it is done when building the container, and can jump to
+the next (Python) section.
 After cloning the repository you need to type this to initialize the
 Salticidae git submodule:
 
@@ -36,7 +37,9 @@ Then, to instance Salticidae, type:
 
 ### Python
 
-The Python scripts relies on the following modules:
+We use python version 3.8.10.
+
+The Python script relies on the following modules:
 - subprocess
 - pathlib
 - matplotlib
