@@ -289,21 +289,21 @@ descrFile = "description"
 runDocker  = False      # to run the code within docker contrainers
 docker     = "docker"
 dockerBase = "damysus"  # name of the docker container
-networkLat = 10         # network latency in ms
+networkLat = 0          # network latency in ms
 
 
 ## Code
 
 class Protocol(Enum):
-    BASE      = "BASIC_BASELINE" # basic baseline
-    CHEAP     = "BASIC_CHEAP"
-    QUICK     = "BASIC_QUICK"
-    COMB      = "BASIC_CHEAP_AND_QUICK"
+    BASE      = "BASIC_BASELINE"   # basic baseline
+    CHEAP     = "BASIC_DAMYSUS_C"  # Checker only
+    QUICK     = "BASIC_DAMYSUS_A"  # Accumulator only
+    COMB      = "BASIC_DAMYSUS"    # Damysus (Checker + Accumulator)
     CHBASE    = "CHAINED_BASELINE" # chained baseline
-    CHCOMB    = "CHAINED_CHEAP_AND_QUICK" # chained Cheap&Quick
+    CHCOMB    = "CHAINED_DAMYSUS"  # chained Damysus
     ## Debug versions
-    QUICKDBG  = "BASIC_QUICK_DEBUG"
-    CHCOMBDBG = "CHAINED_CHEAP_AND_QUICK_DEBUG" # chained Cheap&Quick - debug version
+    QUICKDBG  = "BASIC_DAMYSUS_A_DEBUG"
+    CHCOMBDBG = "CHAINED_DAMYSUS_DEBUG" # chained Damysus - debug version
 
 
 ## generates a local config file
@@ -1055,6 +1055,8 @@ def startContainers(numReps,numClients):
             print("----container's address:" + out)
             if isRep:
                 ipsOfNodes.update({int(i):out})
+        else:
+            print("----container's address: UNKNOWN")
 ## End of startContainers
 
 
@@ -1245,100 +1247,100 @@ def createPlot(pFile):
                 if pointTag == "throughput-view" and protVal == "BASIC_BASELINE":
                     (val,num) = dictTVBase.get(numFaults,(0.0,0))
                     dictTVBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-view" and protVal == "BASIC_CHEAP":
+                if pointTag == "throughput-view" and protVal == "BASIC_DAMYSUS_C":
                     (val,num) = dictTVCheap.get(numFaults,(0.0,0))
                     dictTVCheap.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-view" and protVal == "BASIC_QUICK":
+                if pointTag == "throughput-view" and protVal == "BASIC_DAMYSUS_A":
                     (val,num) = dictTVQuick.get(numFaults,(0.0,0))
                     dictTVQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-view" and protVal == "BASIC_QUICK_DEBUG":
+                if pointTag == "throughput-view" and protVal == "BASIC_DAMYSUS_A_DEBUG":
                     (val,num) = dictTVQuick.get(numFaults,(0.0,0))
                     dictTVQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-view" and protVal == "BASIC_CHEAP_AND_QUICK":
+                if pointTag == "throughput-view" and protVal == "BASIC_DAMYSUS":
                     (val,num) = dictTVComb.get(numFaults,(0.0,0))
                     dictTVComb.update({numFaults:(val+float(pointVal),num+1)})
                 if pointTag == "throughput-view" and protVal == "CHAINED_BASELINE":
                     (val,num) = dictTVChBase.get(numFaults,(0.0,0))
                     dictTVChBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-view" and protVal == "CHAINED_CHEAP_AND_QUICK":
+                if pointTag == "throughput-view" and protVal == "CHAINED_DAMYSUS":
                     (val,num) = dictTVChComb.get(numFaults,(0.0,0))
                     dictTVChComb.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-view" and protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
+                if pointTag == "throughput-view" and protVal == "CHAINED_DAMYSUS_DEBUG":
                     (val,num) = dictTVChComb.get(numFaults,(0.0,0))
                     dictTVChComb.update({numFaults:(val+float(pointVal),num+1)})
                 # Throughputs-handle
                 if pointTag == "throughput-handle" and protVal == "BASIC_BASELINE":
                     (val,num) = dictTHBase.get(numFaults,(0.0,0))
                     dictTHBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "BASIC_CHEAP":
+                if pointTag == "throughput-handle" and protVal == "BASIC_DAMYSUS_C":
                     (val,num) = dictTHCheap.get(numFaults,(0.0,0))
                     dictTHCheap.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "BASIC_QUICK":
+                if pointTag == "throughput-handle" and protVal == "BASIC_DAMYSUS_A":
                     (val,num) = dictTHQuick.get(numFaults,(0.0,0))
                     dictTHQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "BASIC_QUICK_DEBUG":
+                if pointTag == "throughput-handle" and protVal == "BASIC_DAMYSUS_A_DEBUG":
                     (val,num) = dictTHQuick.get(numFaults,(0.0,0))
                     dictTHQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "BASIC_CHEAP_AND_QUICK":
+                if pointTag == "throughput-handle" and protVal == "BASIC_DAMYSUS":
                     (val,num) = dictTHComb.get(numFaults,(0.0,0))
                     dictTHComb.update({numFaults:(val+float(pointVal),num+1)})
                 if pointTag == "throughput-handle" and protVal == "CHAINED_BASELINE":
                     (val,num) = dictTHChBase.get(numFaults,(0.0,0))
                     dictTHChBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "CHAINED_CHEAP_AND_QUICK":
+                if pointTag == "throughput-handle" and protVal == "CHAINED_DAMYSUS":
                     (val,num) = dictTHChComb.get(numFaults,(0.0,0))
                     dictTHChComb.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
+                if pointTag == "throughput-handle" and protVal == "CHAINED_DAMYSUS_DEBUG":
                     (val,num) = dictTHChComb.get(numFaults,(0.0,0))
                     dictTHChComb.update({numFaults:(val+float(pointVal),num+1)})
                 # Latencies-view
                 if pointTag == "latency-view" and protVal == "BASIC_BASELINE":
                     (val,num) = dictLVBase.get(numFaults,(0.0,0))
                     dictLVBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-view" and protVal == "BASIC_CHEAP":
+                if pointTag == "latency-view" and protVal == "BASIC_DAMYSUS_C":
                     (val,num) = dictLVCheap.get(numFaults,(0.0,0))
                     dictLVCheap.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-view" and protVal == "BASIC_QUICK":
+                if pointTag == "latency-view" and protVal == "BASIC_DAMYSUS_A":
                     (val,num) = dictLVQuick.get(numFaults,(0.0,0))
                     dictLVQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-view" and protVal == "BASIC_QUICK_DEBUG":
+                if pointTag == "latency-view" and protVal == "BASIC_DAMYSUS_A_DEBUG":
                     (val,num) = dictLVQuick.get(numFaults,(0.0,0))
                     dictLVQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-view" and protVal == "BASIC_CHEAP_AND_QUICK":
+                if pointTag == "latency-view" and protVal == "BASIC_DAMYSUS":
                     (val,num) = dictLVComb.get(numFaults,(0.0,0))
                     dictLVComb.update({numFaults:(val+float(pointVal),num+1)})
                 if pointTag == "latency-view" and protVal == "CHAINED_BASELINE":
                     (val,num) = dictLVChBase.get(numFaults,(0.0,0))
                     dictLVChBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-view" and protVal == "CHAINED_CHEAP_AND_QUICK":
+                if pointTag == "latency-view" and protVal == "CHAINED_DAMYSUS":
                     (val,num) = dictLVChComb.get(numFaults,(0.0,0))
                     dictLVChComb.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-view" and protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
+                if pointTag == "latency-view" and protVal == "CHAINED_DAMYSUS_DEBUG":
                     (val,num) = dictLVChComb.get(numFaults,(0.0,0))
                     dictLVChComb.update({numFaults:(val+float(pointVal),num+1)})
                 # Latencies-handle
                 if pointTag == "latency-handle" and protVal == "BASIC_BASELINE":
                     (val,num) = dictLHBase.get(numFaults,(0.0,0))
                     dictLHBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "BASIC_CHEAP":
+                if pointTag == "latency-handle" and protVal == "BASIC_DAMYSUS_C":
                     (val,num) = dictLHCheap.get(numFaults,(0.0,0))
                     dictLHCheap.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "BASIC_QUICK":
+                if pointTag == "latency-handle" and protVal == "BASIC_DAMYSUS_A":
                     (val,num) = dictLHQuick.get(numFaults,(0.0,0))
                     dictLHQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "BASIC_QUICK_DEBUG":
+                if pointTag == "latency-handle" and protVal == "BASIC_DAMYSUS_A_DEBUG":
                     (val,num) = dictLHQuick.get(numFaults,(0.0,0))
                     dictLHQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "BASIC_CHEAP_AND_QUICK":
+                if pointTag == "latency-handle" and protVal == "BASIC_DAMYSUS":
                     (val,num) = dictLHComb.get(numFaults,(0.0,0))
                     dictLHComb.update({numFaults:(val+float(pointVal),num+1)})
                 if pointTag == "latency-handle" and protVal == "CHAINED_BASELINE":
                     (val,num) = dictLHChBase.get(numFaults,(0.0,0))
                     dictLHChBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "CHAINED_CHEAP_AND_QUICK":
+                if pointTag == "latency-handle" and protVal == "CHAINED_DAMYSUS":
                     (val,num) = dictLHChComb.get(numFaults,(0.0,0))
                     dictLHChComb.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
+                if pointTag == "latency-handle" and protVal == "CHAINED_DAMYSUS_DEBUG":
                     (val,num) = dictLHChComb.get(numFaults,(0.0,0))
                     dictLHChComb.update({numFaults:(val+float(pointVal),num+1)})
     f.close()
@@ -1737,19 +1739,19 @@ def createTVLplot(cFile,instances):
                 TBase.append(throughput)
                 LBase.append(latency)
                 aBase.append(sleep)
-            if protVal == "BASIC_CHEAP":
+            if protVal == "BASIC_DAMYSUS_C":
                 TCheap.append(throughput)
                 LCheap.append(latency)
                 aCheap.append(sleep)
-            if protVal == "BASIC_QUICK":
+            if protVal == "BASIC_DAMYSUS_A":
                 TQuick.append(throughput)
                 LQuick.append(latency)
                 aQuick.append(sleep)
-            if protVal == "BASIC_QUICK_DEBUG":
+            if protVal == "BASIC_DAMYSUS_A_DEBUG":
                 TQuick.append(throughput)
                 LQuick.append(latency)
                 aQuick.append(sleep)
-            if protVal == "BASIC_CHEAP_AND_QUICK":
+            if protVal == "BASIC_DAMYSUS":
                 TComb.append(throughput)
                 LComb.append(latency)
                 aComb.append(sleep)
@@ -1757,11 +1759,11 @@ def createTVLplot(cFile,instances):
                 TChBase.append(throughput)
                 LChBase.append(latency)
                 aChBase.append(sleep)
-            if protVal == "CHAINED_CHEAP_AND_QUICK":
+            if protVal == "CHAINED_DAMYSUS":
                 TChComb.append(throughput)
                 LChComb.append(latency)
                 aChComb.append(sleep)
-            if protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
+            if protVal == "CHAINED_DAMYSUS_DEBUG":
                 TChComb.append(throughput)
                 LChComb.append(latency)
                 aChComb.append(sleep)
