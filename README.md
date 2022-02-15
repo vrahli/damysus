@@ -36,10 +36,10 @@ Salticidea has the following dependencies:
 * libuv >= 1.10.0
 * openssl >= 1.1.0
 
-`apt install cmake libuv1-dev libssl-dev`
+`sudo apt install cmake libuv1-dev libssl-dev`
 
 Then, to instance Salticidae, type:
-`(cd salticidae; cmake . -DCMAKE_INSTALL_PREFIX=.; make; make install)`
+`(cd salticidae; cmake . -DCMAKE_INSTALL_PREFIX=.; make; make install; cd ..)`
 
 ### Python
 
@@ -74,9 +74,9 @@ installed Docker on your machine. This
 [page](https://docs.docker.com/engine/install/) explains how to
 install Docker.
 
-You then need to create the container by typing:
+You then need to create the container by typing the following command at the root of the project: 
 
-`docker build -t damysus .`
+`sudo docker build -t damysus .`
 
 This will create a container called `damysus`.
 
