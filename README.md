@@ -6,8 +6,6 @@
 
 The software is under ongoing development.
 
-
-
 ## Installing
 
 To tests our protocols, we provide a Python script, called
@@ -30,11 +28,18 @@ Salticidae git submodule:
 followed by:
 
     `git submodule update`
+    
+Salticidea has the following dependencies: 
+
+* CMake >= 3.9
+* C++14
+* libuv >= 1.10.0
+* openssl >= 1.1.0
+
+`apt install cmake libuv1-dev libssl-dev`
 
 Then, to instance Salticidae, type:
     `(cd salticidae; cmake . -DCMAKE_INSTALL_PREFIX=.; make; make install)`
-
-
 
 ### Python
 
