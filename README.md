@@ -21,7 +21,8 @@ is added here as git submodule.
 You won't need to follow this step if you are using our Docker
 container, as it is done when building the container, and can jump to
 the next (Python) section.
-After cloning the repository you need to type this to initialize the
+If you decide to install Salticidae locally, you will need git and cmake.
+In which case, after cloning the repository you need to type this to initialize the
 Salticidae git submodule:
 
     `git submodule init`
@@ -37,7 +38,8 @@ Then, to instance Salticidae, type:
 
 ### Python
 
-We use python version 3.8.10.
+We use python version 3.8.10.  You will need python3-pip to install
+the required modules.
 
 The Python script relies on the following modules:
 - subprocess
@@ -58,7 +60,7 @@ The Python script relies on the following modules:
 
 If you haven't installed those modules yet, run:
 
-    `python -m pip install subprocess pathlib matplotlib time math os glob datetime argparse enum json multiprocessing random shutil re`
+    `python3 -m pip install subprocess pathlib matplotlib time math os glob datetime argparse enum json multiprocessing random shutil re`
 
 ### Docker
 
