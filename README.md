@@ -6,8 +6,6 @@
 
 The software is under ongoing development.
 
-
-
 ## Installing
 
 To tests our protocols, we provide a Python script, called
@@ -25,16 +23,23 @@ If you decide to install Salticidae locally, you will need git and cmake.
 In which case, after cloning the repository you need to type this to initialize the
 Salticidae git submodule:
 
-    `git submodule init`
+`git submodule init`
 
 followed by:
 
-    `git submodule update`
+`git submodule update`
+    
+Salticidea has the following dependencies: 
+
+* CMake >= 3.9
+* C++14
+* libuv >= 1.10.0
+* openssl >= 1.1.0
+
+`sudo apt install cmake libuv1-dev libssl-dev`
 
 Then, to instance Salticidae, type:
-    `(cd salticidae; cmake . -DCMAKE_INSTALL_PREFIX=.; make; make install)`
-
-
+`(cd salticidae; cmake . -DCMAKE_INSTALL_PREFIX=.; make; make install; cd ..)`
 
 ### Python
 
@@ -60,7 +65,7 @@ The Python script relies on the following modules:
 
 If you haven't installed those modules yet, run:
 
-    `python3 -m pip install subprocess pathlib matplotlib time math os glob datetime argparse enum json multiprocessing random shutil re`
+`python3 -m pip install subprocess pathlib matplotlib time math os glob datetime argparse enum json multiprocessing random shutil re`
 
 ### Docker
 
@@ -69,9 +74,9 @@ installed Docker on your machine. This
 [page](https://docs.docker.com/engine/install/) explains how to
 install Docker.
 
-You then need to create the container by typing:
+You then need to create the container by typing the following command at the root of the project: 
 
-    `docker build -t damysus .`
+`sudo docker build -t damysus .`
 
 This will create a container called `damysus`.
 
@@ -85,7 +90,7 @@ We explain the various options our Python scripts provides. You will
 run commands of the following form, followed by various options
 explained below:
 
-    `python3 experiments.py --docker --pall`
+`python3 experiments.py --docker --pall`
 
 ### Options
 
@@ -109,7 +114,7 @@ In addition, you can use the following options to change some of the parameters:
 
 For example, if you run:
 
-    `python3 experiments.py --docker --p1 --p2 --repeats 2 --faults 1`
+`python3 experiments.py --docker --p1 --p2 --repeats 2 --faults 1`
 
 then you will run the replicas within Docker containers (`--docker`),
 test the base protocol (`--p1`) and Damysus-C (`--p2`), repeat the
@@ -117,7 +122,7 @@ experiments twice (`--repeats 2`), and test for f=1 (`--faults 1`).
 
 If your run:
 
-    `python3 experiments.py --docker --pall --repeats 10 --faults 1,2,4`
+`python3 experiments.py --docker --pall --repeats 10 --faults 1,2,4`
 
 then you will run the replicas within Docker containers (`--docker`),
 test all protocols (`--pall`), repeat the experiments 10 times
@@ -133,22 +138,19 @@ value between 2 and 10 to get an idea of the results you will obtain.
   f=1,2,4,10, with 100 repetitions per experiment (consider
   using less repetitions)
 
-    `python3 experiments.py --docker --pall --netlat 0 --payload 0 --faults 1,2,4,10 --repeats 100`
+`python3 experiments.py --docker --pall --netlat 0 --payload 0 --faults 1,2,4,10 --repeats 100`
 
 - Run all protocols with a 100ms network latency, 256B payloads, for
   f=1,2,4,10, with 100 repetitions per experiment (consider
   using less repetitions)
 
-    `python3 experiments.py --docker --pall --netlat 100 --payload 256 --faults 1,2,4,10 --repeats 100`
-
+`python3 experiments.py --docker --pall --netlat 100 --payload 256 --faults 1,2,4,10 --repeats 100`
 
 
 # Acknowledgments
 
-This work was partially supported by the Australian Research Council
+Jiangshan Yu was partially supported by the Australian Research Council
 (ARC) under project DE210100019.
-
-
 
 # Contact
 
