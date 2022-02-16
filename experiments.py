@@ -56,9 +56,10 @@ numClTrans   = 1     # number of transactions sent by each clients
 sleepTime    = 0     # time clients sleep between 2 sends (in microseconds)
 timeout      = 5     # timeout before changing changing leader (in seconds)
 #
-numTrans     = 400    # number of transactions
-payloadSize  = 0 #256 #0 #256 #128      # total size of a transaction
-numMakeCores = multiprocessing.cpu_count()  # number of cores to use to make
+numTrans      = 400    # number of transactions
+payloadSize   = 0 #256 #0 #256 #128      # total size of a transaction
+useMultiCores = True
+numMakeCores  = multiprocessing.cpu_count()  # number of cores to use to make
 #
 runBase      = False #True
 runCheap     = False #True
@@ -464,10 +465,13 @@ def copyToAddr(sshAdr):
 
 
 def makeInstances(instanceIds,protocol):
-    print(">> making",str(len(instanceIds)),"instance(s) using",str(numMakeCores),"core(s)")
+    ncores = 1
+    if useMultiCores:
+        ncores = numMakeCores
+    print(">> making",str(len(instanceIds)),"instance(s) using",str(ncores),"core(s)")
 
     procs  = []
-    make0  = "make -j "+str(numMakeCores)
+    make0  = "make -j "+str(ncores)
     make   = make0 + " SGX_MODE="+sgxmode if needsSGX(protocol) else make0 + " server client"
 
     for (n,i,priv,pub,dns,region) in instanceIds:
@@ -758,7 +762,10 @@ def mkParams(protocol,constFactor,numFaults,numTrans,payloadSize):
 
 
 def mkApp(protocol,constFactor,numFaults,numTrans,payloadSize):
-    print(">> making using",str(numMakeCores),"core(s)")
+    ncores = 1
+    if useMultiCores:
+        ncores = numMakeCores
+    print(">> making using",str(ncores),"core(s)")
 
     mkParams(protocol,constFactor,numFaults,numTrans,payloadSize)
 
@@ -775,15 +782,15 @@ def mkApp(protocol,constFactor,numFaults,numTrans,payloadSize):
             # DEBUG end
             subprocess.run(["docker exec -t " + instance + " bash -c \"make clean\""], shell=True, check=True)
             if needsSGX(protocol):
-                subprocess.run(["docker exec -t " + instance + " bash -c \"" + srcsgx + "; make -j " + str(numMakeCores) + " SGX_MODE=" + sgxmode + "\""], shell=True, check=True)
+                subprocess.run(["docker exec -t " + instance + " bash -c \"" + srcsgx + "; make -j " + str(ncores) + " SGX_MODE=" + sgxmode + "\""], shell=True, check=True)
             else:
-                subprocess.run(["docker exec -t " + instance + " bash -c \"make -j " + str(numMakeCores) + " server client\""], shell=True, check=True)
+                subprocess.run(["docker exec -t " + instance + " bash -c \"make -j " + str(ncores) + " server client\""], shell=True, check=True)
     else:
         subprocess.call(["make","clean"])
         if needsSGX(protocol):
-            subprocess.call(["make","-j",str(numMakeCores),"SGX_MODE="+sgxmode])
+            subprocess.call(["make","-j",str(ncores),"SGX_MODE="+sgxmode])
         else:
-            subprocess.call(["make","-j",str(numMakeCores),"server","client"])
+            subprocess.call(["make","-j",str(ncores),"server","client"])
 # End of mkApp
 
 
@@ -2317,6 +2324,7 @@ parser.add_argument("--pall",     action="store_true",  help="sets all runXXX to
 parser.add_argument("--netlat",   type=int, default=0,  help="network latency in ms")
 parser.add_argument("--clients1", type=int, default=0,  help="number of clients for the non-chained versions")
 parser.add_argument("--clients2", type=int, default=0,  help="number of clients for the chained versions")
+parser.add_argument("--onecore",  action="store_true",  help="sets useMultiCores to False, i.e., use 1 core only to compile")
 args = parser.parse_args()
 
 
@@ -2338,6 +2346,11 @@ if args.payload >= 0:
 if args.docker:
     runDocker = True
     print("SUCCESSFULLY PARSED ARGUMENT - running nodes in Docker containers")
+
+
+if args.onecore:
+    useMultiCores = False
+    print("SUCCESSFULLY PARSED ARGUMENT - will use 1 core only to compare")
 
 
 if args.faults:
