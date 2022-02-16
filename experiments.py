@@ -788,7 +788,7 @@ def mkApp(protocol,constFactor,numFaults,numTrans,payloadSize):
     else:
         subprocess.call(["make","clean"])
         if needsSGX(protocol):
-            subprocess.call([srcsgx])
+            subprocess.run(["bash -c \"" + srcsgx + "\""], shell=True, check=True)
             subprocess.call(["make","-j",str(ncores),"SGX_MODE="+sgxmode])
         else:
             subprocess.call(["make","-j",str(ncores),"server","client"])
