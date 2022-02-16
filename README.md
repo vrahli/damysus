@@ -97,6 +97,7 @@ explained below:
 ### Options
 
 In addition, you can use the following options to change some of the parameters:
+- `--docker` to run the nodes within Docker containers
 - `--repeats n` to change the number of repeats per experiment to `n`
 - `--payload n` to change the payload size to `n`
 - `--faults a,b,c` to run the experiments for f=a, f=b, etc.
@@ -112,6 +113,7 @@ In addition, you can use the following options to change some of the parameters:
 - `--clients2 n` to change the number of clients to `n` for the chained protocols
 - `--tvl` to compute a "max throughput" graph
 - `--onecore` to compute the code using one core only
+- `--hw` to run SGX in hardware mode (not to be used in combination with docker)
 
 ### Examples
 

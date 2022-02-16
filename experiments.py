@@ -788,6 +788,7 @@ def mkApp(protocol,constFactor,numFaults,numTrans,payloadSize):
     else:
         subprocess.call(["make","clean"])
         if needsSGX(protocol):
+            subprocess.call([srcsgx])
             subprocess.call(["make","-j",str(ncores),"SGX_MODE="+sgxmode])
         else:
             subprocess.call(["make","-j",str(ncores),"server","client"])
@@ -2325,6 +2326,7 @@ parser.add_argument("--netlat",   type=int, default=0,  help="network latency in
 parser.add_argument("--clients1", type=int, default=0,  help="number of clients for the non-chained versions")
 parser.add_argument("--clients2", type=int, default=0,  help="number of clients for the chained versions")
 parser.add_argument("--onecore",  action="store_true",  help="sets useMultiCores to False, i.e., use 1 core only to compile")
+parser.add_argument("--hw",       action="store_true",  help="sets sgxmode to HW, i.e., sgx will be used in hardware mode")
 args = parser.parse_args()
 
 
@@ -2351,6 +2353,11 @@ if args.docker:
 if args.onecore:
     useMultiCores = False
     print("SUCCESSFULLY PARSED ARGUMENT - will use 1 core only to compare")
+
+
+if args.hw:
+    sgxmode = "HW"
+    print("SUCCESSFULLY PARSED ARGUMENT - SGX will be used in hardware mode")
 
 
 if args.faults:
