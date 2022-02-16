@@ -28,8 +28,8 @@ Salticidae git submodule:
 followed by:
 
 `git submodule update`
-    
-Salticidea has the following dependencies: 
+
+Salticidea has the following dependencies:
 
 * CMake >= 3.9
 * C++14
@@ -39,7 +39,7 @@ Salticidea has the following dependencies:
 `sudo apt install cmake libuv1-dev libssl-dev`
 
 Then, to instance Salticidae, type:
-`(cd salticidae; cmake . -DCMAKE_INSTALL_PREFIX=.; make; make install; cd ..)`
+`(cd salticidae; cmake . -DCMAKE_INSTALL_PREFIX=.; make; make install)`
 
 ### Python
 
@@ -72,11 +72,13 @@ If you haven't installed those modules yet, run:
 To run the experiments within Docker containers, you need to have
 installed Docker on your machine. This
 [page](https://docs.docker.com/engine/install/) explains how to
-install Docker.
+install Docker. In particular follow the following
+[instructions](https://docs.docker.com/engine/install/linux-postinstall/)
+so that you can run Docker as a non-root user.
 
-You then need to create the container by typing the following command at the root of the project: 
+You then need to create the container by typing the following command at the root of the project:
 
-`sudo docker build -t damysus .`
+`docker build -t damysus .`
 
 This will create a container called `damysus`.
 
@@ -109,6 +111,7 @@ In addition, you can use the following options to change some of the parameters:
 - `--clients1 n` to change the number of clients to `n` for the non-chained protocols
 - `--clients2 n` to change the number of clients to `n` for the chained protocols
 - `--tvl` to compute a "max throughput" graph
+- `--onecore` to compute the code using one core only
 
 ### Examples
 
