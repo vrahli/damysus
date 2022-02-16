@@ -113,7 +113,10 @@ In addition, you can use the following options to change some of the parameters:
 - `--clients2 n` to change the number of clients to `n` for the chained protocols
 - `--tvl` to compute a "max throughput" graph
 - `--onecore` to compute the code using one core only
-- `--hw` to run SGX in hardware mode ((1)not to be used in combination with docker; (2) this requires the sgxsdk to be installed here: `/opt/intel/sgxsdk/environment`)
+- `--hw` to run SGX in hardware mode
+    + this option cannot be used with docker
+    + it requires the sgxsdk to be installed here: `/opt/intel/sgxsdk`, which can be achieved following the steps in the Dockerfile
+    + it requires installing Salticidae following the steps mentioned above
 
 ### Examples
 
