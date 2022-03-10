@@ -117,6 +117,10 @@ In addition, you can use the following options to change some of the parameters:
     + this option cannot be used with docker
     + it requires the sgxsdk to be installed here: `/opt/intel/sgxsdk`, which can be achieved following the steps in the Dockerfile
     + it requires installing Salticidae following the steps mentioned above
+- `--cluster` to run the nodes remotely (see the [Cluster](###Cluster) section for more information)
+    + this option will automatically use Docker containers
+    + it currently cannot user SGX in hardware mode
+    + it currently cannot be combined with `--tvl`
 
 ### Examples
 
@@ -153,6 +157,59 @@ value between 2 and 10 to get an idea of the results you will obtain.
   using less repetitions)
 
 `python3 experiments.py --docker --pall --netlat 100 --payload 256 --faults 1,2,4,10 --repeats 100`
+
+
+### Cluster
+
+As mentioned above, you can use the `--cluster` option to start distributed experiments. You will need to do this:
+- you need to make sure that `python`, `docker`, `git` and `jq`
+  are installed on the machine that you will use to start the experiments
+- generate an `id_rsa.damysus` key using for example:
+  ```
+    ssh-keygen -t rsa -b 4096 -f id_rsa.damysus
+  ```
+- copy this key to all the nodes in your cluster as follows:
+  ```
+    ssh-copy-id -i id_rsa.damysus.pub USER@TARGET
+  ```
+  where `TARGET` is one of your hostnames, and `USER` your username for that host
+- list the nodes that are in your cluster in a `nodes` file as
+  follows (add as many entries are you like---the cluster here
+  contains 2 nodes):
+  ```
+    {
+      "nodes": [
+        { "node" : "node1",
+          "user" : "vince",
+          "host" : "192.168.0.1",
+          "dir"  : "/home/vince/damysus-test",
+          "key"  : "id_rsa.damysus"
+        },
+        { "node" : "node2",
+          "user" : "vince",
+          "host" : "192.168.0.2",
+          "dir"  : "/home/vince/damysus-test",
+          "key"  : "id_rsa.damysus"
+        }
+      ]
+    }
+  ```
+  where `"node"` specifies the name of the node (pick whatever you want), `"user"` is your
+  username for that node, `"host"` is the hostname of that node,
+  `"dir"` is a working directory on that node that will be used to
+  store temporary files, and `"key"` is the name of the key that will
+  be used to access the node remotely without password.
+  Note that you can have more replicas than nodes, which will result
+  on multiple replicas being deployed on the same node.
+- You will need to generate the `damysus` Docker image on all your
+  nodes. You can do that automatically by running:
+  ```
+    python3 experiments.py --prepare
+  ```
+- You can now try an experiment as follows:
+  ```
+    python3 experiments.py --cluster --p1 --repeats 1 --faults 1
+  ```
 
 
 # Acknowledgments

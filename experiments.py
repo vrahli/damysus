@@ -16,6 +16,7 @@ import multiprocessing
 import random
 from shutil import copyfile
 import re
+import mmap
 
 
 #############
@@ -291,6 +292,12 @@ runDocker  = False      # to run the code within docker contrainers
 docker     = "docker"
 dockerBase = "damysus"  # name of the docker container
 networkLat = 0          # network latency in ms
+
+
+## Cluster parameters
+
+clusterFile = "nodes"
+clusterNet  = "damysusNet" # "bridge"
 
 
 ## Code
@@ -722,6 +729,443 @@ def runAWS():
 # End of runAWS
 
 
+# nodes contains the nodes' information
+def startRemoteContainers(nodes,numReps,numClients):
+    print("running in docker mode, starting" , numReps, "containers for the replicas and", numClients, "for the clients")
+
+    global ipsOfNodes
+
+    lr = list(map(lambda x: (True,  x, str(x)), list(range(numReps))))            # replicas
+    lc = list(map(lambda x: (False, x, "c" + str(x)), list(range(numClients))))  # clients
+    lall = lr + lc
+
+    instanceRepIds = []
+    instanceClIds  = []
+
+    for (isRep, n, i) in lall:
+        #
+        # we cycle through the nodes
+        node  = nodes[0]
+        nodes = nodes[1:]
+        nodes.append(node)
+        #
+        # We stop and remove the Doker instance if it is still exists
+        instance = dockerBase + i
+        stop_cmd = docker + " stop " + instance
+        rm_cmd   = docker + " rm " + instance
+        sshAdr   = node["user"] + "@" + node["host"]
+        s1 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,stop_cmd + "; " + rm_cmd])
+        print("the commandline is {}".format(s1.args))
+        s1.communicate()
+        #
+        # We start the Docker instance
+        # TODO: make sure to cover all the ports
+        opt1 = "--expose=8000-9999"
+        opt2 = "--network=" + clusterNet
+        opt3 = "--cap-add=NET_ADMIN"
+        opt4 = "--name " + instance
+        opts = " ".join([opt1, opt2, opt3, opt4])
+        run_cmd = docker + " run -td " + opts + " " + dockerBase
+        s2 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,run_cmd])
+        print("the commandline is {}".format(s2.args))
+        s2.communicate()
+        #
+        exec_cmd = docker + " exec -t " + instance + " bash -c \"" + srcsgx + "; mkdir " + statsdir + "\""
+        s3 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,exec_cmd])
+        print("the commandline is {}".format(s3.args))
+        s3.communicate()
+        #
+        # Set the network latency
+        if 0 < networkLat:
+            print("----changing network latency to " + str(networkLat) + "ms")
+            tc_cmd = "tc qdisc add dev eth0 root netem delay " + str(networkLat) + "ms"
+            lat_cmd = docker + " exec -t " + instance + " bash -c \"" + tc_cmd + "\""
+            s4 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,lat_cmd])
+            print("the commandline is {}".format(s4.args))
+            s4.communicate()
+        #
+        # Extract the IP address of the container
+        address = instance + "_addr"
+        ip_cmd = "cd " + node["dir"] + "; " + docker + " inspect " + instance + " | jq '.[].NetworkSettings.Networks." + clusterNet + ".IPAddress' > " + address
+        s5 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,ip_cmd])
+        print("the commandline is {}".format(s5.args))
+        s5.communicate()
+        #
+        s6 = Popen(["scp","-i",node["key"],"-o",sshOpt1,sshAdr+":"+node["dir"]+"/"+address,address])
+        print("the commandline is {}".format(s6.args))
+        s6.communicate()
+        #
+        rm_cmd = "cd " + node["dir"] + "; rm " + address
+        s7 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,rm_cmd])
+        print("the commandline is {}".format(s7.args))
+        s7.communicate()
+        #
+        with open(address, 'r') as f:
+            data = f.read()
+            #print(data)
+            srch = re.search('\"(.+?)\"', data)
+            if srch:
+                out = srch.group(1)
+                print("----container's address:" + out)
+                if isRep:
+                    ipsOfNodes.update({n:out})
+                    instanceRepIds.append((n,i,node))
+                else:
+                    instanceClIds.append((n,i,node))
+            else:
+                print("----container's address: UNKNOWN")
+        subprocess.run(["rm " + address], shell=True, check=True)
+
+    genLocalConf(numReps,addresses)
+
+    for (n,i,node) in instanceRepIds + instanceClIds:
+        #
+        dockerInstance = dockerBase + i
+        sshAdr = node["user"] + "@" + node["host"]
+        #
+        s1 = Popen(["scp","-i",node["key"],"-o",sshOpt1,addresses,sshAdr+":"+node["dir"]+"/"+addresses])
+        print("the commandline is {}".format(s1.args))
+        s1.communicate()
+        #
+        cp_cmd = docker + " cp " + node["dir"]+"/"+addresses + " " + dockerInstance + ":/app/"
+        s2 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,cp_cmd])
+        print("the commandline is {}".format(s2.args))
+        s2.communicate()
+
+    return (instanceRepIds, instanceClIds)
+## End of startContainers
+
+
+def makeCluster(instanceIds,protocol):
+    ncores = 1
+    if useMultiCores:
+        ncores = numMakeCores
+    print(">> making",str(len(instanceIds)),"instance(s) using",str(ncores),"core(s)")
+
+    procs  = []
+    make0  = "make -j "+str(ncores)
+    make   = make0 + " SGX_MODE="+sgxmode if needsSGX(protocol) else make0 + " server client"
+
+    for (n,i,node) in instanceIds:
+        #
+        dockerInstance = dockerBase + i
+        sshAdr = node["user"] + "@" + node["host"]
+        s1 = Popen(["scp","-i",node["key"],"-o",sshOpt1,params,sshAdr+":"+node["dir"]+"/params.h"])
+        print("the commandline is {}".format(s1.args))
+        s1.communicate()
+        #
+        cp_cmd = docker + " cp " + node["dir"]+"/params.h" + " " + dockerInstance + ":/app/App/"
+        s2 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,cp_cmd])
+        print("the commandline is {}".format(s2.args))
+        s2.communicate()
+        #
+        make_cmd = docker + " exec -t " + dockerInstance + " bash -c \"" + srcsgx + "; make clean; " + make + "\""
+        s3 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,make_cmd])
+        print("the commandline is {}".format(s3.args))
+        #s3.communicate()
+        procs.append((n,i,node,s3))
+
+    for (n,i,node,p) in procs:
+        while (p.poll() is None):
+            time.sleep(1)
+        print("process done:",i)
+
+    print("all instances are made")
+# End of makeCluster
+
+
+def executeClusterInstances(instanceRepIds,instanceClIds,protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFaults,instance):
+    print(">> connecting to",str(len(instanceRepIds)),"replica instance(s)")
+    print(">> connecting to",str(len(instanceClIds)),"client instance(s)")
+
+    procsRep   = []
+    procsCl    = []
+    newtimeout = int(math.ceil(timeout+math.log(numFaults,2)))
+    server     = "./sgxserver" if needsSGX(protocol) else "./server"
+    client     = "./sgxclient" if needsSGX(protocol) else "./client"
+
+    for (n,i,node) in instanceRepIds:
+        # we give some time for the nodes to connect gradually
+        if (n%10 == 5):
+            time.sleep(2)
+        dockerI = dockerBase + i
+        sshAdr  = node["user"] + "@" + node["host"]
+        srun    = " ".join([server,str(n),str(numFaults),str(constFactor),str(numViews),str(newtimeout)])
+        run_cmd = docker + " exec -t " + dockerI + " bash -c \"" + srcsgx + "; rm -f stats/*; " + srun + "\""
+        s1 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,run_cmd])
+        print("the commandline is {}".format(s1.args))
+        #s1.communicate()
+        procsRep.append(("R",n,i,node,s1))
+
+    print("started", len(procsRep), "replicas")
+
+    # we give some time for the replicas to connect before starting the clients
+    wait = 5 + int(math.ceil(math.log(numFaults,2)))
+    time.sleep(wait)
+
+    for (n,i,node) in instanceClIds:
+        dockerI = dockerBase + i
+        sshAdr  = node["user"] + "@" + node["host"]
+        crun    = " ".join([client,str(n),str(numFaults),str(constFactor),str(numClTrans),str(sleepTime),str(instance)])
+        run_cmd = docker + " exec -t " + dockerI + " bash -c \"" + srcsgx + "; rm -f stats/*; " + crun + "\""
+        s1 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,run_cmd])
+        print("the commandline is {}".format(s1.args))
+        #s1.communicate()
+        procsCl.append(("C",n,i,node,s1))
+
+    print("started", len(procsCl), "clients")
+
+    totalTime = 0
+
+    if expmode == "TVL":
+        print("TO FIX: TVL option")
+        ## TODO
+        # while totalTime < cutOffBound:
+        #     copyClientStats(instanceClIds)
+        #     files = glob.glob(statsdir+"/client-throughput-latency-"+str(instance)+"*")
+        #     time.sleep(1)
+        #     totalTime += 1
+        #     if 0 < len(files):
+        #         print("found clients stats", files)
+        #         for (tag,n,i,priv,pub,dns,region,p) in procsRep + procsCl:
+        #             p.kill()
+        #         break
+    else:
+        remaining = procsRep.copy()
+        # We wait here for all processes to complete
+        # but we stop the execution if it takes too long (cutOffBound)
+        while 0 < len(remaining) and totalTime < cutOffBound:
+            print("remaining processes:", remaining)
+            # We filter out the ones that are done. x is of the form (t,i,p)
+            rem = remaining.copy()
+            for (tag,n,i,node,p) in rem:
+                sshAdr    = node["user"] + "@" + node["host"]
+                dockerI   = dockerBase + str(i)
+                find_done = "find /app/" + statsdir + " -name done-" + str(i) + "* | wc -l"
+                doneFile  = "done" + str(i)
+                find_cmd  = "cd " + node["dir"] + "; " + docker + " exec -t " + dockerI + " bash -c \"" + find_done + "\" > " + doneFile
+                s1 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,find_cmd])
+                print("the commandline is {}".format(s1.args))
+                s1.communicate()
+                #
+                s2 = Popen(["scp","-i",node["key"],"-o",sshOpt1,sshAdr+":"+node["dir"]+"/"+doneFile,doneFile])
+                print("the commandline is {}".format(s2.args))
+                s2.communicate()
+                #
+                rm_cmd = "cd " + node["dir"] + "; rm " + doneFile
+                s3 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,rm_cmd])
+                print("the commandline is {}".format(s3.args))
+                s3.communicate()
+                with open(doneFile, 'r') as f:
+                    out = f.read()
+                    print("******" + out + "******")
+                    if 0 < int(out):
+                        remaining.remove((tag,n,i,node,p))
+                subprocess.run(["rm " + doneFile], shell=True, check=True)
+            time.sleep(1)
+            totalTime += 1
+
+    global completeRuns
+    global abortedRuns
+    global aborted
+
+    if totalTime < cutOffBound:
+        completeRuns += 1
+        print("all", len(procsRep)+len(procsCl), "processes are done")
+    else:
+        abortedRuns += 1
+        conf = (protocol,numFaults,instance)
+        aborted.append(conf)
+        f = open(abortedFile, 'a')
+        f.write(str(conf)+"\n")
+        f.close()
+        print("------ reached cutoff bound ------")
+
+
+    ## cleanup
+    # kill python subprocesses
+    for (tag,n,i,node,p) in procsRep + procsCl:
+        # we print the nodes that haven't finished yet
+        if (p.poll() is None):
+            print("still running:",(tag,n,i,node,p.poll()))
+            p.kill()
+
+    ports = " ".join(list(map(lambda port: str(port) + "/tcp", allLocalPorts)))
+
+    # we kill the processes & copy+remove the stats file to this machine
+    for (tag,n,i,node,p) in procsRep + procsCl:
+        sshAdr   = node["user"] + "@" + node["host"]
+        dockerI  = dockerBase + i
+        #
+        kill_all = "killall -q sgxserver sgxclient server client; fuser -k " + ports
+        kill_cmd = docker + " exec -t " + dockerI + " bash -c \"" + kill_all + "\""
+        s1 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,kill_cmd])
+        print("the commandline is {}".format(s1.args))
+        s1.communicate()
+        #
+        src = dockerI + ":/app/" + statsdir + "/."
+        dst = statsdir + "/"
+        cp_cmd = "cd " + node["dir"] + "; mkdir " + statsdir + "; " + docker + " cp " + src + " " + dst
+        s2 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,cp_cmd])
+        print("the commandline is {}".format(s2.args))
+        s2.communicate()
+        #
+        subprocess.run(["scp","-i",node["key"],"-o",sshOpt1,sshAdr+":"+node["dir"]+"/stats/*","stats/"])
+        #
+        rcmd = "rm /app/" + statsdir + "/*"
+        docker_rm_cmd = docker + " exec -t " + dockerI + " bash -c \"" + rcmd + "\""
+        rm_cmd = "cd " + node["dir"] + "; rm -Rf " + statsdir + "; " + docker_rm_cmd
+        s3 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,rm_cmd])
+        print("the commandline is {}".format(s3.args))
+        s3.communicate()
+# End of executeClusterInstances
+
+
+def executeCluster(info,protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFaults):
+    print("<<<<<<<<<<<<<<<<<<<<",
+          "protocol="+protocol.value,
+          ";payload="+str(payloadSize),
+          "(factor="+str(constFactor)+")",
+          "#faults="+str(numFaults),
+          "[complete-runs="+str(completeRuns),"aborted-runs="+str(abortedRuns)+"]")
+    print("aborted runs so far:", aborted)
+
+    numReps = (constFactor * numFaults) + 1
+
+    print("initial number of nodes:", numReps)
+    if deadNodes:
+        numReps = numReps - numFaults
+    print("number of nodes to actually run:", numReps)
+
+    # starts the containers
+    (instanceRepIds,instanceClIds) = startRemoteContainers(info["nodes"],numReps,numClients)
+    mkParams(protocol,constFactor,numFaults,numTrans,payloadSize)
+    # make all nodes
+    makeCluster(instanceRepIds+instanceClIds,protocol)
+
+    for instance in range(repeats):
+        clearStatsDir()
+        # execute the experiment
+        executeClusterInstances(instanceRepIds,instanceClIds,protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFaults,instance)
+        (throughputView,latencyView,throughputHandle,latencyHandle) = computeStats(protocol,numFaults,instance,repeats)
+
+    for (n,i,node) in instanceRepIds + instanceClIds:
+        instance = dockerBase + i
+        stop_cmd = docker + " stop " + instance
+        rm_cmd   = docker + " rm " + instance
+        sshAdr   = node["user"] + "@" + node["host"]
+        s1 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,stop_cmd + "; " + rm_cmd])
+        print("the commandline is {}".format(s1.args))
+        s1.communicate()
+# End of executeCluster
+
+
+def runCluster():
+    global numMakeCores
+    nuMakeCores = 1
+
+    f = open(clusterFile,'r')
+    info = json.load(f)
+    f.close()
+
+    nodes = info["nodes"]
+
+    init_cmd  = docker + " swarm init"
+    leave_cmd = docker + " swarm leave --force"
+
+    # Leave all swarms before starting
+    for node in nodes:
+        sshAdr = node["user"] + "@" + node["host"]
+        s1 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,leave_cmd])
+        print("the commandline is {}".format(s1.args))
+        s1.communicate()
+    subprocess.run([leave_cmd], shell=True) #, check=True)
+
+    srch = re.search('.*(docker swarm join .+)', subprocess.run(init_cmd, shell=True, capture_output=True, text=True).stdout)
+    if srch:
+        join_cmd = srch.group(1)
+        print("----join command:" + join_cmd)
+        for node in nodes:
+            sshAdr = node["user"] + "@" + node["host"]
+            s1 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,join_cmd])
+            print("the commandline is {}".format(s1.args))
+            s1.communicate()
+        net_cmd = docker + " network create --driver=overlay --attachable " + clusterNet
+        subprocess.run([net_cmd], shell=True, check=True)
+    else:
+        print("----no join command")
+
+    for numFaults in faults:
+        # ------
+        # HotStuff-like baseline
+        if runBase:
+            executeCluster(info=info,protocol=Protocol.BASE,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+        # ------
+        # Cheap-HotStuff (TEE locked/prepared blocks)
+        if runCheap:
+            executeCluster(info=info,protocol=Protocol.CHEAP,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+        # ------
+        # Quick-HotStuff (Accumulator)
+        if runQuick:
+            executeCluster(info=info,protocol=Protocol.QUICK,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+        # ------
+        # Quick-HotStuff (Accumulator) - debug version
+        if runQuickDbg:
+            executeCluster(info=info,protocol=Protocol.QUICKDBG,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+        # ------
+        # Combines Cheap&Quick-HotStuff
+        if runComb:
+            executeCluster(info=info,protocol=Protocol.COMB,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+        # ------
+        # Chained HotStuff-like baseline
+        if runChBase:
+            executeCluster(info=info,protocol=Protocol.CHBASE,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+        # ------
+        # Chained Cheap&Quick
+        if runChComb:
+            executeCluster(info=info,protocol=Protocol.CHCOMB,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+        # ------
+        # Chained Cheap&Quick - debug version
+        if runChCombDbg:
+            executeCluster(info=info,protocol=Protocol.CHCOMBDBG,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+
+    # cleanup
+    for node in nodes:
+        sshAdr = node["user"] + "@" + node["host"]
+        s1 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,leave_cmd])
+        print("the commandline is {}".format(s1.args))
+        s1.communicate()
+    subprocess.run([leave_cmd], shell=True) #, check=True)
+    subprocess.run([docker + " network rm " + clusterNet], shell=True) #, check=True)
+
+    print("num complete runs=", completeRuns)
+    print("num aborted runs=", abortedRuns)
+    print("aborted runs:", aborted)
+
+    createPlot(pointsFile)
+# End of runCluster
+
+
+def prepareCluster():
+    f = open(clusterFile,'r')
+    info = json.load(f)
+    f.close()
+
+    nodes = info["nodes"]
+    procs = []
+    for node in nodes:
+        sshAdr = node["user"] + "@" + node["host"]
+        prep_cmd = "cd " + node["dir"] + "; git clone https://github.com/vrahli/damysus.git; cd damysus; docker build -t damysus ."
+        s = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,prep_cmd])
+        procs.append((node,s))
+
+    for (node,p) in procs:
+        while (p.poll() is None):
+            time.sleep(1)
+        print("docker container built for node:",node["node"])
+# End of prepareCluster
+
+
 ## Returns True if the protocol requires SGX
 def needsSGX(protocol):
     if (protocol == Protocol.BASE or protocol == Protocol.CHBASE or protocol == Protocol.QUICKDBG or protocol == Protocol.CHCOMBDBG):
@@ -776,15 +1220,15 @@ def mkApp(protocol,constFactor,numFaults,numTrans,payloadSize):
         for i in lr + lc:
             instance = dockerBase + i
             dst = instance + ":/app/App/"
-            subprocess.run(["docker cp " + params + " " + dst], shell=True, check=True)
+            subprocess.run([docker + " cp " + params + " " + dst], shell=True, check=True)
             # DEBUG begin
             #subprocess.run(["docker cp App/Nodes.cpp " + instance + ":/app/App/"], shell=True, check=True)
             # DEBUG end
-            subprocess.run(["docker exec -t " + instance + " bash -c \"make clean\""], shell=True, check=True)
+            subprocess.run([docker + " exec -t " + instance + " bash -c \"make clean\""], shell=True, check=True)
             if needsSGX(protocol):
-                subprocess.run(["docker exec -t " + instance + " bash -c \"" + srcsgx + "; make -j " + str(ncores) + " SGX_MODE=" + sgxmode + "\""], shell=True, check=True)
+                subprocess.run([docker + " exec -t " + instance + " bash -c \"" + srcsgx + "; make -j " + str(ncores) + " SGX_MODE=" + sgxmode + "\""], shell=True, check=True)
             else:
-                subprocess.run(["docker exec -t " + instance + " bash -c \"make -j " + str(ncores) + " server client\""], shell=True, check=True)
+                subprocess.run([docker + " exec -t " + instance + " bash -c \"make -j " + str(ncores) + " server client\""], shell=True, check=True)
     else:
         subprocess.call(["make","clean"])
         if needsSGX(protocol):
@@ -861,13 +1305,13 @@ def execute(protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFa
     totalTime = 0
 
     if expmode == "TVL":
-        remaining = subsClients
+        remaining = subsClients.copy()
         numTotClients = len(subsClients)
         while 0 < len(remaining) and totalTime < cutOffBound:
             print(str(len(remaining)) + " remaining clients out of " + str(numTotClients) + ":", remaining)
             cFileBase = "client-throughput-latency-" + str(instance)
             if runDocker:
-                rem = remaining
+                rem = remaining.copy()
                 for (t,i,p) in rem:
                     cFile = cFileBase + "-" + str(i) + "*"
                     dockerInstance = dockerBase + "c" + str(i)
@@ -885,14 +1329,14 @@ def execute(protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFa
         for (t,i,p) in subsReps + subsClients:
             p.kill()
     else:
-        remaining = subsReps
+        remaining = subsReps.copy()
         # We wait here for all processes to complete
         # but we stop the execution if it takes too long (cutOffBound)
         while 0 < len(remaining) and totalTime < cutOffBound:
             print("remaining processes:", remaining)
             # We filter out the ones that are done. x is of the form (t,i,p)
             if runDocker:
-                rem = remaining
+                rem = remaining.copy()
                 for (t,i,p) in rem:
                     dockerInstance = dockerBase + str(i)
                     cmd = "find /app/" + statsdir + " -name done-" + str(i) + "* | wc -l"
@@ -1149,6 +1593,11 @@ def computeAvgStats(recompile,protocol,constFactor,numClTrans,sleepTime,numViews
 # End of computeAvgStats
 
 
+def dict2val(d,f):
+    (v,n) = d.get(f)
+    return v/n
+
+
 def dict2lists(d):
     faults = []
     vals   = []
@@ -1164,6 +1613,35 @@ def dict2lists(d):
     return (faults,vals,nums)
 # End of dict2lists
 
+
+## So that 3f1+1=2f2+1
+def comparisonN(f1,f2,dTVBase,dTVCheap,dTVQuick,dTVComb,dTVChBase,dTVChComb,dLVBase,dLVCheap,dLVQuick,dLVComb,dLVChBase,dLVChComb):
+    tv1 = dict2val(dTVBase,f1)
+    tv2 = dict2val(dTVCheap,f2)
+    tv3 = dict2val(dTVQuick,f2)
+    tv4 = dict2val(dTVComb,f2)
+    tv5 = dict2val(dTVChBase,f1)
+    tv6 = dict2val(dTVChComb,f2)
+
+    tv12 = (tv2 - tv1) / tv1 * 100
+    tv13 = (tv3 - tv1) / tv1 * 100
+    tv14 = (tv4 - tv1) / tv1 * 100
+    tv56 = (tv6 - tv5) / tv5 * 100
+    print("THROUGHPUT","cheap",tv12,"quick",tv13,"comb",tv14,"chcomb",tv56)
+
+    lv1 = dict2val(dLVBase,f1)
+    lv2 = dict2val(dLVCheap,f2)
+    lv3 = dict2val(dLVQuick,f2)
+    lv4 = dict2val(dLVComb,f2)
+    lv5 = dict2val(dLVChBase,f1)
+    lv6 = dict2val(dLVChComb,f2)
+
+    lv12 = (lv1 - lv2) / lv1 * 100
+    lv13 = (lv1 - lv3) / lv1 * 100
+    lv14 = (lv1 - lv4) / lv1 * 100
+    lv56 = (lv5 - lv6) / lv5 * 100
+    print("LATENCY","cheap",lv12,"quick",lv13,"comb",lv14,"chcomb",lv56)
+## End of comparisonN
 
 
 # 'bo' should be False for throughput (increase) and True for latency (decrease)
@@ -1420,18 +1898,23 @@ def createPlot(pFile):
     MS = 5 # markersize
     XYT = (0,5)
 
-    #plt.figure(figsize=(6, 6))#, dpi=80)
+    #plt.figure(figsize=(2, 6))
+    #, dpi=80)
 
     ## Plotting
     print("plotting")
     fig, axs = plt.subplots(2)
+    #,figsize=(4, 10)
     if showTitle:
         if debugPlot:
             fig.suptitle("Throughputs (top) & Latencies (bottom) (file="+pFile+")")
         else:
             fig.suptitle("Throughputs (top) & Latencies (bottom)")
 
-    adjustFigAspect(fig,aspect=.9)
+    adjustFigAspect(fig,aspect=0.9)
+    #adjustFigAspect(fig,aspect=0.9)
+    fig.set_figheight(6)
+    #fig.set_figwidth(4)
 
     # naming the x/y axis
     #axs[0].set(xlabel="#faults", ylabel="throughput")
@@ -1577,6 +2060,8 @@ def createPlot(pFile):
             subprocess.call([displayApp, plotFile])
         except:
             print("couldn't display the plot using '" + displayApp + "'. Consider changing the 'displayApp' variable.")
+    return (dictTVBase, dictTVCheap, dictTVQuick, dictTVComb, dictTVChBase, dictTVChComb,
+            dictLVBase, dictLVCheap, dictLVQuick, dictLVComb, dictLVChBase, dictLVChComb)
 # End of createPlot
 
 
@@ -2245,6 +2730,7 @@ def copyLatestExperiments():
     plotBasic   = True
     plotChained = True
 
+
     showYlabel  = True
     showLegend1 = True
     showLegend2 = False
@@ -2253,8 +2739,12 @@ def copyLatestExperiments():
     whichExp  = "EUexp1"
     pointFile = statsdir+"/points-09-Sep-2021-14:37:34.270859"
     plotFile  = statsdir + "/plot-" + timestampStr + ".png"
-    createPlot(pointFile)
+    (dTVBase1,dTVCheap1,dTVQuick1,dTVComb1,dTVChBase1,dTVChComb1,dLVBase1,dLVCheap1,dLVQuick1,dLVComb1,dLVChBase1,dLVChComb1) = createPlot(pointFile)
     copyfile(plotFile,"../figures/eval-EUregs-256B.png")
+
+    print("--THROUGHPUT/LATENCY EU256")
+    comparisonN(20,30,dTVBase1,dTVCheap1,dTVQuick1,dTVComb1,dTVChBase1,dTVChComb1,dLVBase1,dLVCheap1,dLVQuick1,dLVComb1,dLVChBase1,dLVChComb1)
+    print("--")
 
     showYlabel  = False
     showLegend1 = False
@@ -2264,22 +2754,42 @@ def copyLatestExperiments():
     whichExp  = "EUexp1"
     pointFile = statsdir+"/points-18-Sep-2021-08:40:10.075174"
     plotFile  = statsdir + "/plot-" + timestampStr + ".png"
-    createPlot(pointFile)
+    (dTVBase2,dTVCheap2,dTVQuick2,dTVComb2,dTVChBase2,dTVChComb2,dLVBase2,dLVCheap2,dLVQuick2,dLVComb2,dLVChBase2,dLVChComb2) = createPlot(pointFile)
     copyfile(plotFile,"../figures/eval-EUregs-0B.png")
+
+    print("--THROUGHPUT/LATENCY EU0")
+    comparisonN(20,30,dTVBase2,dTVCheap2,dTVQuick2,dTVComb2,dTVChBase2,dTVChComb2,dLVBase2,dLVCheap2,dLVQuick2,dLVComb2,dLVChBase2,dLVChComb2)
+    print("--")
+
+    showYlabel  = True
+    showLegend1 = True
+    showLegend2 = False
 
     # ALLregions, payload=256
     whichExp  = "ALLexp1"
     pointFile = statsdir+"/points-12-Sep-2021-21:22:48.294547-v2"
     plotFile  = statsdir + "/plot-" + timestampStr + ".png"
-    createPlot(pointFile)
+    (dTVBase3,dTVCheap3,dTVQuick3,dTVComb3,dTVChBase3,dTVChComb3,dLVBase3,dLVCheap3,dLVQuick3,dLVComb3,dLVChBase3,dLVChComb3) = createPlot(pointFile)
     copyfile(plotFile,"../figures/eval-ALLregs-256B.png")
+
+    print("--THROUGHPUT/LATENCY ALL256")
+    comparisonN(20,30,dTVBase3,dTVCheap3,dTVQuick3,dTVComb3,dTVChBase3,dTVChComb3,dLVBase3,dLVCheap3,dLVQuick3,dLVComb3,dLVChBase3,dLVChComb3)
+    print("--")
+
+    showYlabel  = False
+    showLegend1 = False
+    showLegend2 = False
 
     # ALLregions, payload=0
     whichExp  = "ALLexp1"
     pointFile = statsdir+"/points-23-Sep-2021-20:57:01.200810-v2"
     plotFile  = statsdir + "/plot-" + timestampStr + ".png"
-    createPlot(pointFile)
+    (dTVBase4,dTVCheap4,dTVQuick4,dTVComb4,dTVChBase4,dTVChComb4,dLVBase4,dLVCheap4,dLVQuick4,dLVComb4,dLVChBase4,dLVChComb4) = createPlot(pointFile)
     copyfile(plotFile,"../figures/eval-ALLregs-0B.png")
+
+    print("--THROUGHPUT/LATENCY ALL0")
+    comparisonN(20,30,dTVBase4,dTVCheap4,dTVQuick4,dTVComb4,dTVChBase4,dTVChComb4,dLVBase4,dLVCheap4,dLVQuick4,dLVComb4,dLVChBase4,dLVChComb4)
+    print("--")
 
     # TVL - EUregions, payload=0, chained
     plotBasic   = False
@@ -2306,6 +2816,8 @@ parser.add_argument("--tvl",      action="store_true")     # throughput vs. late
 parser.add_argument("--tvlaws",   action="store_true")     # throughput vs. latency experiments on AWS
 parser.add_argument("--launch",   type=int, default=0)     # launch EC2 instances
 parser.add_argument("--aws",      action="store_true")     # run AWS
+parser.add_argument("--cluster",  action="store_true")     # run cluster
+parser.add_argument("--prepare",  action="store_true")     # prepare cluster
 parser.add_argument("--awstest",  action="store_true")     # test AWS
 parser.add_argument("--stop",     action="store_true")     # to terminate all instances
 parser.add_argument("--latest",   action="store_true")     # copies latest experiments to paper
@@ -2436,6 +2948,12 @@ elif args.awstest:
 elif args.aws:
     print("lauching AWS experiment")
     runAWS()
+elif args.cluster:
+    print("lauching cluster experiment")
+    runCluster()
+elif args.prepare:
+    print("preparing cluster")
+    prepareCluster()
 elif args.stop:
     print("terminate all AWS instances")
     terminateAllInstances()

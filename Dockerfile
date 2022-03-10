@@ -53,6 +53,7 @@ RUN cd /opt/intel/linux-sgx/linux/installer/bin \
     && . /opt/intel/sgxsdk/environment
 
 # build PSW
+RUN mkdir /etc/init
 RUN . /opt/intel/sgxsdk/environment && cd /opt/intel/linux-sgx && make psw
 RUN . /opt/intel/sgxsdk/environment && cd /opt/intel/linux-sgx && make deb_psw_pkg
 RUN . /opt/intel/sgxsdk/environment && cd /opt/intel/linux-sgx && make deb_local_repo
