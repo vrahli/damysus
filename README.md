@@ -162,18 +162,16 @@ value between 2 and 10 to get an idea of the results you will obtain.
 ### Cluster
 
 As mentioned above, you can use the `--cluster` option to start distributed experiments. You will need to do this:
-- you need to make sure that `python`, `docker`, `git` and `jq`
-  are installed on the machine that you will use to start the experiments
-- generate an `id_rsa.damysus` key using for example:
+- Generate an `id_rsa.damysus` key using for example:
   ```
     ssh-keygen -t rsa -b 4096 -f id_rsa.damysus
   ```
-- copy this key to all the nodes in your cluster as follows:
+- Copy this key to all the nodes in your cluster as follows:
   ```
     ssh-copy-id -i id_rsa.damysus.pub USER@TARGET
   ```
   where `TARGET` is one of your hostnames, and `USER` your username for that host
-- list the nodes that are in your cluster in a `nodes` file as
+- List the nodes that are in your cluster in a `nodes` file as
   follows (add as many entries are you like---the cluster here
   contains 2 nodes):
   ```
@@ -201,6 +199,9 @@ As mentioned above, you can use the `--cluster` option to start distributed expe
   be used to access the node remotely without password.
   Note that you can have more replicas than nodes, which will result
   on multiple replicas being deployed on the same node.
+- You need to make sure that `python`, `docker`, `git` and `jq`
+  are installed on all the machines in your cluster, as well as on the
+  machine that you will use to start the experiments
 - You will need to generate the `damysus` Docker image on all your
   nodes. You can do that automatically by running:
   ```
