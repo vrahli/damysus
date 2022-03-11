@@ -82,6 +82,9 @@ You then need to create the container by typing the following command at the roo
 
 This will create a container called `damysus`.
 
+We use `jq` to extract the IP addresses of Docker containers, so make
+sure to install that too.
+
 
 
 ## Usage
