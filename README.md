@@ -1,6 +1,9 @@
 # DAMYSUS: Streamlined BFT Consensus Leveraging Trusted Components
 
-
+This is the accompanying code to the paper "DAMYSUS: Streamlined BFT
+Consensus Leveraging Trusted Components" which was accepted to EuroSys
+2022. A technical report is available
+[here](https://github.com/vrahli/damysus/blob/main/doc/damysus-extended.pdf).
 
 ## Current status
 
@@ -220,6 +223,7 @@ As mentioned above, you can use the `--cluster` option to start distributed expe
 
 Jiangshan Yu was partially supported by the Australian Research Council
 (ARC) under project DE210100019.
+
 
 # Contact
 
