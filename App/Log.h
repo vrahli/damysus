@@ -1,6 +1,7 @@
 #ifndef LOG_H
 #define LOG_H
 
+#include <set>
 #include <map>
 
 
@@ -30,6 +31,21 @@ class Log {
   std::map<View,std::set<MsgPreCommitComb>> precommitsComb;
   std::map<View,std::set<MsgLdrPrepareComb>> ldrpreparesComb;
 
+  std::map<View,std::set<MsgNewViewFree>> newviewsFree;
+  std::map<View,std::tuple<PJust>> preparesFree;
+  std::map<View,std::set<MsgPreCommitFree>> precommitsFree;
+  std::map<View,std::tuple<HAccum>> ldrpreparesFree;
+
+  std::map<View,std::set<OPprepare>> newviewsOPa;
+  std::map<View,std::set<OPnvblock>> newviewsOPb;
+  std::map<View,std::set<OPstore>> storesOP;
+  std::map<View,std::tuple<LdrPrepareOP>> ldrpreparesOP;
+  std::map<View,std::set<OPprepare>> preparesOP;
+  std::map<View,std::set<OPvote>> votesOP;
+/*
+  std::map<View,std::tuple<MsgPrepareFree>> preparesOP;
+*/
+
   std::map<View,std::set<MsgNewViewCh>> newviewsCh;
   std::map<View,std::set<MsgPrepareCh>> preparesCh;
   std::map<View,std::set<MsgLdrPrepareCh>> ldrpreparesCh;
@@ -57,6 +73,24 @@ class Log {
   unsigned int storePrepComb(MsgPrepareComb msg);
   unsigned int storePcComb(MsgPreCommitComb msg);
   unsigned int storeLdrPrepComb(MsgLdrPrepareComb msg);
+
+  unsigned int storeNvFree(MsgNewViewFree msg);
+  unsigned int storePrepFree(PJust msg);
+  unsigned int storeBckPrepFree(MsgBckPrepareFree msg);
+  unsigned int storePcFree(MsgPreCommitFree msg);
+  unsigned int storeLdrPrepFree(HAccum msg);
+
+  unsigned int storeNvOp(MsgNewViewOPA msg);
+  unsigned int storeNvOp(MsgNewViewOPB msg);
+  std::set<OPnvblock> getNvOps(View view, unsigned int n);
+  unsigned int storeStoreOp(OPstore store);
+  OPprepare getOPstores(View view, unsigned int n);
+  unsigned int storeLdrPrepOp(LdrPrepareOP msg);
+  LdrPrepareOP getLdrPrepareOp(View view);
+  unsigned int storePrepareOp(OPprepare prep);
+  OPprepare getOPprepare(View view);
+  unsigned int storeVoteOp(OPvote vote);
+  OPvote getOPvote(View view, unsigned int n);
 
   unsigned int storeNvCh(MsgNewViewCh msg);
   unsigned int storePrepCh(MsgPrepareCh msg);
@@ -97,6 +131,12 @@ class Log {
   MsgLdrPrepareComb firstLdrPrepareComb(View view);
   MsgPrepareComb firstPrepareComb(View view);
   MsgPreCommitComb firstPrecommitComb(View view);
+
+  std::set<MsgNewViewFree> getNewViewFree(View view, unsigned int n);
+  PJust getPrepareFree(View view);
+  HAccum getLdrPrepareFree(View view);
+  MsgPreCommitFree firstPrecommitFree(View view);
+  Auths getPrecommitFree(View view, unsigned int n);
 
   std::set<MsgNewViewCh> getNewViewCh(View view, unsigned int n);
   Signs getPrepareCh(View view, unsigned int n);

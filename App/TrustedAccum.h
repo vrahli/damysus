@@ -17,15 +17,15 @@ class TrustedAccum {
   PID id;
   unsigned int qsize;
 
-  bool verifyCData(Nodes nodes, CData<Void,Cert> data, Sign sign);
-  bool verifyCert(Nodes nodes, Cert c);
+  bool verifyCData(Stats &stats, Nodes nodes, CData<Void,Cert> data, Sign sign);
+  bool verifyCert(Stats &stats, Nodes nodes, Cert c);
 
  public:
   TrustedAccum();
   TrustedAccum(PID id, KEY priv, unsigned int qsize);
 
-  Accum TEEaccum(Nodes nodes, Vote<Void,Cert> votes[MAX_NUM_SIGNATURES]);
-  Accum TEEaccumSp(Nodes nodes, uvote_t vote);
+  Accum TEEaccum(Stats &stats, Nodes nodes, Vote<Void,Cert> votes[MAX_NUM_SIGNATURES]);
+  Accum TEEaccumSp(Stats &stats, Nodes nodes, uvote_t vote);
 };
 
 

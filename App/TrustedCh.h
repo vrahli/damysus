@@ -27,7 +27,7 @@ class TrustedCh {
   TrustedCh(unsigned int id, KEY priv, unsigned int q);
 
   Just TEEsign();
-  Just TEEprepare(Nodes nodes, JBlock block, JBlock block0, JBlock block1);
+  Just TEEprepare(Stats &stats, Nodes nodes, JBlock block, JBlock block0, JBlock block1);
 };
 
 

@@ -33,6 +33,31 @@ typedef struct _rdata_t
   Phase1 phase;
 } rdata_t;
 
+typedef struct _fdata_t
+{
+  hash_t justh;
+  View justv;
+  View view;
+} fdata_t;
+
+typedef struct _auth_t
+{
+  PID id;
+  hash_t hash;
+} auth_t;
+
+typedef struct _auths_t
+{
+  unsigned int size;
+  auth_t auths[MAX_NUM_SIGNATURES];
+} auths_t;
+
+typedef struct _payload_t
+{
+  unsigned int size;
+  unsigned char data[MAX_SIZE_PAYLOAD];
+} payload_t;
+
 typedef struct _sign_t
 {
   bool set;
@@ -53,6 +78,44 @@ typedef struct _just_t
   signs_t signs;
 } just_t;
 
+typedef struct _fjust_t
+{
+  bool set;
+  fdata_t data;
+  auth_t auth;
+} fjust_t;
+
+typedef struct _ofjust_t
+{
+  bool set;
+  fdata_t data;
+  auths_t auths;
+} ofjust_t;
+
+typedef struct _fvjust_t
+{
+  bool set;
+  fdata_t data;
+  auth_t auth1;
+  auth_t auth2;
+} fvjust_t;
+
+typedef struct _pjust_t
+{
+  hash_t hash;
+  View view;
+  auth_t auth;
+  auths_t auths;
+} pjust_t;
+
+typedef struct _hjust_t
+{
+  bool set;
+  hash_t hash;
+  View view;
+  auth_t auth;
+} hjust_t;
+
 typedef struct _onejust_t
 {
   bool set;
@@ -64,6 +127,11 @@ typedef struct _onejusts_t
 {
   onejust_t justs[MAX_NUM_SIGNATURES];
 } onejusts_t;
+
+typedef struct _fjusts_t
+{
+  fjust_t justs[MAX_NUM_SIGNATURES-1];
+} fjusts_t;
 
 typedef struct _cert_t
 {
@@ -99,6 +167,16 @@ typedef struct _accum_t
   unsigned int size;
   sign_t sign;
 } accum_t;
+
+typedef struct _haccum_t
+{
+  bool set;
+  View view;
+  hash_t hash;
+  unsigned int size;
+  auth_t auth;
+  auth_t authp; // authenticator of the proposal
+} haccum_t;
 
 typedef struct _trans_t
 {
@@ -140,6 +218,38 @@ typedef struct _uvote_t
   cdata_t cdata;
   signs_t signs;
 } uvote_t;
+
+typedef struct _opstore_t
+{
+  View view;
+  hash_t hash;
+  View v;
+  auth_t auth;
+} opstore_t;
+
+typedef struct _opproposal_t
+{
+  hash_t hash;
+  View view;
+  auth_t auth;
+} opproposal_t;
+
+typedef struct _opvote_t
+{
+  hash_t hash;
+  View view;
+  auths_t auths;
+} opvote_t;
+
+typedef struct _opaccum_t
+{
+  bool set;
+  NVkind kind;
+  View view;
+  hash_t hash;
+  unsigned int size;
+  auth_t auth;
+} opaccum_t;
 
 
 #endif

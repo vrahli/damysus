@@ -87,7 +87,7 @@ int main(int argc, char const *argv[]) {
 
   unsigned int numNodes = (constFactor*numFaults)+1;
   std::string confFile = "config";
-  Nodes nodes(confFile);
+  Nodes nodes(confFile,numNodes);
 
 
   // -- Public keys
@@ -134,6 +134,21 @@ int main(int argc, char const *argv[]) {
                    sizeof(MsgLdrPrepareComb),
                    sizeof(MsgPrepareComb),
                    sizeof(MsgPreCommitComb)});
+  #elif defined(BASIC_FREE)
+  size = std::max({size,
+                   sizeof(MsgNewViewFree),
+                   sizeof(MsgLdrPrepareFree),
+                   sizeof(MsgBckPrepareFree),
+                   sizeof(MsgPrepareFree),
+                   sizeof(MsgPreCommitFree)});
+  #elif defined(BASIC_ONEP)
+  size = std::max({size,
+                   sizeof(MsgNewViewOPA),
+                   sizeof(MsgNewViewOPB),
+                   sizeof(MsgLdrPrepareOPA),
+                   sizeof(MsgLdrPrepareOPB),
+                   sizeof(MsgBckPrepareOP),
+                   sizeof(MsgPreCommitOP)});
   #elif defined(CHAINED_BASELINE)
   size = std::max({size,
                    sizeof(MsgNewViewCh),
@@ -163,6 +178,11 @@ int main(int argc, char const *argv[]) {
               << ":ldrpreparecomb=" << sizeof(MsgLdrPrepareComb)
               << ":preparecomb="    << sizeof(MsgPrepareComb)
               << ":precommitcomb="  << sizeof(MsgPreCommitComb)
+              << ":newviewfree="    << sizeof(MsgNewViewFree)
+              << ":ldrpreparefree=" << sizeof(MsgLdrPrepareFree)
+              << ":bckpreparefree=" << sizeof(MsgBckPrepareFree)
+              << ":preparefree="    << sizeof(MsgPrepareFree)
+              << ":precommitfree="  << sizeof(MsgPreCommitFree)
               << KNRM << std::endl;
   }
   if (DEBUG0) std::cout << KYEL << "[" << myid << "]max-msg-size=" << size << KNRM << std::endl;

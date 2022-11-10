@@ -10,13 +10,18 @@
 #include "Log.h"
 #include "Stats.h"
 #include "Vote.h"
+#include "FJust.h"
+#include "PJust.h"
+#include "HJust.h"
+#include "VJust.h"
+#include "FVJust.h"
 #include "../Enclave/user_types.h"
 
 
 
 // ------------------------------------
 // SGX related stuff
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
 //
 #include "Enclave_u.h"
 #include "sgx_urts.h"
@@ -77,7 +82,6 @@ class Handler {
   View view = 0;                 // current view - initially 0
   unsigned int maxViews = 0;     // 0 means no constraints
   KeysFun kf;                    // To access crypto functions
-  Stats stats;                   // To collect statistics
 
   salticidae::EventContext pec; // peer ec
   salticidae::EventContext cec; // request ec
@@ -106,12 +110,25 @@ class Handler {
   // Used for the accumulator version
   Cert qcprep;
 
+  // Used in the 'free' version - the new-view certificate generated last
+  FJust nvjust;
+  // Used in the 'free' version - the prepare certificate received last
+  PJust prepjust;
+
+  // Used in the 'OP' version - the latest prepare certificate
+  OPprepare opprep;
+  // and the latest proposal
+  OPprp opprop;
+
   //void newview_handler(MsgNewView &&msg, const PeerNet::conn_t &conn);
 
   // Initializes SGX-related stuff
   int initializeSGX();
+//  void ocall_recCtime();
 
   void printClientInfo();
+
+  void printNowTime(std::string msg);
 
   // returns the total number of nodes
   unsigned int getTotal();
@@ -134,6 +151,9 @@ class Handler {
   bool timeToStop();
   void recordStats();
   void setTimer();
+
+  Sign Ssign(KEY priv, PID signer, std::string text);
+  bool Sverify(Signs signs, PID id, Nodes nodes, std::string s);
 
   // To stop clients once all have stopped
   //void checkStopClients();
@@ -163,6 +183,22 @@ class Handler {
   void sendMsgPrepareComb(MsgPrepareComb msg, Peers recipients);
   void sendMsgPreCommitComb(MsgPreCommitComb msg, Peers recipients);
 
+  void sendMsgNewViewFree(MsgNewViewFree msg, Peers recipients);
+  void sendMsgLdrPrepareFree(MsgLdrPrepareFree msg, Peers recipients);
+  void sendMsgBckPrepareFree(MsgBckPrepareFree msg, Peers recipients);
+  void sendMsgPrepareFree(MsgPrepareFree msg, Peers recipients);
+  void sendMsgPreCommitFree(MsgPreCommitFree msg, Peers recipients);
+
+  void sendMsgLdrPrepareOPA(MsgLdrPrepareOPA msg, Peers recipients);
+  void sendMsgLdrPrepareOPB(MsgLdrPrepareOPB msg, Peers recipients);
+  void sendMsgLdrPrepareOPC(MsgLdrPrepareOPC msg, Peers recipients);
+  void sendMsgPreCommitOP(MsgPreCommitOP msg, Peers recipients);
+  void sendMsgNewViewOP(MsgNewViewOPA msg, Peers recipients);
+  void sendMsgNewViewOP(MsgNewViewOPB msg, Peers recipients);
+  void sendMsgBckPrepareOP(MsgBckPrepareOP msg, Peers recipients);
+  void sendMsgLdrAddOP(MsgLdrAddOP msg, Peers recipients);
+  void sendMsgBckAddOP(MsgBckAddOP msg, Peers recipients);
+
   void sendMsgNewViewCh(MsgNewViewCh msg, Peers recipients);
   void sendMsgPrepareCh(MsgPrepareCh msg, Peers recipients);
   void sendMsgLdrPrepareCh(MsgLdrPrepareCh msg, Peers recipients);
@@ -186,6 +222,9 @@ class Handler {
 
   bool verifyLdrPrepareComb(MsgLdrPrepareComb msg);
   bool verifyPreCommitCombCert(MsgPreCommitComb msg);
+
+  bool verifyLdrPrepareFree(HAccum acc, Block block);
+  bool verifyPreCommitFreeCert(MsgPreCommitFree msg);
 
   Accum newviews2acc(std::set<MsgNewViewAcc> newviews);
 
@@ -326,6 +365,110 @@ class Handler {
   void handle_ldrpreparecomb(MsgLdrPrepareComb msg, const PeerNet::conn_t &conn);
   void handle_precommitcomb(MsgPreCommitComb msg, const PeerNet::conn_t &conn);
 
+
+
+  // ------------------------------------------------------------
+  // Free
+  // ------
+
+  void executeFree(FData data);
+  void handleEarlierMessagesFree();
+  void startNewViewFree();
+
+  // For leaders to start preparing
+  void prepareFree();
+  // For leaders to start pre-committing
+  void preCommitFree(View view);
+  // For leaders to start deciding
+  void decideFree(FData data);
+
+  // For backups to respond to correct MsgLdrPrepareFree messages received from leaders
+  void respondToLdrPrepareFree(HAccum acc);
+  // For backups to respond to MsgPrepareFree messages receveid from leaders
+  void respondToPrepareFree(MsgPrepareFree msg);
+  // For backups to respond to MsgPreCommitFree messages receveid from leaders
+  void respondToPreCommitFree(MsgPreCommitFree msg);
+
+  HAccum newviews2accFree(MsgNewViewFree high, std::set<MsgNewViewFree> others, Hash hash);
+
+  MsgNewViewFree highestNewViewFree(std::set<MsgNewViewFree> *newviews);
+
+  bool callTEEverifyFree(Auths auths, std::string s);
+  bool callTEEverifyFree2(Auths auths1, std::string s1, Auths auths2, std::string s2);
+  Auth callTEEauthFree(std::string s);
+  HAccum callTEEaccumFree(FJust just, FJust justs[MAX_NUM_SIGNATURES], Hash hash);
+  HAccum callTEEaccumFreeSp(ofjust_t just, Hash hash);
+  Just callTEEsignFree();
+  // HJust callTEEprepareFree(Hash h);
+  FVJust callTEEstoreFree(PJust j);
+
+  void handleNewviewFree(MsgNewViewFree msg);
+  void handlePrepareFree(MsgPrepareFree msg);
+  void handleLdrPrepareFree(HAccum acc, Block blockk);
+  void handleBckPrepareFree(MsgBckPrepareFree msg);
+  void handlePreCommitFree(MsgPreCommitFree msg);
+
+  void handle_newviewfree(MsgNewViewFree msg, const PeerNet::conn_t &conn);
+  void handle_preparefree(MsgPrepareFree msg, const PeerNet::conn_t &conn);
+  void handle_ldrpreparefree(MsgLdrPrepareFree msg, const PeerNet::conn_t &conn);
+  void handle_bckpreparefree(MsgBckPrepareFree msg, const PeerNet::conn_t &conn);
+  void handle_precommitfree(MsgPreCommitFree msg, const PeerNet::conn_t &conn);
+
+
+  // ------------------------------------------------------------
+  // 1/2 PHASE
+  // ------
+
+  void handleEarlierMessagesOP();
+
+  OPproposal callTEEprepareOP(Hash h);
+  OPstore callTEEstoreOP(OPproposal prop);
+  bool callTEEverifyOP(Auths auths, std::string s);
+  OPaccum callTEEaccumOp(OPstore high, OPstore justs[MAX_NUM_SIGNATURES-1]);
+  OPaccum callTEEaccumOpSp(OPprepare just);
+  OPvote callTEEvoteOP(Hash h);
+
+  bool verifyPrepareOP(OPprepare cert);
+  bool verifyLdrPrepareOP(MsgLdrPrepareOPA msg);
+  bool verifyLdrPrepareOP(MsgLdrPrepareOPB msg);
+  bool verifyLdrPrepareOP(MsgLdrPrepareOPC msg);
+
+  void startNewViewOP();
+
+  void executeOP(OPprepare cert);
+  void preCommitOP(View v);
+  void prepareOp(OPprepare prep);
+  void prepareOpAcc(OPaccum acc, OPprepare prep);
+  void prepareOpVote(OPvote vote);
+  OPnvblock highestNewViewOpb(std::set<OPnvblock> *newviews);
+  OPaccum newviews2accOp(OPnvblock high, std::set<OPnvblock> others);
+  void prepareOpb(View v);
+  void respondToLdrPrepareOP(Block block, OPproposal prop, OPcert cert);
+  void respondToPreCommitOP(OPprepare cert);
+
+  void startNewViewOnTimeoutOP();
+  bool validAddOp(View v, OPaccum acc, OPnvblock nv);
+  bool validOPvote(OPvote vote);
+
+  void handleNewviewOP(MsgNewViewOPA msg);
+  void handleNewviewOP(MsgNewViewOPB msg);
+  void handlePreCommitOP(MsgPreCommitOP msg);
+  void handleLdrPrepareOP(MsgLdrPrepareOPA msg);
+  void handleLdrPrepareOP(MsgLdrPrepareOPB msg);
+  void handleLdrPrepareOP(MsgLdrPrepareOPC msg);
+  void handleBckPrepareOP(MsgBckPrepareOP msg);
+  void handleLdrAddOP(MsgLdrAddOP msg);
+  void handleBckAddOP(OPvote vote);
+
+  void handle_newviewopa(MsgNewViewOPA msg, const PeerNet::conn_t &conn);
+  void handle_newviewopb(MsgNewViewOPB msg, const PeerNet::conn_t &conn);
+  void handle_precommitop(MsgPreCommitOP msg, const PeerNet::conn_t &conn);
+  void handle_ldrprepareopa(MsgLdrPrepareOPA msg, const PeerNet::conn_t &conn);
+  void handle_ldrprepareopb(MsgLdrPrepareOPB msg, const PeerNet::conn_t &conn);
+  void handle_ldrprepareopc(MsgLdrPrepareOPC msg, const PeerNet::conn_t &conn);
+  void handle_bckprepareop(MsgBckPrepareOP msg, const PeerNet::conn_t &conn);
+  void handle_ldraddop(MsgLdrAddOP msg, const PeerNet::conn_t &conn);
+  void handle_bckaddop(MsgBckAddOP msg, const PeerNet::conn_t &conn);
 
 
   // ------------------------------------------------------------

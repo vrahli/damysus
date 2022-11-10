@@ -27,9 +27,9 @@ class TrustedChComb {
   TrustedChComb(unsigned int id, KEY priv, unsigned int q);
 
   Just TEEsign();
-  Just TEEprepare(Nodes nodes, CBlock block, Hash hash);
-  Accum TEEaccum(Nodes nodes, Just justs[MAX_NUM_SIGNATURES]);
-  Accum TEEaccumSp(Nodes nodes, just_t just);
+  Just TEEprepare(Stats &stats, Nodes nodes, CBlock block, Hash hash);
+  Accum TEEaccum(Stats &stats, Nodes nodes, Just justs[MAX_NUM_SIGNATURES]);
+  Accum TEEaccumSp(Stats &stats, Nodes nodes, just_t just);
 };
 
 #endif

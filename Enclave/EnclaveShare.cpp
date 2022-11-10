@@ -6,6 +6,9 @@ KEY     priv;           // private key
 unsigned int qsize;     // quorum size
 std::map<PID,KEY> pubs; // public keys
 
+double cryptoTime;
+
+
 std::string nfo() { return "[" + std::to_string(id) + "]"; }
 
 
@@ -36,7 +39,9 @@ sgx_status_t initialize_variables(PID *me, pids_t *others, unsigned int *q) {
   ocall_print((nfo() + "ENCLAVE:set up id-" + std::to_string(id)).c_str());
 
   qsize = *q;
-  ocall_print((nfo() + "ENCLAVE:set up the quorum size-" + std::to_string(qsize)).c_str());
+  //ocall_print((nfo() + "ENCLAVE:set up the quorum size-" + std::to_string(qsize)).c_str());
+
+  if (DEBUG1) ocall_print((nfo() + "qsize=" + std::to_string(qsize)).c_str());
 
   // Doesn't appear to work -- for now everyone will use the same keys
   //ocall_load_private_key(&id,&priv);
@@ -44,13 +49,11 @@ sgx_status_t initialize_variables(PID *me, pids_t *others, unsigned int *q) {
   loadPrivateKey();
 
   for (int i = 0; i < others->num_nodes; i++) {
-    PID j = others->pids[i];
+    PID j    = others->pids[i];
     BIO *bio = BIO_new(BIO_s_mem());
-    int w = BIO_write(bio,pub_key256,sizeof(pub_key256));
-    KEY pub = PEM_read_bio_EC_PUBKEY(bio, NULL, NULL, NULL);
-    if (!EC_KEY_check_key(pub)) {
-      ocall_print((nfo() + "pub key doesn't check").c_str());
-    }
+    int w    = BIO_write(bio,pub_key256,sizeof(pub_key256));
+    KEY pub  = PEM_read_bio_EC_PUBKEY(bio, NULL, NULL, NULL);
+    if (!EC_KEY_check_key(pub)) {ocall_print((nfo() + "pub key doesn't check").c_str()); }
     // Doesn't appear to work
     //ocall_load_public_key(&j,&pub);
     pubs[j]=pub;
@@ -79,8 +82,10 @@ bool verifyBuf(std::string text, EC_key pub, unsigned char sign[SIGN_LEN]) {
 
 
 bool verifySign(sign_t s, KEY pub, std::string text) {
+  if (DEBUGOT) ocall_setCtime();
   unsigned char *sign = &s.sign[0];
   bool b = verifyBuf(text,pub,sign);
+  if (DEBUGOT) ocall_recCVtime();
   //if (DEBUG) { std::cout << KCYN << "verified signature: " << b << KNRM << std::endl; }
   return b;
 }
@@ -90,7 +95,7 @@ bool verifySigns(signs_t signs, PID id, std::map<PID,KEY> pubs, std::string s) {
   for (int i = 0; i < signs.size; i++) {
     sign_t sign = signs.signs[i];
     PID node = sign.signer;
-    if (id != node) { // we don't check our own signature
+    if (true) { //(id != node) { // we don't check our own signature
       std::map<PID,KEY>::iterator it = pubs.find(node);
       if (it != pubs.end()) {
         // TODO: The id of the signer should also be added to the string (for signing and verifying---maybe in Sign.cpp instead?)
@@ -110,7 +115,12 @@ bool verifySigns(signs_t signs, PID id, std::map<PID,KEY> pubs, std::string s) {
 
 
 bool verifyText(signs_t signs, std::string text) {
-  return verifySigns(signs,id,pubs,text);
+  //ocall_print((nfo() + "verifying:" + std::to_string(signs.size)).c_str());
+  bool b = verifySigns(signs,id,pubs,text);
+  //auto end = std::chrono::steady_clock::now();
+  //double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  //cryptoTime += time;
+  return b;
 }
 
 
@@ -278,7 +288,9 @@ sign_t sign(KEY priv, PID signer, std::string text) {
 
 
 sign_t signString(std::string text) {
+  if (DEBUGOT) ocall_setCtime();
   sign_t s = sign(priv,id,text);
+  if (DEBUGOT) ocall_recCStime();
   if (!s.set) {
     ocall_print(("[" + std::to_string(id) + "]wrong signature").c_str());
   }

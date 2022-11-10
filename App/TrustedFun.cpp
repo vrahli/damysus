@@ -56,27 +56,37 @@ Just TrustedFun::sign(Hash h1, Hash h2, View v2) {
 }
 
 
-Just TrustedFun::TEEsign() {
-  return sign(Hash(false),this->preph,this->prepv);
+Just TrustedFun::TEEsign(Stats &stats) {
+  auto start = std::chrono::steady_clock::now();
+  Just j = sign(Hash(false),this->preph,this->prepv);
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addCryptoSignTime(time);
+  return j;
 }
 
-bool TrustedFun::TEEverify(Nodes nodes, Just just) {
-  return just.getSigns().verify(this->id,nodes,just.getRData().toString());
+bool TrustedFun::TEEverify(Stats &stats, Nodes nodes, Just just) {
+  auto start = std::chrono::steady_clock::now();
+  bool b = just.getSigns().verify(stats,this->id,nodes,just.getRData().toString());
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addCryptoVerifTime(time);
+  return b;
 }
 
-Just TrustedFun::TEEprepare(Nodes nodes, Hash hash, Just just) {
+Just TrustedFun::TEEprepare(Stats &stats, Nodes nodes, Hash hash, Just just) {
   RData  rd = just.getRData();
   Hash   h2 = rd.getJusth();
   View   v2 = rd.getJustv();
   Phase1 ph = rd.getPhase();
-  if (TEEverify(nodes,just)
+  if (TEEverify(stats,nodes,just)
       && this->view == rd.getPropv()
       && ph == PH1_NEWVIEW
       && (h2 == this->lockh || v2 > this->lockv)) {
     return sign(hash,h2,v2);
   } else {
     if (DEBUG) std::cout << KMAG << "TEEprepare failed:"
-                         << "TEEverif="   << std::to_string(TEEverify(nodes,just))
+                         << "TEEverif="   << std::to_string(TEEverify(stats,nodes,just))
                          << ";eq-views="  << std::to_string(this->view == rd.getPropv())
                          << ";eq-phases=" << std::to_string(ph == PH1_NEWVIEW)
                          << ";safety="     << std::to_string((h2 == this->lockh || v2 > this->lockv))
@@ -85,12 +95,12 @@ Just TrustedFun::TEEprepare(Nodes nodes, Hash hash, Just just) {
   return Just();
 }
 
-Just TrustedFun::TEEstore(Nodes nodes, Just just) {
+Just TrustedFun::TEEstore(Stats &stats, Nodes nodes, Just just) {
   Hash   h  = just.getRData().getProph();
   View   v  = just.getRData().getPropv();
   Phase1 ph = just.getRData().getPhase();
   if (just.getSigns().getSize() == this->qsize
-      && TEEverify(nodes,just)
+      && TEEverify(stats,nodes,just)
       && this->view == v
       && (ph == PH1_PREPARE || ph == PH1_PRECOMMIT)) {
     this->preph=h; this->prepv=v;

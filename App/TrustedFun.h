@@ -4,6 +4,7 @@
 
 #include "Hash.h"
 #include "Just.h"
+#include "Stats.h"
 
 
 class TrustedFun {
@@ -26,10 +27,10 @@ class TrustedFun {
   TrustedFun();
   TrustedFun(unsigned int id, KEY priv, unsigned int q);
 
-  Just TEEsign();
-  Just TEEprepare(Nodes nodes, Hash hash, Just just);
-  Just TEEstore(Nodes nodes, Just just);
-  bool TEEverify(Nodes nodes, Just just);
+  Just TEEsign(Stats &stats);
+  Just TEEprepare(Stats &stats, Nodes nodes, Hash hash, Just just);
+  Just TEEstore(Stats &stats, Nodes nodes, Just just);
+  bool TEEverify(Stats &stats, Nodes nodes, Just just);
 };
 
 

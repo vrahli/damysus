@@ -84,15 +84,16 @@ void printIds(std::list<PID> l) {
 Nodes::Nodes() {}
 
 
-Nodes::Nodes(std::string filename) {
+Nodes::Nodes(std::string filename, unsigned int numNodes) {
   std::ifstream inFile(filename);
   char oneline[MAXLINE];
   char delim[] = " ";
   char *token;
+  unsigned int added = 0;
 
   if (DEBUG) std::cout << KMAG << "parsing configuration file" << KNRM << std::endl;
 
-  while (inFile) {
+  while (inFile && added < numNodes) {
     inFile.getline(oneline,MAXLINE);
     token = strtok(oneline,delim);
 
@@ -115,6 +116,7 @@ Nodes::Nodes(std::string filename) {
       if (DEBUG) std::cout << KMAG << "id: " << id << "; host: " << host << "; port: " << rport << "; port: " << cport << KNRM << std::endl;
 
       addNode(id,host,rport,cport);
+      added++;
     }
   }
 

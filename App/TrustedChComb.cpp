@@ -54,22 +54,22 @@ Just TrustedChComb::TEEsign() {
 }
 
 
-bool verify(PID id, Nodes nodes, CA cert) {
+bool verify(Stats &stats, PID id, Nodes nodes, CA cert) {
   if (DEBUG) { std::cout << KMAG << "verifying:" << cert.prettyPrint() << KNRM << std::endl; }
   if (cert.tag == CERT) {
     // We have here to verify the corresponding justification that we generated the certificate from in 'checkNewJustChComb'
     RData rdata(cert.cert.getHash(),cert.cert.getView(),Hash(),View(),PH1_PREPARE);
     Just just(rdata,cert.cert.getSigns());
-    return just.getSigns().verify(id,nodes,just.getRData().toString());
+    return just.getSigns().verify(stats,id,nodes,just.getRData().toString());
   }
   // else
-  return Signs(cert.accum.getSign()).verify(id,nodes,cert.accum.data2string());
+  return Signs(cert.accum.getSign()).verify(stats,id,nodes,cert.accum.data2string());
 }
 
 
-Just TrustedChComb::TEEprepare(Nodes nodes, CBlock block, Hash hash) {
+Just TrustedChComb::TEEprepare(Stats &stats, Nodes nodes, CBlock block, Hash hash) {
   CA cert = block.getCert();
-  bool vb = verify(this->id,nodes,cert);
+  bool vb = verify(stats,this->id,nodes,cert);
   if (vb
       && this->view == cert.getCView()+1) {
 
@@ -93,7 +93,7 @@ Just TrustedChComb::TEEprepare(Nodes nodes, CBlock block, Hash hash) {
 }
 
 
-Accum TrustedChComb::TEEaccum(Nodes nodes, Just justs[MAX_NUM_SIGNATURES]) {
+Accum TrustedChComb::TEEaccum(Stats &stats, Nodes nodes, Just justs[MAX_NUM_SIGNATURES]) {
   View v = justs[0].getRData().getPropv();
   View highest = 0;
   Hash hash = Hash();
@@ -109,7 +109,7 @@ Accum TrustedChComb::TEEaccum(Nodes nodes, Just justs[MAX_NUM_SIGNATURES]) {
       if (data.getPhase() == PH1_NEWVIEW
           && data.getPropv() == v
           && signers.find(signer) == signers.end()
-          && signs.verify(this->id,nodes,data.toString())) {
+          && signs.verify(stats,this->id,nodes,data.toString())) {
         if (DEBUG1) std::cout << KMAG << "[" << this->id << "]" << "inserting signer" << KNRM << std::endl;
         signers.insert(signer);
         if (data.getJustv() >= highest) {
@@ -128,7 +128,7 @@ Accum TrustedChComb::TEEaccum(Nodes nodes, Just justs[MAX_NUM_SIGNATURES]) {
 }
 
 
-Accum TrustedChComb::TEEaccumSp(Nodes nodes, just_t just) {
+Accum TrustedChComb::TEEaccumSp(Stats &stats, Nodes nodes, just_t just) {
   std::set<PID> signers;
 
   rdata_t rdata = just.rdata;
@@ -144,7 +144,7 @@ Accum TrustedChComb::TEEaccumSp(Nodes nodes, just_t just) {
     for (int i = 0; i < MAX_NUM_SIGNATURES && i < this->qsize && i < signs.size; i++) {
       PID signer = signs.signs[i].signer;
       Signs sign = Sign(signs.signs[i].set,signer,signs.signs[i].sign);
-      bool vd = Signs(sign).verify(this->id,nodes,data);
+      bool vd = Signs(sign).verify(stats,this->id,nodes,data);
       if (signers.find(signer) == signers.end() && vd) { signers.insert(signer); }
     }
   }

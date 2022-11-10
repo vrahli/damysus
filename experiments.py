@@ -46,6 +46,7 @@ faults       = [1] #[1,2,4,10] #[1,2,4,10,20,30,40] #[1,2,4,6,8,10,12,14,20,30] 
 #faults      = [1,10,20,30,40,50]
 #faults      = [40]
 repeats      = 100 #10 #50 #5 #100 #2     # number of times to repeat each experiment
+repeatsL2    = 1
 #
 numViews     = 30     # number of views in each run
 cutOffBound  = 60     # stop experiment after some time
@@ -66,15 +67,21 @@ runBase      = False #True
 runCheap     = False #True
 runQuick     = False #True
 runComb      = False #True
+runFree      = False #True
+runOnep      = False #True
 runChBase    = False #True
 runChComb    = False #True
 # Debug versions
 runQuickDbg  = False #True
 runChCombDbg = False #True
 #
+plotView     = True   # to plot the numbers of handling messages + network
 plotHandle   = False  # to plot the numbers of just handling messages, without the network
-debugPlot    = False  # to print debug info when plotting
+plotCrypto   = False  # to plot the numbers of do crypto
+debugPlot    = True #False  # to print debug info when plotting
 showTitle    = True   # to print the title of the figure
+plotThroughput = True
+plotLatency    = True
 expmode      = "" # "TVL"
 showLegend1  = True
 showLegend2  = False
@@ -83,6 +90,10 @@ plotChained  = True
 displayPlot  = True # to display a plot once it is generated
 showYlabel   = True
 displayApp   = "shotwell"
+logScale     = True
+
+# to recompile the code
+recompile = True
 
 # To set some plotting parameters for specific experiments
 whichExp = ""
@@ -95,7 +106,7 @@ if deadNodes:
     cutOffBound = cutOffBound * 2
 
 # For some experiments we remove the outliers
-quantileSize = 10
+quantileSize = 20
 
 # don't change, those are hard coded in the C++ code:
 statsdir     = "stats"        # stats directory (don't change, hard coded in C++)
@@ -125,11 +136,13 @@ tvlFile      = statsdir + "/tvl-" + timestampStr + ".png"
 debugFile    = statsdir + "/debug-" + timestampStr
 
 # Names
-baseHS   = "basic HotStuff"
+baseHS   = "Basic HotStuff"
 cheapHS  = "Damysus-C"
 quickHS  = "Damysus-A"
-combHS   = "Damysus"
-baseChHS = "chained HotStuff"
+combHS   = "Basic-Damysus"
+freeHS   = "Light-Damysus"
+onepHS   = "OneP-Damysus"
+baseChHS = "Chained HotStuff"
 combChHS = "Chained-Damysus"
 
 # Markers
@@ -137,6 +150,8 @@ baseMRK   = "P"
 cheapMRK  = "o"
 quickMRK  = "*"
 combMRK   = "X"
+freeMRK   = "s"
+onepMRK   = "+"
 baseChMRK = "d"
 combChMRK = ">"
 
@@ -145,6 +160,8 @@ baseLS   = ":"
 cheapLS  = "--"
 quickLS  = "-."
 combLS   = "-"
+freeLS   = "-"
+onepLS   = "-"
 baseChLS = ":"
 combChLS = "-"
 
@@ -153,6 +170,8 @@ baseCOL   = "black"
 cheapCOL  = "blue"
 quickCOL  = "green"
 combCOL   = "red"
+freeCOL   = "purple"
+onepCOL   = "brown"
 baseChCOL = "darkorange"
 combChCOL = "magenta"
 
@@ -220,31 +239,31 @@ imageID_CACENT1     = "ami-006e2b38fa3f30a8e"
 secGroup_CACENT1    = "sg-0ce99bc9e1b8a252c"
 
 # Regions around the world
-WregionsNAME = "Wregions"
+WregionsNAME = "w"
 Wregions = [(region_USEAST2,  imageID_USEAST2,  secGroup_USEAST2),
             (region_APSEAST2, imageID_APSEAST2, secGroup_APSEAST2),
             (region_EUWEST2,  imageID_EUWEST2,  secGroup_EUWEST2),
             (region_CACENT1,  imageID_CACENT1,  secGroup_CACENT1)]
 
 # US regions
-USregionsNAME = "USregions"
+USregionsNAME = "us"
 USregions = [(region_USEAST1, imageID_USEAST1, secGroup_USEAST1),
              (region_USEAST2, imageID_USEAST2, secGroup_USEAST2),
              (region_USWEST1, imageID_USWEST1, secGroup_USWEST1),
              (region_USWEST2, imageID_USWEST2, secGroup_USWEST2)]
 
 # EU regions
-EUregionsNAME = "EUregions"
+EUregionsNAME = "eu"
 EUregions = [(region_EUWEST1, imageID_EUWEST1, secGroup_EUWEST1),
              (region_EUWEST2, imageID_EUWEST2, secGroup_EUWEST2),
              (region_EUWEST3, imageID_EUWEST3, secGroup_EUWEST3),
              (region_EUCENT1, imageID_EUCENT1, secGroup_EUCENT1)]
 # One region
-ONEregionsNAME = "ONEregions"
+ONEregionsNAME = "one"
 ONEregions = [(region_USEAST2, imageID_USEAST2, secGroup_USEAST2)]
 
 # All regions
-ALLregionsNAME = "ALLregions"
+ALLregionsNAME = "all"
 ALLregions = [(region_USEAST1,  imageID_USEAST1,  secGroup_USEAST1),
               (region_USEAST2,  imageID_USEAST2,  secGroup_USEAST2),
               (region_USWEST1,  imageID_USWEST1,  secGroup_USWEST1),
@@ -258,7 +277,7 @@ ALLregions = [(region_USEAST1,  imageID_USEAST1,  secGroup_USEAST1),
               (region_CACENT1,  imageID_CACENT1,  secGroup_CACENT1)]
 
 # All regions -- same as ALLregions but in a different order
-ALL2regionsNAME = "ALL2regions"
+ALL2regionsNAME = "all2"
 ALL2regions = [(region_USEAST1,  imageID_USEAST1,  secGroup_USEAST1),
                (region_EUWEST1,  imageID_EUWEST1,  secGroup_EUWEST1),
                (region_APSEAST1, imageID_APSEAST1, secGroup_APSEAST1),
@@ -271,12 +290,12 @@ ALL2regions = [(region_USEAST1,  imageID_USEAST1,  secGroup_USEAST1),
                (region_USWEST2,  imageID_USWEST2,  secGroup_USWEST2),
                (region_EUCENT1,  imageID_EUCENT1,  secGroup_EUCENT1)]
 
-#regions = (USregionsNAME, USregions)
+## regions = (USregionsNAME, USregions)
 #regions = (EUregionsNAME, EUregions)
-#regions = (WregionsNAME, Wregions)
-#regions = (ONEregionsNAME, ONEregions)
-regions = (ALLregionsNAME, ALLregions)
-#regions = (ALL2regionsNAME, ALL2regions)
+## regions = (WregionsNAME, Wregions)
+regions = (ONEregionsNAME, ONEregions)
+#regions = (ALLregionsNAME, ALLregions)
+## regions = (ALL2regionsNAME, ALL2regions)
 
 sshOpt1  = "StrictHostKeyChecking=no"
 sshOpt2  = "ConnectTimeout=10"
@@ -292,6 +311,9 @@ runDocker  = False      # to run the code within docker contrainers
 docker     = "docker"
 dockerBase = "damysus"  # name of the docker container
 networkLat = 0          # network latency in ms
+networkVar = 0          # variation of the network latency
+dockerMem  = 0          # memory used by containers (0 means no constraints)
+dockerCpu  = 0          # cpus used by containers (0 means no constraints)
 
 
 ## Cluster parameters
@@ -303,11 +325,13 @@ clusterNet  = "damysusNet" # "bridge"
 ## Code
 
 class Protocol(Enum):
-    BASE      = "BASIC_BASELINE"   # basic baseline
-    CHEAP     = "BASIC_CHEAP"  # Checker only
-    QUICK     = "BASIC_QUICK"  # Accumulator only
+    BASE      = "BASIC_BASELINE"           # basic baseline
+    CHEAP     = "BASIC_CHEAP"              # Checker only
+    QUICK     = "BASIC_QUICK"              # Accumulator only
     COMB      = "BASIC_CHEAP_AND_QUICK"    # Damysus (Checker + Accumulator)
-    CHBASE    = "CHAINED_BASELINE" # chained baseline
+    FREE      = "BASIC_FREE"               # hash & signature-free Damysus
+    ONEP      = "BASIC_ONEP"               # 1+1/2 phase Damysus
+    CHBASE    = "CHAINED_BASELINE"         # chained baseline
     CHCOMB    = "CHAINED_CHEAP_AND_QUICK"  # chained Damysus
     ## Debug versions
     QUICKDBG  = "BASIC_QUICK_DEBUG"
@@ -410,6 +434,7 @@ def startInstances(numRepInstances,numClInstances):
         print("starting", str(count), "instance(s) here:", str(reg))
         #subprocess.run(["aws","ec2","run-instances","--region",region,"--image-id",imageID,"--count",str(numRepInstances+numClInstances),"--instance-type",instType,"--security-group-ids",secGroup,"--subnet-id",subnetID1_1], stdout=f)
         #subprocess.run(["aws","ec2","run-instances","--region",region,"--image-id",imageID,"--count",str(numRepInstances+numClInstances),"--instance-type",instType,"--security-group-ids",secGroup], stdout=f)
+        print("aws ec2 run-instances --region " + region + " --image-id " + imageID + " --count " + str(count) + " --instance-type " + instType + " --security-group-ids " + secGroup)
         subprocess.run(["aws","ec2","run-instances","--region",region,"--image-id",imageID,"--count",str(count),"--instance-type",instType,"--security-group-ids",secGroup], stdout=f)
         f.close()
 
@@ -462,13 +487,28 @@ def copyToAddr(sshAdr):
     scp = "until " + s1 + addresses + s2 + "; do sleep 1; done"
     subprocess.run(scp, shell=True, check=True)
     if copyAll:
-        subprocess.run(s1 + "App/*.h"       + s2 + "App/",     shell=True, check=True)
-        subprocess.run(s1 + "App/*.cpp"     + s2 + "App/",     shell=True, check=True)
-        subprocess.run(s1 + "Enclave/*.h"   + s2 + "Enclave/", shell=True, check=True)
-        subprocess.run(s1 + "Enclave/*.cpp" + s2 + "Enclave/", shell=True, check=True)
-        subprocess.run(s1 + "Enclave/*.edl" + s2 + "Enclave/", shell=True, check=True)
+        subprocess.run("tar cvzf App.tar.gz --exclude='*.o' App",          shell=True, check=True)
+        subprocess.run("tar cvzf Enclave.tar.gz --exclude='*.o' Enclave",  shell=True, check=True)
+        subprocess.run(s1 + "Makefile"         + s2 + "",  shell=True, check=True)
+        subprocess.run(s1 + "App.tar.gz"       + s2 + "",  shell=True, check=True)
+        subprocess.run(s1 + "Enclave.tar.gz"   + s2 + "",  shell=True, check=True)
+        cmd = "\"\"cd xhotstuff && tar xvzf App.tar.gz && tar xvzf Enclave.tar.gz\"\"" # && make clean
+        p = Popen(["ssh","-i",pem,"-o",sshOpt1,"-ntt",sshAdr,cmd])
+        p.communicate()
     else:
         subprocess.run(["scp","-i",pem,"-o",sshOpt1,params,sshAdr+":/home/ubuntu/xhotstuff/App/"])
+
+
+def copyToInstances(instances):
+    procs = []
+    for (n,i,priv,pub,dns,region) in instances:
+        sshAdr = "ubuntu@" + dns
+        p = multiprocessing.Process(target=copyToAddr(sshAdr))
+        p.start()
+        procs.append(p)
+    for p in procs:
+        p.join()
+# End of copyToInstances
 
 
 def makeInstances(instanceIds,protocol):
@@ -481,9 +521,13 @@ def makeInstances(instanceIds,protocol):
     make0  = "make -j "+str(ncores)
     make   = make0 + " SGX_MODE="+sgxmode if needsSGX(protocol) else make0 + " server client"
 
+    # copying
+    #copyToInstances(instanceIds)
+    # then making
     for (n,i,priv,pub,dns,region) in instanceIds:
         sshAdr = "ubuntu@" + dns
-        copyToAddr(sshAdr)
+        subprocess.run(["scp","-i",pem,"-o",sshOpt1,params,sshAdr+":/home/ubuntu/xhotstuff/App/"])
+        #copyToAddr(sshAdr)
         cmd    = "\"\"" + srcsgx + " && cd xhotstuff && make clean && " + make + "\"\""
         p      = Popen(["ssh","-i",pem,"-o",sshOpt1,"-ntt",sshAdr,cmd])
         print("the commandline is {}".format(p.args))
@@ -520,8 +564,9 @@ def executeInstances(instanceRepIds,instanceClIds,protocol,constFactor,numClTran
         if (n%10 == 5):
             time.sleep(2)
         sshAdr = "ubuntu@" + dns
-        srun   = server + " " + str(n) + " " + str(numFaults) + " " + str(constFactor) + " " + str(numViews) + " " + str(newtimeout)
-        cmd    = "\"\"" + srcsgx + " && cd xhotstuff && rm -f stats/* && " + srun + "\"\""
+        srun2  = server + " " + str(n) + " " + str(numFaults) + " " + str(constFactor) + " " + str(numViews) + " " + str(newtimeout)
+        srun   = "screen -d -m " + srun2
+        cmd    = "\"\"" + srcsgx + " && cd xhotstuff && rm -f stats/* && " + srun2 + "\"\""
         p      = Popen(["ssh","-i",pem,"-o",sshOpt1,"-ntt",sshAdr,cmd])
         print("the commandline is {}".format(p.args))
         procsRep.append(("R",n,i,priv,pub,dns,region,p))
@@ -534,8 +579,9 @@ def executeInstances(instanceRepIds,instanceClIds,protocol,constFactor,numClTran
 
     for (n,i,priv,pub,dns,region) in instanceClIds:
         sshAdr = "ubuntu@" + dns
-        crun   = client + " " + str(n) + " " + str(numFaults) + " " + str(constFactor) + " " + str(numClTrans) + " " + str(sleepTime) + " " + str(instance)
-        cmd    = "\"\"" + srcsgx + " && cd xhotstuff && rm -f stats/* && " + crun + "\"\""
+        crun2  = client + " " + str(n) + " " + str(numFaults) + " " + str(constFactor) + " " + str(numClTrans) + " " + str(sleepTime) + " " + str(instance)
+        crun   = "screen -d -m " + crun2
+        cmd    = "\"\"" + srcsgx + " && cd xhotstuff && rm -f stats/* && " + crun2 + "\"\""
         p      = Popen(["ssh","-i",pem,"-o",sshOpt1,"-ntt",sshAdr,cmd])
         print("the commandline is {}".format(p.args))
         procsCl.append(("C",n,i,priv,pub,dns,region,p))
@@ -557,13 +603,31 @@ def executeInstances(instanceRepIds,instanceClIds,protocol,constFactor,numClTran
                 break
     else:
         n = 0
-        for (tag,n,i,priv,pub,dns,region,p) in procsRep + procsCl:
-            # We stop the execution if it takes too long (cutOffBound)
-            while (p.poll() is None) and totalTime < cutOffBound:
-                time.sleep(1)
-                totalTime += 1
-            n += 1
-            print("processes stopped:", n, "/", len(procsRep + procsCl), "-", p.args)
+        # we stop processes using Python instead of inside the C++ code
+        remaining = procsRep.copy()
+        while 0 < len(remaining) and totalTime < cutOffBound:
+            print("remaining processes at time (", totalTime, "):", remaining)
+            rem = remaining.copy()
+            for (tag,n,i,priv,pub,dns,region,p) in rem:
+                cmdF = "find xhotstuff/" + statsdir + " -name done-" + str(n) + "* | wc -l"
+                addr = "ubuntu@" + dns
+                outF = int(subprocess.run("ssh -i " + pem + " -o " + sshOpt1 + " -ntt " + addr + " " + cmdF, shell=True, capture_output=True, text=True).stdout)
+                #print("attempting to retrieve 'done' file for" , str(n), ":", outF)
+                if 0 < int(outF):
+                    print("process done:" , str(n))
+                    remaining.remove((tag,n,i,priv,pub,dns,region,p))
+                    n += 1
+                    if (p.poll() is None):
+                        p.kill()
+            #time.sleep(1)
+            totalTime += len(rem)
+#        for (tag,n,i,priv,pub,dns,region,p) in procsRep + procsCl:
+#            # We stop the execution if it takes too long (cutOffBound)
+#            while (p.poll() is None) and totalTime < cutOffBound:
+#                time.sleep(1)
+#                totalTime += 1
+#            n += 1
+#            print("processes stopped:", n, "/", len(procsRep + procsCl), "-", p.args)
 
     global completeRuns
     global abortedRuns
@@ -571,7 +635,7 @@ def executeInstances(instanceRepIds,instanceClIds,protocol,constFactor,numClTran
 
     if totalTime < cutOffBound:
         completeRuns += 1
-        print("all", len(procsRep)+len(procsCl), "processes are done")
+        print("all", len(procsRep)+len(procsCl), "all processes are done")
     else:
         abortedRuns += 1
         conf = (protocol,numFaults,instance)
@@ -579,12 +643,14 @@ def executeInstances(instanceRepIds,instanceClIds,protocol,constFactor,numClTran
         f = open(abortedFile, 'a')
         f.write(str(conf)+"\n")
         f.close()
-        for (tag,n,i,priv,pub,dns,region,p) in procsRep + procsCl:
-            # we print the nodes that haven't finished yet
-            if (p.poll() is None):
-                print("still running:",(tag,n,i,priv,pub,dns,region,p.poll()))
+        print("------ reached cutoff bound ------")
+
+    ## cleanup
+    for (tag,n,i,priv,pub,dns,region,p) in procsRep + procsCl:
+        # we print the nodes that haven't finished yet
+        if (p.poll() is None):
+            print("killing process still running:",(tag,n,i,priv,pub,dns,region,p.poll()))
             p.kill()
-        print("------ stopped run ------")
 # End of executeInstances
 
 
@@ -607,22 +673,38 @@ def terminateInstances(instanceIds):
 # End of terminateInstances
 
 
-def terminateAllInstances():
-    for (region,imageID,secGroup) in regions[1]:
+def terminateAllInstancesRegs(regions):
+    for (region,imageID,secGroup) in regions:
         f = open(instFile,'w')
         subprocess.run(["aws","ec2","describe-instances","--region",region,"--filters","Name=image-id,Values="+imageID], stdout=f)
         f.close()
-
         f = open(instFile,'r')
         instances = json.load(f)
         #print(instances)
         f.close()
-        for res in instances["Reservations"]:
-            for inst in res["Instances"]:
+        l = instances["Reservations"]
+        print("terminating" , str(len(l)), "reservations")
+        tot = 0
+        for res in l:
+            r = res["Instances"]
+            print("terminating" , str(len(r)), "instances")
+            for inst in r:
+                tot += 1
                 i = inst["InstanceId"]
                 print(i)
                 terminateInstance(region,i)
+        print("terminated" , str(tot), "instances")
+# End of terminateAllInstancesRegs
+
+
+def terminateAllInstances():
+    terminateAllInstancesRegs(regions[1])
 # End of terminateAllInstances
+
+
+def terminateAllInstancesAllRegs():
+    terminateAllInstancesRegs(ALLregions)
+# End of terminateAllInstancesAllRegs
 
 
 def testAWS():
@@ -642,7 +724,7 @@ def testAWS():
 # End of testAWS
 
 
-def executeAWS(protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFaults):
+def executeAWS(instanceRepIds,instanceClIds,protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFaults):
     print("<<<<<<<<<<<<<<<<<<<<",
           "protocol="+protocol.value,
           ";regions="+regions[0],
@@ -659,13 +741,15 @@ def executeAWS(protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,nu
         numReps = numReps - numFaults
     print("number of nodes to actually run:", numReps)
 
-    # starts the instances & make them
-    (instanceRepIds, instanceClIds) = startInstances(numReps,numClients)
+    instanceRepIds = instanceRepIds[0:numReps]
+
     mkParams(protocol,constFactor,numFaults,numTrans,payloadSize)
     #time.sleep(5)
     makeInstances(instanceRepIds+instanceClIds,protocol)
 
     for instance in range(repeats):
+        #inst = instance * instance2
+        #reps = repeats * repeatsL2
         clearStatsDir()
         # execute the experiment
         executeInstances(instanceRepIds,instanceClIds,protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFaults,instance)
@@ -673,10 +757,7 @@ def executeAWS(protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,nu
         for (n,i,priv,pub,dns,region) in instanceRepIds:
             sshAdr = "ubuntu@" + dns
             subprocess.run(["scp","-i",pem,"-o",sshOpt1,sshAdr+":/home/ubuntu/xhotstuff/stats/*","stats/"])
-        (throughputView,latencyView,throughputHandle,latencyHandle) = computeStats(protocol,numFaults,instance,repeats)
-
-    # terminates the instances
-    terminateInstances(instanceRepIds + instanceClIds)
+        (throughputView,latencyView,handle,cryptoSign,cryptoVerif,cryptoNumSign,cryptoNumVerif) = computeStats(protocol,numFaults,instance,repeats)
 # End of executeAWS
 
 
@@ -684,42 +765,67 @@ def runAWS():
     global numMakeCores
     numMakeCores = 1
 
+    # Creating stats directory
+    Path(statsdir).mkdir(parents=True, exist_ok=True)
+
+    # terminating all instances
+    terminateAllInstances()
+
+    printNodePointParams()
+
     for numFaults in faults:
-        # ------
-        # HotStuff-like baseline
-        if runBase:
-            executeAWS(protocol=Protocol.BASE,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
-        # ------
-        # Cheap-HotStuff (TEE locked/prepared blocks)
-        if runCheap:
-            executeAWS(protocol=Protocol.CHEAP,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
-        # ------
-        # Quick-HotStuff (Accumulator)
-        if runQuick:
-            executeAWS(protocol=Protocol.QUICK,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
-        # ------
-        # Quick-HotStuff (Accumulator) - debug version
-        if runQuickDbg:
-            executeAWS(protocol=Protocol.QUICKDBG,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
-        # ------
-        # Combines Cheap&Quick-HotStuff
-        if runComb:
-            executeAWS(protocol=Protocol.COMB,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
-        # ------
-        # Chained HotStuff-like baseline
-        if runChBase:
-            executeAWS(protocol=Protocol.CHBASE,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
-        # ------
-        # Chained Cheap&Quick
-        if runChComb:
-            executeAWS(protocol=Protocol.CHCOMB,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
-        # ------
-        # Chained Cheap&Quick - debug version
-        if runChCombDbg:
-            executeAWS(protocol=Protocol.CHCOMBDBG,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
-        # ------
-        # We now terminate all instances just in case
-        #terminateAllInstances()
+        for instance2 in range(repeatsL2):
+            # starts the instances
+            maxNumReps = (3 * numFaults) + 1
+            (instanceRepIds, instanceClIds) = startInstances(maxNumReps,numClients)
+            copyToInstances(instanceRepIds + instanceClIds)
+
+            # ------
+            # HotStuff-like baseline
+            if runBase:
+                executeAWS(instanceRepIds=instanceRepIds,instanceClIds=instanceClIds,protocol=Protocol.BASE,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+            # ------
+            # Cheap-HotStuff (TEE locked/prepared blocks)
+            if runCheap:
+                executeAWS(instanceRepIds=instanceRepIds,instanceClIds=instanceClIds,protocol=Protocol.CHEAP,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+            # ------
+            # Quick-HotStuff (Accumulator)
+            if runQuick:
+                executeAWS(instanceRepIds=instanceRepIds,instanceClIds=instanceClIds,protocol=Protocol.QUICK,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+            # ------
+            # Quick-HotStuff (Accumulator) - debug version
+            if runQuickDbg:
+                executeAWS(instanceRepIds=instanceRepIds,instanceClIds=instanceClIds,protocol=Protocol.QUICKDBG,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+            # ------
+            # Combines Cheap&Quick-HotStuff
+            if runComb:
+                executeAWS(instanceRepIds=instanceRepIds,instanceClIds=instanceClIds,protocol=Protocol.COMB,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+            # ------
+            # Free
+            if runFree:
+                executeAWS(instanceRepIds=instanceRepIds,instanceClIds=instanceClIds,protocol=Protocol.FREE,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+            # ------
+            # Onep
+            if runOnep:
+                executeAWS(instanceRepIds=instanceRepIds,instanceClIds=instanceClIds,protocol=Protocol.ONEP,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+            # ------
+            # Chained HotStuff-like baseline
+            if runChBase:
+                executeAWS(instanceRepIds=instanceRepIds,instanceClIds=instanceClIds,protocol=Protocol.CHBASE,constFactor=3,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+            # ------
+            # Chained Cheap&Quick
+            if runChComb:
+                executeAWS(instanceRepIds=instanceRepIds,instanceClIds=instanceClIds,protocol=Protocol.CHCOMB,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+            # ------
+            # Chained Cheap&Quick - debug version
+            if runChCombDbg:
+                executeAWS(instanceRepIds=instanceRepIds,instanceClIds=instanceClIds,protocol=Protocol.CHCOMBDBG,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+            # ------
+            # We now terminate all instances just in case
+            #terminateAllInstances()
+
+            # terminates the instances
+            terminateInstances(instanceRepIds + instanceClIds)
 
     print("num complete runs=", completeRuns)
     print("num aborted runs=", abortedRuns)
@@ -778,7 +884,7 @@ def startRemoteContainers(nodes,numReps,numClients):
         # Set the network latency
         if 0 < networkLat:
             print("----changing network latency to " + str(networkLat) + "ms")
-            tc_cmd = "tc qdisc add dev eth0 root netem delay " + str(networkLat) + "ms"
+            tc_cmd = "tc qdisc add dev eth0 root netem delay " + str(networkLat) + "ms " + str(networkVar) + "ms distribution normal"
             lat_cmd = docker + " exec -t " + instance + " bash -c \"" + tc_cmd + "\""
             s4 = Popen(["ssh","-i",node["key"],"-o",sshOpt1,"-ntt",sshAdr,lat_cmd])
             print("the commandline is {}".format(s4.args))
@@ -833,7 +939,7 @@ def startRemoteContainers(nodes,numReps,numClients):
         s2.communicate()
 
     return (instanceRepIds, instanceClIds)
-## End of startContainers
+## End of startRemoteContainers
 
 
 def makeCluster(instanceIds,protocol):
@@ -1047,7 +1153,7 @@ def executeCluster(info,protocol,constFactor,numClTrans,sleepTime,numViews,cutOf
         clearStatsDir()
         # execute the experiment
         executeClusterInstances(instanceRepIds,instanceClIds,protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFaults,instance)
-        (throughputView,latencyView,throughputHandle,latencyHandle) = computeStats(protocol,numFaults,instance,repeats)
+        (throughputView,latencyView,handle,cryptoSign,cryptoVerif,cryptoNumSign,cryptoNumVerif) = computeStats(protocol,numFaults,instance,repeats)
 
     for (n,i,node) in instanceRepIds + instanceClIds:
         instance = dockerBase + i
@@ -1063,6 +1169,11 @@ def executeCluster(info,protocol,constFactor,numClTrans,sleepTime,numViews,cutOf
 def runCluster():
     global numMakeCores
     nuMakeCores = 1
+
+    # Creating stats directory
+    Path(statsdir).mkdir(parents=True, exist_ok=True)
+
+    printNodePointParams()
 
     f = open(clusterFile,'r')
     info = json.load(f)
@@ -1116,6 +1227,14 @@ def runCluster():
         # Combines Cheap&Quick-HotStuff
         if runComb:
             executeCluster(info=info,protocol=Protocol.COMB,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+        # ------
+        # Free
+        if runFree:
+            executeCluster(info=info,protocol=Protocol.FREE,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+        # ------
+        # Onep
+        if runOnep:
+            executeCluster(info=info,protocol=Protocol.ONEP,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
         # ------
         # Chained HotStuff-like baseline
         if runChBase:
@@ -1177,13 +1296,14 @@ def needsSGX(protocol):
 
 def clearStatsDir():
     # Removing all (temporary) files in stats dir
+    files0 = glob.glob(statsdir+"/vals*")
     files1 = glob.glob(statsdir+"/throughput-view*")
-    files2 = glob.glob(statsdir+"/throughput-handle*")
-    files3 = glob.glob(statsdir+"/latency-view*")
-    files4 = glob.glob(statsdir+"/latency-handle*")
+    files2 = glob.glob(statsdir+"/latency-view*")
+    files3 = glob.glob(statsdir+"/handle*")
+    files4 = glob.glob(statsdir+"/crypto*")
     files5 = glob.glob(statsdir+"/done*")
     files6 = glob.glob(statsdir+"/client-throughput-latency*")
-    for f in files1 + files2 + files3 + files4 + files5 + files6:
+    for f in files0 + files1 + files2 + files3 + files4 + files5 + files6:
         #print(f)
         os.remove(f)
 # End of clearStatsDir
@@ -1218,17 +1338,45 @@ def mkApp(protocol,constFactor,numFaults,numTrans,payloadSize):
         lr = list(map(lambda x: str(x), list(range(numReps))))           # replicas
         lc = list(map(lambda x: "c" + str(x), list(range(numClients))))  # clients
         for i in lr + lc:
-            instance = dockerBase + i
-            dst = instance + ":/app/App/"
-            subprocess.run([docker + " cp " + params + " " + dst], shell=True, check=True)
+            instance  = dockerBase + i
+            instancex = instance + "x"
+            instancey = instance
+            # copying App & Enclave
+            adst  = instance + ":/app/App/"
+            adstx = instancex + ":/app/App/"
+            adsty = adst
+            edst  = instance + ":/app/Enclave/"
+            edstx = instancex + ":/app/Enclave/"
+            edsty = edst
+            # if dockerCpu > 0 we're restricting the cpu, in which case we'll compile on the non-restricted instance and copy the files over
+            if dockerCpu > 0 and dockerCpu < 1:
+                instancey = instancex
+                adsty = adstx
+                edsty = edstx
+            subprocess.run([docker + " cp Makefile "  + instancey + ":/app/"], shell=True, check=True)
+            subprocess.run([docker + " cp App/. "     + adsty], shell=True, check=True)
+            subprocess.run([docker + " cp Enclave/. " + edsty], shell=True, check=True)
             # DEBUG begin
             #subprocess.run(["docker cp App/Nodes.cpp " + instance + ":/app/App/"], shell=True, check=True)
             # DEBUG end
-            subprocess.run([docker + " exec -t " + instance + " bash -c \"make clean\""], shell=True, check=True)
+            subprocess.run([docker + " exec -t " + instancey + " bash -c \"make clean\""], shell=True, check=True)
             if needsSGX(protocol):
-                subprocess.run([docker + " exec -t " + instance + " bash -c \"" + srcsgx + "; make -j " + str(ncores) + " SGX_MODE=" + sgxmode + "\""], shell=True, check=True)
+                subprocess.run([docker + " exec -t " + instancey + " bash -c \"" + srcsgx + "; make -j " + str(ncores) + " SGX_MODE=" + sgxmode + "\""], shell=True, check=True)
             else:
-                subprocess.run([docker + " exec -t " + instance + " bash -c \"make -j " + str(ncores) + " server client\""], shell=True, check=True)
+                subprocess.run([docker + " exec -t " + instancey + " bash -c \"make -j " + str(ncores) + " server client\""], shell=True, check=True)
+            if dockerCpu > 0 and dockerCpu < 1:
+                print("copying files from " + instancex + " to " + instance)
+                tmp = "docker_tmp"
+                Path(tmp).mkdir(parents=True, exist_ok=True)
+                subprocess.run([docker + " cp " + instancex + ":/app/." + " " + tmp + "/"], shell=True, check=True)
+                subprocess.run([docker + " cp " + tmp + "/." + " " + instance + ":/app/"], shell=True, check=True)
+                #print("Files in " + instancex)
+                #subprocess.run([docker + " exec -t " + instancex + " bash -c \"cd /app; ls\""], shell=True, check=True)
+                #print("Files in " + tmp)
+                #subprocess.run(["ls " + tmp], shell=True, check=True)
+                #print("Files in " + instance)
+                #subprocess.run([docker + " exec -t " + instance + " bash -c \"cd /app; ls\""], shell=True, check=True)
+                #subprocess.run(["rm -Rf " + tmp], shell=True, check=True)
     else:
         subprocess.call(["make","clean"])
         if needsSGX(protocol):
@@ -1407,6 +1555,23 @@ def printNodePointComment(protocol,numFaults,instance,repeats):
 # End of printNodePointComment
 
 
+def printNodePointParams():
+    f = open(pointsFile, 'a')
+    text = "##params"
+    text += " cpus="+str(dockerCpu)
+    text += " mem="+str(dockerMem)
+    text += " lat="+str(networkLat)
+    text += " payload="+str(payloadSize)
+    text += " repeats1="+str(repeats)
+    text += " repeats2="+str(repeatsL2)
+    text += " views="+str(numViews)
+    text += " regions="+regions[0]
+    text += "\n"
+    f.write(text)
+    f.close()
+# End of printNodePointParams
+
+
 def computeStats(protocol,numFaults,instance,repeats):
     # Computing throughput and latency
     throughputViewVal=0.0
@@ -1414,62 +1579,82 @@ def computeStats(protocol,numFaults,instance,repeats):
     latencyViewVal=0.0
     latencyViewNum=0
 
-    throughputHandleVal=0.0
-    throughputHandleNum=0
-    latencyHandleVal=0.0
-    latencyHandleNum=0
+    handleVal=0.0
+    handleNum=0
+
+    cryptoSignVal=0.0
+    cryptoSignNum=0
+
+    cryptoVerifVal=0.0
+    cryptoVerifNum=0
+
+    cryptoNumSignVal=0.0
+    cryptoNumSignNum=0
+
+    cryptoNumVerifVal=0.0
+    cryptoNumVerifNum=0
 
     printNodePointComment(protocol,numFaults,instance,repeats)
 
     files = glob.glob(statsdir+"/*")
     for filename in files:
-        #print("reading", filename)
-        #print("read:", s, "from", filename)
-        # total throughput including network
-        if filename.startswith(statsdir+"/throughput-view"):
+        if filename.startswith(statsdir+"/vals"):
             f = open(filename, "r")
             s = f.read()
-            val = float(s)
+            [thru,lat,hdl,signNum,signTime,verifNum,verifTime] = s.split(" ")
+
+            valT = float(thru)
             throughputViewNum += 1
-            throughputViewVal += val
-            printNodePoint(protocol,numFaults,"throughput-view",val)
-        # total latency including network
-        elif filename.startswith(statsdir+"/latency-view"):
-            f = open(filename, "r")
-            s = f.read()
-            val = float(s)
+            throughputViewVal += valT
+            printNodePoint(protocol,numFaults,"throughput-view",valT)
+
+            valL = float(lat)
             latencyViewNum += 1
-            latencyViewVal += val
-            printNodePoint(protocol,numFaults,"latency-view",val)
-        # throughput execluding network
-        if filename.startswith(statsdir+"/throughput-handle"):
-            f = open(filename, "r")
-            s = f.read()
-            val = float(s)
-            throughputHandleNum += 1
-            throughputHandleVal += val
-            printNodePoint(protocol,numFaults,"throughput-handle",val)
-        # latency excluding network
-        elif filename.startswith(statsdir+"/latency-handle"):
-            f = open(filename, "r")
-            s = f.read()
-            val = float(s)
-            latencyHandleNum += 1
-            latencyHandleVal += float(s)
-            printNodePoint(protocol,numFaults,"latency-handle",val)
+            latencyViewVal += valL
+            printNodePoint(protocol,numFaults,"latency-view",valL)
+
+            valH = float(hdl)
+            handleNum += 1
+            handleVal += valH
+            printNodePoint(protocol,numFaults,"handle",valH)
+
+            valST = float(signTime)
+            cryptoSignNum += 1
+            cryptoSignVal += valST
+            printNodePoint(protocol,numFaults,"crypto-sign",valST)
+
+            valVT = float(verifTime)
+            cryptoVerifNum += 1
+            cryptoVerifVal += valVT
+            printNodePoint(protocol,numFaults,"crypto-verif",valVT)
+
+            valSN = int(signNum)
+            cryptoNumSignNum += 1
+            cryptoNumSignVal += valSN
+            printNodePoint(protocol,numFaults,"crypto-num-sign",valSN)
+
+            valVN = int(verifNum)
+            cryptoNumVerifNum += 1
+            cryptoNumVerifVal += valVN
+            printNodePoint(protocol,numFaults,"crypto-num-verif",valVN)
 
     throughputView = throughputViewVal/throughputViewNum if throughputViewNum > 0 else 0.0
     latencyView    = latencyViewVal/latencyViewNum       if latencyViewNum > 0    else 0.0
+    handle         = handleVal/handleNum                 if handleNum > 0         else 0.0
+    cryptoSign     = cryptoSignVal/cryptoSignNum         if cryptoSignNum > 0     else 0.0
+    cryptoVerif    = cryptoVerifVal/cryptoVerifNum       if cryptoVerifNum > 0    else 0.0
+    cryptoNumSign  = cryptoNumSignVal/cryptoNumSignNum   if cryptoNumSignNum > 0  else 0.0
+    cryptoNumVerif = cryptoNumVerifVal/cryptoNumVerifNum if cryptoNumVerifNum > 0 else 0.0
 
-    throughputHandle = throughputHandleVal/throughputHandleNum if throughputHandleNum > 0 else 0.0
-    latencyHandle    = latencyHandleVal/latencyHandleNum       if latencyHandleNum > 0    else 0.0
+    print("throughput-view:",  throughputView, "out of", throughputViewNum)
+    print("latency-view:",     latencyView,    "out of", latencyViewNum)
+    print("handle:",           handle,         "out of", handleNum)
+    print("crypto-sign:",      cryptoSign,     "out of", cryptoSignNum)
+    print("crypto-verif:",     cryptoVerif,    "out of", cryptoVerifNum)
+    print("crypto-num-sign:",  cryptoNumSign,  "out of", cryptoNumSignNum)
+    print("crypto-num-verif:", cryptoNumVerif, "out of", cryptoNumVerifNum)
 
-    print("throughput-view:",   throughputView,   "out of", throughputViewNum)
-    print("latency-view:",      latencyView,      "out of", latencyViewNum)
-    print("throughput-handle:", throughputHandle, "out of", throughputHandleNum)
-    print("latency-handle:",    latencyHandle,    "out of", latencyHandleNum)
-
-    return (throughputView, latencyView, throughputHandle, latencyHandle)
+    return (throughputView, latencyView, handle, cryptoSign, cryptoVerif, cryptoNumSign, cryptoNumVerif)
 ## End of computeStats
 
 
@@ -1482,24 +1667,39 @@ def startContainers(numReps,numClients):
     lc = list(map(lambda x: (False, "c" + str(x)), list(range(numClients))))  # clients
     lall = lr + lc
 
+    # The 'x' containers are used in particular when we require less cpu so that we can compile in full-cpu
+    # containers and copy over the code, from the x instance that does not have the restriction, which is
+    # used to compile, to the non-x instance that has the restrictions
     for (isRep, i) in lall:
-        instance = dockerBase + i
+        instance  = dockerBase + i
+        instancex = instance + "x"
         # We stop and remove the Doker instance if it is still exists
         subprocess.run([docker + " stop " + instance], shell=True) #, check=True)
+        subprocess.run([docker + " stop " + instancex], shell=True) #, check=True)
         subprocess.run([docker + " rm " + instance], shell=True) #, check=True)
+        subprocess.run([docker + " rm " + instancex], shell=True) #, check=True)
         # TODO: make sure to cover all the ports
-        opt1 = "--expose=8000-9999"
-        opt2 = "--network=\"bridge\""
-        opt3 = "--cap-add=NET_ADMIN"
-        opt4 = "--name " + instance
-        opts = " ".join([opt1, opt2, opt3, opt4])
+        opt1  = "--expose=8000-9999"
+        opt2  = "--network=\"bridge\""
+        opt3  = "--cap-add=NET_ADMIN"
+        opt4  = "--name " + instance
+        opt4x = "--name " + instancex
+        optm  = "--memory=" + str(dockerMem) + "m" if dockerMem > 0 else ""
+        optc  = "--cpus=\"" + str(dockerCpu) + "\"" if dockerCpu > 0 else ""
+        opts  = " ".join([opt1, opt2, opt3, opt4, optm, optc]) # with cpu/mem limitations
+        optsx = " ".join([opt1, opt2, opt3, opt4x])            # without cpu/mem limitations
         # We start the Docker instance
         subprocess.run([docker + " run -td " + opts + " " + dockerBase], shell=True, check=True)
+        if dockerCpu > 0 and dockerCpu < 1:
+            subprocess.run([docker + " run -td " + optsx + " " + dockerBase], shell=True, check=True)
         subprocess.run([docker + " exec -t " + instance + " bash -c \"" + srcsgx + "; mkdir " + statsdir + "\""], shell=True, check=True)
+        if dockerCpu > 0 and dockerCpu < 1:
+            subprocess.run([docker + " exec -t " + instancex + " bash -c \"" + srcsgx + "; mkdir " + statsdir + "\""], shell=True, check=True)
         # Set the network latency
         if 0 < networkLat:
             print("----changing network latency to " + str(networkLat) + "ms")
-            latcmd = "tc qdisc add dev eth0 root netem delay " + str(networkLat) + "ms"
+            latcmd = "tc qdisc add dev eth0 root netem delay " + str(networkLat) + "ms " + str(networkVar) + "ms distribution normal"
+            #latcmd = "tc qdisc add dev eth0 root netem delay " + str(networkLat) + "ms"
             subprocess.run([docker + " exec -t " + instance + " bash -c \"" + latcmd + "\""], shell=True, check=True)
         # Extract the IP address of the container
         ipcmd = docker + " inspect " + instance + " | jq '.[].NetworkSettings.Networks.bridge.IPAddress'"
@@ -1523,8 +1723,11 @@ def stopContainers(numReps,numClients):
 
     for (isRep, i) in lall:
         instance = dockerBase + i
-        subprocess.run([docker + " stop " + instance], shell=True, check=True)
-        subprocess.run([docker + " rm " + instance], shell=True, check=True)
+        instancex = instance + "x"
+        subprocess.run([docker + " stop " + instance], shell=True) #, check=True)
+        subprocess.run([docker + " stop " + instancex], shell=True) #, check=True)
+        subprocess.run([docker + " rm " + instance], shell=True) #, check=True)
+        subprocess.run([docker + " rm " + instancex], shell=True) #, check=True)
 ## End of stopContainers
 
 
@@ -1541,8 +1744,11 @@ def computeAvgStats(recompile,protocol,constFactor,numClTrans,sleepTime,numViews
 
     throughputViews=[]
     latencyViews=[]
-    throughputHandles=[]
-    latencyHandles=[]
+    handles=[]
+    cryptoSigns=[]
+    cryptoVerifs=[]
+    cryptoNumSigns=[]
+    cryptoNumVerifs=[]
 
     numReps = (constFactor * numFaults) + 1
 
@@ -1568,47 +1774,67 @@ def computeAvgStats(recompile,protocol,constFactor,numClTrans,sleepTime,numViews
         print("aborted runs so far:", aborted)
         clearStatsDir()
         execute(protocol,constFactor,numClTrans,sleepTime,numViews,cutOffBound,numFaults,i)
-        (throughputView,latencyView,throughputHandle,latencyHandle) = computeStats(protocol,numFaults,i,numRepeats)
-        if throughputView > 0 and latencyView > 0 and throughputHandle > 0 and latencyHandle > 0:
+        (throughputView,latencyView,handle,cryptoSign,cryptoVerif,cryptoNumSign,cryptoNumVerif) = computeStats(protocol,numFaults,i,numRepeats)
+        if throughputView > 0 and latencyView > 0 and handle > 0 and cryptoSign > 0 and cryptoVerif > 0 and cryptoNumSign > 0 and cryptoNumVerif > 0:
             throughputViews.append(throughputView)
             latencyViews.append(latencyView)
-            throughputHandles.append(throughputHandle)
-            latencyHandles.append(latencyHandle)
+            handles.append(handle)
+            cryptoSigns.append(cryptoSign)
+            cryptoVerifs.append(cryptoVerif)
+            cryptoNumSigns.append(cryptoNumSign)
+            cryptoNumVerifs.append(cryptoNumVerif)
             goodValues += 1
 
     if runDocker:
         stopContainers(numReps,numClients)
 
-    throughputView   = sum(throughputViews)/goodValues   if goodValues > 0 else 0.0
-    latencyView      = sum(latencyViews)/goodValues      if goodValues > 0 else 0.0
-    throughputHandle = sum(throughputHandles)/goodValues if goodValues > 0 else 0.0
-    latencyHandle    = sum(latencyHandles)/goodValues    if goodValues > 0 else 0.0
+    throughputView = sum(throughputViews)/goodValues if goodValues > 0 else 0.0
+    latencyView    = sum(latencyViews)/goodValues    if goodValues > 0 else 0.0
+    handle         = sum(handles)/goodValues         if goodValues > 0 else 0.0
+    cryptoSign     = sum(cryptoSigns)/goodValues     if goodValues > 0 else 0.0
+    cryptoVerif    = sum(cryptoVerifs)/goodValues    if goodValues > 0 else 0.0
+    cryptoNumSign  = sum(cryptoNumSigns)/goodValues  if goodValues > 0 else 0.0
+    cryptoNumVerif = sum(cryptoNumVerifs)/goodValues if goodValues > 0 else 0.0
 
-    print("avg throughput (view):",   throughputView)
-    print("avg latency (view):",      latencyView)
-    print("avg throughput (handle):", throughputHandle)
-    print("avg latency (handle):",    latencyHandle)
+    print("avg throughput (view):",  throughputView)
+    print("avg latency (view):",     latencyView)
+    print("avg handle:",             handle)
+    print("avg crypto (sign):",      cryptoSign)
+    print("avg crypto (verif):",     cryptoVerif)
+    print("avg crypto (sign-num):",  cryptoNumSign)
+    print("avg crypto (verif-num):", cryptoNumVerif)
 
-    return (throughputView, latencyView, throughputHandle, latencyHandle)
+    return (throughputView, latencyView, handle, cryptoSign, cryptoVerif, cryptoNumSign, cryptoNumVerif)
 # End of computeAvgStats
 
 
 def dict2val(d,f):
     (v,n) = d.get(f)
-    return v/n
+    #print((v,n))
+    return sum(v)/n
 
 
-def dict2lists(d):
+def dict2lists(d,quantileSize,p):
     faults = []
     vals   = []
     nums   = []
 
     # We create the lists of points from the dictionaries
+    # 'val' is a list of 'num' reals
     for f,(val,num) in d.items():
         faults.append(f)
-        v = val/num if num > 0 else 0.0
+        val  = sorted(val)           # we sort the values
+        l    = len(val)              # this should be num, the number of values we have in val
+        n    = int(l/(100/quantileSize)) if quantileSize > 0 else 0 # we'll remove n values from the top and bottom
+        newval = val[n:l-n]           # we're removing them
+        #newval = val[n:l-n]          # we're removing them
+        m    = len(newval)           # we're only keeping m values out of the l
+        s    = sum(newval)           # we're summing up the values
+        v    = s/m if m > 0 else 0.0 # and computing the average
+        if p:
+            print(l,quantileSize,n,v,m,"---------\n", val, "\n", newval,"\n")
         vals.append(v)
-        nums.append(num)
+        nums.append(m)
 
     return (faults,vals,nums)
 # End of dict2lists
@@ -1664,8 +1890,8 @@ def getPercentage(bo,nameBase,faultsBase,valsBase,nameNew,faultsNew,valsNew):
 
     newAvg = newTot / len(faultsBase) if len(faultsBase) > 0 else 0
 
-    print(nameNew + "(#faults/value): " + str(newLst))
-    print(nameNew + "(avg/min/ax): " + "avg=" + str(newAvg) + ";min=" + str(newMin) + ";max=" + str(newMax))
+    print(nameNew + "/" + nameBase + "(#faults/value): " + str(newLst))
+    print(nameNew + "/" + nameBase + "(avg/min/ax): " + "avg=" + str(newAvg) + ";min=" + str(newMin) + ";max=" + str(newMax))
 # End of getPercentage
 
 
@@ -1696,35 +1922,73 @@ def createPlot(pFile):
     dictTVCheap  = {}
     dictTVQuick  = {}
     dictTVComb   = {}
+    dictTVFree   = {}
+    dictTVOnep   = {}
     dictTVChBase = {}
     dictTVChComb = {}
-    # throughput-handle
-    dictTHBase   = {}
-    dictTHCheap  = {}
-    dictTHQuick  = {}
-    dictTHComb   = {}
-    dictTHChBase = {}
-    dictTHChComb = {}
     # latency-view
     dictLVBase   = {}
     dictLVCheap  = {}
     dictLVQuick  = {}
     dictLVComb   = {}
+    dictLVFree   = {}
+    dictLVOnep   = {}
     dictLVChBase = {}
     dictLVChComb = {}
-    # latency-handle
-    dictLHBase   = {}
-    dictLHCheap  = {}
-    dictLHQuick  = {}
-    dictLHComb   = {}
-    dictLHChBase = {}
-    dictLHChComb = {}
+    # handle
+    dictHBase   = {}
+    dictHCheap  = {}
+    dictHQuick  = {}
+    dictHComb   = {}
+    dictHFree   = {}
+    dictHOnep   = {}
+    dictHChBase = {}
+    dictHChComb = {}
+    # crypto-sign
+    dictCSBase   = {}
+    dictCSCheap  = {}
+    dictCSQuick  = {}
+    dictCSComb   = {}
+    dictCSFree   = {}
+    dictCSOnep   = {}
+    dictCSChBase = {}
+    dictCSChComb = {}
+    # crypto-verif
+    dictCVBase   = {}
+    dictCVCheap  = {}
+    dictCVQuick  = {}
+    dictCVComb   = {}
+    dictCVFree   = {}
+    dictCVOnep   = {}
+    dictCVChBase = {}
+    dictCVChComb = {}
+
+    global dockerCpu, dockerMem, networkLat, payloadSize, repeats, repeatsL2, numViews
 
     # We accumulate all the points in dictionaries
     print("reading points from:", pFile)
     f = open(pFile,'r')
     for line in f.readlines():
-        if not line.startswith("#"):
+        if line.startswith("##params"):
+            [hdr,cpu,mem,lat,payload,rep1,rep2,views,regs] = line.split(" ")
+            [cpuTag,cpuVal] = cpu.split("=")
+            dockerCpu = float(cpuVal)
+            [memTag,memVal] = mem.split("=")
+            dockerMem = int(memVal)
+            [latTag,latVal] = lat.split("=")
+            networkLat = int(latVal)
+            [payloadTag,payloadVal] = payload.split("=")
+            payloadSize = int(payloadVal)
+            [rep1Tag,rep1Val] = rep1.split("=")
+            repeats = int(rep1Val)
+            [rep2Tag,rep2Val] = rep2.split("=")
+            repeatsL2 = int(rep2Val)
+            [viewsTag,viewsVal] = views.split("=")
+            numViews = int(viewsVal)
+            [regsTag,regsVal] = regs.split("=")
+            setRegion(regsVal)
+
+        if line.startswith("protocol"):
             [prot,faults,point]   = line.split(" ")
             [protTag,protVal]     = prot.split("=")
             [faultsTag,faultsVal] = faults.split("=")
@@ -1733,156 +1997,281 @@ def createPlot(pFile):
             if float(pointVal) < float('inf'):
                 # Throughputs-view
                 if pointTag == "throughput-view" and protVal == "BASIC_BASELINE":
-                    (val,num) = dictTVBase.get(numFaults,(0.0,0))
-                    dictTVBase.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictTVBase.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictTVBase.update({numFaults:(val,num+1)})
                 if pointTag == "throughput-view" and protVal == "BASIC_CHEAP":
-                    (val,num) = dictTVCheap.get(numFaults,(0.0,0))
-                    dictTVCheap.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictTVCheap.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictTVCheap.update({numFaults:(val,num+1)})
                 if pointTag == "throughput-view" and protVal == "BASIC_QUICK":
-                    (val,num) = dictTVQuick.get(numFaults,(0.0,0))
-                    dictTVQuick.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictTVQuick.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictTVQuick.update({numFaults:(val,num+1)})
                 if pointTag == "throughput-view" and protVal == "BASIC_QUICK_DEBUG":
-                    (val,num) = dictTVQuick.get(numFaults,(0.0,0))
-                    dictTVQuick.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictTVQuick.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictTVQuick.update({numFaults:(val,num+1)})
                 if pointTag == "throughput-view" and protVal == "BASIC_CHEAP_AND_QUICK":
-                    (val,num) = dictTVComb.get(numFaults,(0.0,0))
-                    dictTVComb.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictTVComb.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictTVComb.update({numFaults:(val,num+1)})
+                if pointTag == "throughput-view" and protVal == "BASIC_FREE":
+                    (val,num) = dictTVFree.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictTVFree.update({numFaults:(val,num+1)})
+                if pointTag == "throughput-view" and protVal == "BASIC_ONEP":
+                    (val,num) = dictTVOnep.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictTVOnep.update({numFaults:(val,num+1)})
                 if pointTag == "throughput-view" and protVal == "CHAINED_BASELINE":
-                    (val,num) = dictTVChBase.get(numFaults,(0.0,0))
-                    dictTVChBase.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictTVChBase.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictTVChBase.update({numFaults:(val,num+1)})
                 if pointTag == "throughput-view" and protVal == "CHAINED_CHEAP_AND_QUICK":
-                    (val,num) = dictTVChComb.get(numFaults,(0.0,0))
-                    dictTVChComb.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictTVChComb.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictTVChComb.update({numFaults:(val,num+1)})
                 if pointTag == "throughput-view" and protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
-                    (val,num) = dictTVChComb.get(numFaults,(0.0,0))
-                    dictTVChComb.update({numFaults:(val+float(pointVal),num+1)})
-                # Throughputs-handle
-                if pointTag == "throughput-handle" and protVal == "BASIC_BASELINE":
-                    (val,num) = dictTHBase.get(numFaults,(0.0,0))
-                    dictTHBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "BASIC_CHEAP":
-                    (val,num) = dictTHCheap.get(numFaults,(0.0,0))
-                    dictTHCheap.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "BASIC_QUICK":
-                    (val,num) = dictTHQuick.get(numFaults,(0.0,0))
-                    dictTHQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "BASIC_QUICK_DEBUG":
-                    (val,num) = dictTHQuick.get(numFaults,(0.0,0))
-                    dictTHQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "BASIC_CHEAP_AND_QUICK":
-                    (val,num) = dictTHComb.get(numFaults,(0.0,0))
-                    dictTHComb.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "CHAINED_BASELINE":
-                    (val,num) = dictTHChBase.get(numFaults,(0.0,0))
-                    dictTHChBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "CHAINED_CHEAP_AND_QUICK":
-                    (val,num) = dictTHChComb.get(numFaults,(0.0,0))
-                    dictTHChComb.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "throughput-handle" and protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
-                    (val,num) = dictTHChComb.get(numFaults,(0.0,0))
-                    dictTHChComb.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictTVChComb.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictTVChComb.update({numFaults:(val,num+1)})
                 # Latencies-view
                 if pointTag == "latency-view" and protVal == "BASIC_BASELINE":
-                    (val,num) = dictLVBase.get(numFaults,(0.0,0))
-                    dictLVBase.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictLVBase.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictLVBase.update({numFaults:(val,num+1)})
                 if pointTag == "latency-view" and protVal == "BASIC_CHEAP":
-                    (val,num) = dictLVCheap.get(numFaults,(0.0,0))
-                    dictLVCheap.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictLVCheap.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictLVCheap.update({numFaults:(val,num+1)})
                 if pointTag == "latency-view" and protVal == "BASIC_QUICK":
-                    (val,num) = dictLVQuick.get(numFaults,(0.0,0))
-                    dictLVQuick.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictLVQuick.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictLVQuick.update({numFaults:(val,num+1)})
                 if pointTag == "latency-view" and protVal == "BASIC_QUICK_DEBUG":
-                    (val,num) = dictLVQuick.get(numFaults,(0.0,0))
-                    dictLVQuick.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictLVQuick.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictLVQuick.update({numFaults:(val,num+1)})
                 if pointTag == "latency-view" and protVal == "BASIC_CHEAP_AND_QUICK":
-                    (val,num) = dictLVComb.get(numFaults,(0.0,0))
-                    dictLVComb.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictLVComb.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictLVComb.update({numFaults:(val,num+1)})
+                if pointTag == "latency-view" and protVal == "BASIC_FREE":
+                    (val,num) = dictLVFree.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictLVFree.update({numFaults:(val,num+1)})
+                if pointTag == "latency-view" and protVal == "BASIC_ONEP":
+                    (val,num) = dictLVOnep.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictLVOnep.update({numFaults:(val,num+1)})
                 if pointTag == "latency-view" and protVal == "CHAINED_BASELINE":
-                    (val,num) = dictLVChBase.get(numFaults,(0.0,0))
-                    dictLVChBase.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictLVChBase.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictLVChBase.update({numFaults:(val,num+1)})
                 if pointTag == "latency-view" and protVal == "CHAINED_CHEAP_AND_QUICK":
-                    (val,num) = dictLVChComb.get(numFaults,(0.0,0))
-                    dictLVChComb.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictLVChComb.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictLVChComb.update({numFaults:(val,num+1)})
                 if pointTag == "latency-view" and protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
-                    (val,num) = dictLVChComb.get(numFaults,(0.0,0))
-                    dictLVChComb.update({numFaults:(val+float(pointVal),num+1)})
-                # Latencies-handle
-                if pointTag == "latency-handle" and protVal == "BASIC_BASELINE":
-                    (val,num) = dictLHBase.get(numFaults,(0.0,0))
-                    dictLHBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "BASIC_CHEAP":
-                    (val,num) = dictLHCheap.get(numFaults,(0.0,0))
-                    dictLHCheap.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "BASIC_QUICK":
-                    (val,num) = dictLHQuick.get(numFaults,(0.0,0))
-                    dictLHQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "BASIC_QUICK_DEBUG":
-                    (val,num) = dictLHQuick.get(numFaults,(0.0,0))
-                    dictLHQuick.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "BASIC_CHEAP_AND_QUICK":
-                    (val,num) = dictLHComb.get(numFaults,(0.0,0))
-                    dictLHComb.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "CHAINED_BASELINE":
-                    (val,num) = dictLHChBase.get(numFaults,(0.0,0))
-                    dictLHChBase.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "CHAINED_CHEAP_AND_QUICK":
-                    (val,num) = dictLHChComb.get(numFaults,(0.0,0))
-                    dictLHChComb.update({numFaults:(val+float(pointVal),num+1)})
-                if pointTag == "latency-handle" and protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
-                    (val,num) = dictLHChComb.get(numFaults,(0.0,0))
-                    dictLHChComb.update({numFaults:(val+float(pointVal),num+1)})
+                    (val,num) = dictLVChComb.get(numFaults,([],0))
+                    val.append(float(pointVal))
+                    dictLVChComb.update({numFaults:(val,num+1)})
+                # handle
+                if (pointTag == "handle" or pointTag == "latency-handle") and protVal == "BASIC_BASELINE":
+                    (val,num) = dictHBase.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictHBase.update({numFaults:(val,num+1)})
+                if (pointTag == "handle" or pointTag == "latency-handle") and protVal == "BASIC_CHEAP":
+                    (val,num) = dictHCheap.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictHCheap.update({numFaults:(val,num+1)})
+                if (pointTag == "handle" or pointTag == "latency-handle") and protVal == "BASIC_QUICK":
+                    (val,num) = dictHQuick.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictHQuick.update({numFaults:(val,num+1)})
+                if (pointTag == "handle" or pointTag == "latency-handle") and protVal == "BASIC_QUICK_DEBUG":
+                    (val,num) = dictHQuick.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictHQuick.update({numFaults:(val,num+1)})
+                if (pointTag == "handle" or pointTag == "latency-handle") and protVal == "BASIC_CHEAP_AND_QUICK":
+                    (val,num) = dictHComb.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictHComb.update({numFaults:(val,num+1)})
+                if (pointTag == "handle" or pointTag == "latency-handle") and protVal == "BASIC_FREE":
+                    (val,num) = dictHFree.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictHFree.update({numFaults:(val,num+1)})
+                if (pointTag == "handle" or pointTag == "latency-handle") and protVal == "BASIC_ONEP":
+                    (val,num) = dictHOnep.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictHOnep.update({numFaults:(val,num+1)})
+                if (pointTag == "handle" or pointTag == "latency-handle") and protVal == "CHAINED_BASELINE":
+                    (val,num) = dictHChBase.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictHChBase.update({numFaults:(val,num+1)})
+                if (pointTag == "handle" or pointTag == "latency-handle") and protVal == "CHAINED_CHEAP_AND_QUICK":
+                    (val,num) = dictHChComb.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictHChComb.update({numFaults:(val,num+1)})
+                if (pointTag == "handle" or pointTag == "latency-handle") and protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
+                    (val,num) = dictHChComb.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictHChComb.update({numFaults:(val,num+1)})
+                # crypto-sign
+                if pointTag == "crypto-sign" and protVal == "BASIC_BASELINE":
+                    (val,num) = dictCSBase.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCSBase.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-sign" and protVal == "BASIC_CHEAP":
+                    (val,num) = dictCSCheap.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCSCheap.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-sign" and protVal == "BASIC_QUICK":
+                    (val,num) = dictCSQuick.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCSQuick.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-sign" and protVal == "BASIC_QUICK_DEBUG":
+                    (val,num) = dictCSQuick.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCSQuick.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-sign" and protVal == "BASIC_CHEAP_AND_QUICK":
+                    (val,num) = dictCSComb.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCSComb.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-sign" and protVal == "BASIC_FREE":
+                    (val,num) = dictCSFree.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCSFree.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-sign" and protVal == "BASIC_ONEP":
+                    (val,num) = dictCSOnep.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCSOnep.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-sign" and protVal == "CHAINED_BASELINE":
+                    (val,num) = dictCSChBase.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCSChBase.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-sign" and protVal == "CHAINED_CHEAP_AND_QUICK":
+                    (val,num) = dictCSChComb.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCSChComb.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-sign" and protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
+                    (val,num) = dictCSChComb.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCSChComb.update({numFaults:(val,num+1)})
+                # crypto-verif
+                if pointTag == "crypto-verif" and protVal == "BASIC_BASELINE":
+                    (val,num) = dictCVBase.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCVBase.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-verif" and protVal == "BASIC_CHEAP":
+                    (val,num) = dictCVCheap.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCVCheap.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-verif" and protVal == "BASIC_QUICK":
+                    (val,num) = dictCVQuick.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCVQuick.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-verif" and protVal == "BASIC_QUICK_DEBUG":
+                    (val,num) = dictCVQuick.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCVQuick.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-verif" and protVal == "BASIC_CHEAP_AND_QUICK":
+                    (val,num) = dictCVComb.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCVComb.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-verif" and protVal == "BASIC_FREE":
+                    (val,num) = dictCVFree.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCVFree.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-verif" and protVal == "BASIC_ONEP":
+                    (val,num) = dictCVOnep.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCVOnep.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-verif" and protVal == "CHAINED_BASELINE":
+                    (val,num) = dictCVChBase.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCVChBase.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-verif" and protVal == "CHAINED_CHEAP_AND_QUICK":
+                    (val,num) = dictCVChComb.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCVChComb.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-verif" and protVal == "CHAINED_CHEAP_AND_QUICK_DEBUG":
+                    (val,num) = dictCVChComb.get(numFaults,([],0))
+                    val.append(float(pointVal) / numViews)
+                    dictCVChComb.update({numFaults:(val,num+1)})
     f.close()
+
+    quantileSize = 20
+    quantileSize1 = 20
+    quantileSize2 = 20
 
     # We convert the dictionaries to lists
     # throughput-view
-    (faultsTVBase,   valsTVBase,   numsTVBase)   = dict2lists(dictTVBase)
-    (faultsTVCheap,  valsTVCheap,  numsTVCheap)  = dict2lists(dictTVCheap)
-    (faultsTVQuick,  valsTVQuick,  numsTVQuick)  = dict2lists(dictTVQuick)
-    (faultsTVComb,   valsTVComb,   numsTVComb)   = dict2lists(dictTVComb)
-    (faultsTVChBase, valsTVChBase, numsTVChBase) = dict2lists(dictTVChBase)
-    (faultsTVChComb, valsTVChComb, numsTVChComb) = dict2lists(dictTVChComb)
-    # throughput-handle
-    (faultsTHBase,   valsTHBase,   numsTHBase)   = dict2lists(dictTHBase)
-    (faultsTHCheap,  valsTHCheap,  numsTHCheap)  = dict2lists(dictTHCheap)
-    (faultsTHQuick,  valsTHQuick,  numsTHQuick)  = dict2lists(dictTHQuick)
-    (faultsTHComb,   valsTHComb,   numsTHComb)   = dict2lists(dictTHComb)
-    (faultsTHChBase, valsTHChBase, numsTHChBase) = dict2lists(dictTHChBase)
-    (faultsTHChComb, valsTHChComb, numsTHChComb) = dict2lists(dictTHChComb)
+    (faultsTVBase,   valsTVBase,   numsTVBase)   = dict2lists(dictTVBase,quantileSize,False)
+    (faultsTVCheap,  valsTVCheap,  numsTVCheap)  = dict2lists(dictTVCheap,quantileSize,False)
+    (faultsTVQuick,  valsTVQuick,  numsTVQuick)  = dict2lists(dictTVQuick,quantileSize,False)
+    (faultsTVComb,   valsTVComb,   numsTVComb)   = dict2lists(dictTVComb,quantileSize,False)
+    (faultsTVFree,   valsTVFree,   numsTVFree)   = dict2lists(dictTVFree,quantileSize,False)
+    (faultsTVOnep,   valsTVOnep,   numsTVOnep)   = dict2lists(dictTVOnep,quantileSize,False)
+    (faultsTVChBase, valsTVChBase, numsTVChBase) = dict2lists(dictTVChBase,quantileSize,False)
+    (faultsTVChComb, valsTVChComb, numsTVChComb) = dict2lists(dictTVChComb,quantileSize,False)
     # latency-view
-    (faultsLVBase,   valsLVBase,   numsLVBase)   = dict2lists(dictLVBase)
-    (faultsLVCheap,  valsLVCheap,  numsLVCheap)  = dict2lists(dictLVCheap)
-    (faultsLVQuick,  valsLVQuick,  numsLVQuick)  = dict2lists(dictLVQuick)
-    (faultsLVComb,   valsLVComb,   numsLVComb)   = dict2lists(dictLVComb)
-    (faultsLVChBase, valsLVChBase, numsLVChBase) = dict2lists(dictLVChBase)
-    (faultsLVChComb, valsLVChComb, numsLVChComb) = dict2lists(dictLVChComb)
-    # latency-handle
-    (faultsLHBase,   valsLHBase,   numsLHBase)   = dict2lists(dictLHBase)
-    (faultsLHCheap,  valsLHCheap,  numsLHCheap)  = dict2lists(dictLHCheap)
-    (faultsLHQuick,  valsLHQuick,  numsLHQuick)  = dict2lists(dictLHQuick)
-    (faultsLHComb,   valsLHComb,   numsLHComb)   = dict2lists(dictLHComb)
-    (faultsLHChBase, valsLHChBase, numsLHChBase) = dict2lists(dictLHChBase)
-    (faultsLHChComb, valsLHChComb, numsLHChComb) = dict2lists(dictLHChComb)
+    (faultsLVBase,   valsLVBase,   numsLVBase)   = dict2lists(dictLVBase,quantileSize,False)
+    (faultsLVCheap,  valsLVCheap,  numsLVCheap)  = dict2lists(dictLVCheap,quantileSize,False)
+    (faultsLVQuick,  valsLVQuick,  numsLVQuick)  = dict2lists(dictLVQuick,quantileSize,False)
+    (faultsLVComb,   valsLVComb,   numsLVComb)   = dict2lists(dictLVComb,quantileSize,False)
+    (faultsLVFree,   valsLVFree,   numsLVFree)   = dict2lists(dictLVFree,quantileSize,False)
+    (faultsLVOnep,   valsLVOnep,   numsLVOnep)   = dict2lists(dictLVOnep,quantileSize,False)
+    (faultsLVChBase, valsLVChBase, numsLVChBase) = dict2lists(dictLVChBase,quantileSize,False)
+    (faultsLVChComb, valsLVChComb, numsLVChComb) = dict2lists(dictLVChComb,quantileSize,False)
+    # handle
+    (faultsHBase,   valsHBase,   numsHBase)   = dict2lists(dictHBase,quantileSize1,False)
+    (faultsHCheap,  valsHCheap,  numsHCheap)  = dict2lists(dictHCheap,quantileSize1,False)
+    (faultsHQuick,  valsHQuick,  numsHQuick)  = dict2lists(dictHQuick,quantileSize1,False)
+    (faultsHComb,   valsHComb,   numsHComb)   = dict2lists(dictHComb,quantileSize1,False)
+    (faultsHFree,   valsHFree,   numsHFree)   = dict2lists(dictHFree,quantileSize1,False)
+    (faultsHOnep,   valsHOnep,   numsHOnep)   = dict2lists(dictHOnep,quantileSize1,False)
+    (faultsHChBase, valsHChBase, numsHChBase) = dict2lists(dictHChBase,quantileSize1,False)
+    (faultsHChComb, valsHChComb, numsHChComb) = dict2lists(dictHChComb,quantileSize1,False)
+    # crypto-sign
+    (faultsCSBase,   valsCSBase,   numsCSBase)   = dict2lists(dictCSBase,quantileSize2,False)
+    (faultsCSCheap,  valsCSCheap,  numsCSCheap)  = dict2lists(dictCSCheap,quantileSize2,False)
+    (faultsCSQuick,  valsCSQuick,  numsCSQuick)  = dict2lists(dictCSQuick,quantileSize2,False)
+    (faultsCSComb,   valsCSComb,   numsCSComb)   = dict2lists(dictCSComb,quantileSize2,False)
+    (faultsCSFree,   valsCSFree,   numsCSFree)   = dict2lists(dictCSFree,quantileSize2,False)
+    (faultsCSOnep,   valsCSOnep,   numsCSOnep)   = dict2lists(dictCSOnep,quantileSize2,False)
+    (faultsCSChBase, valsCSChBase, numsCSChBase) = dict2lists(dictCSChBase,quantileSize2,False)
+    (faultsCSChComb, valsCSChComb, numsCSChComb) = dict2lists(dictCSChComb,quantileSize2,False)
+    # crypto-verif
+    (faultsCVBase,   valsCVBase,   numsCVBase)   = dict2lists(dictCVBase,quantileSize2,False)
+    (faultsCVCheap,  valsCVCheap,  numsCVCheap)  = dict2lists(dictCVCheap,quantileSize2,False)
+    (faultsCVQuick,  valsCVQuick,  numsCVQuick)  = dict2lists(dictCVQuick,quantileSize2,False)
+    (faultsCVComb,   valsCVComb,   numsCVComb)   = dict2lists(dictCVComb,quantileSize2,False)
+    (faultsCVFree,   valsCVFree,   numsCVFree)   = dict2lists(dictCVFree,quantileSize2,False)
+    (faultsCVOnep,   valsCVOnep,   numsCVOnep)   = dict2lists(dictCVOnep,quantileSize2,False)
+    (faultsCVChBase, valsCVChBase, numsCVChBase) = dict2lists(dictCVChBase,quantileSize2,False)
+    (faultsCVChComb, valsCVChComb, numsCVChComb) = dict2lists(dictCVChComb,quantileSize2,False)
 
-    print("throughputs (baseline/cheap/quick/combined/chained-baseline/chained-combined)")
-    print((faultsTVBase,   valsTVBase,   numsTVBase))
-    print((faultsTVCheap,  valsTVCheap,  numsTVCheap))
-    print((faultsTVQuick,  valsTVQuick,  numsTVQuick))
-    print((faultsTVComb,   valsTVComb,   numsTVComb))
-    print((faultsTVChBase, valsTVChBase, numsTVChBase))
-    print((faultsTVChComb, valsTVChComb, numsTVChComb))
-    print("latencies (baseline/cheap/quick/combined/chained-baseline/chained-combined)")
-    print((faultsLVBase,   valsLVBase,   numsLVBase))
-    print((faultsLVCheap,  valsLVCheap,  numsLVCheap))
-    print((faultsLVQuick,  valsLVQuick,  numsLVQuick))
-    print((faultsLVComb,   valsLVComb,   numsLVComb))
-    print((faultsLVChBase, valsLVChBase, numsLVChBase))
-    print((faultsLVChComb, valsLVChComb, numsLVChComb))
+    print("faults/throughputs(val+num)/latencies(val+num)/cypto-verif(val+num)/cypto-sign(val+num) for (baseline/cheap/quick/combined/free/onep/chained-baseline/chained-combined)")
+    print((faultsTVBase,   (valsTVBase,   numsTVBase),   (valsLVBase,   numsLVBase),   (valsCVBase,   numsCVBase),   (valsCSBase,   numsCSBase)))
+    print((faultsTVCheap,  (valsTVCheap,  numsTVCheap),  (valsLVCheap,  numsLVCheap),  (valsCVCheap,  numsCVCheap),  (valsCSCheap,  numsCSCheap)))
+    print((faultsTVQuick,  (valsTVQuick,  numsTVQuick),  (valsLVQuick,  numsLVQuick),  (valsCVQuick,  numsCVQuick),  (valsCSQuick,  numsCSQuick)))
+    print((faultsTVComb,   (valsTVComb,   numsTVComb),   (valsLVComb,   numsLVComb),   (valsCVComb,   numsCVComb),   (valsCSComb,   numsCSComb)))
+    print((faultsTVFree,   (valsTVFree,   numsTVFree),   (valsLVFree,   numsLVFree),   (valsCVFree,   numsCVFree),   (valsCSFree,   numsCSFree)))
+    print((faultsTVOnep,   (valsTVOnep,   numsTVOnep),   (valsLVOnep,   numsLVOnep),   (valsCVOnep,   numsCVOnep),   (valsCSOnep,   numsCSOnep)))
+    print((faultsTVChBase, (valsTVChBase, numsTVChBase), (valsLVChBase, numsLVChBase), (valsCVChBase, numsCVChBase), (valsCSChBase, numsCSChBase)))
+    print((faultsTVChComb, (valsTVChComb, numsTVChComb), (valsLVChComb, numsLVChComb), (valsCVChComb, numsCVChComb), (valsCSChComb, numsCSChComb)))
 
     print("Throughput gain (basic versions):")
     # non-chained
     getPercentage(False,baseHS,faultsTVBase,valsTVBase,cheapHS,faultsTVCheap,valsTVCheap)
     getPercentage(False,baseHS,faultsTVBase,valsTVBase,quickHS,faultsTVQuick,valsTVQuick)
     getPercentage(False,baseHS,faultsTVBase,valsTVBase,combHS, faultsTVComb, valsTVComb)
+    getPercentage(False,baseHS,faultsTVBase,valsTVBase,freeHS, faultsTVFree, valsTVFree)
+    getPercentage(False,combHS,faultsTVComb,valsTVComb,freeHS, faultsTVFree, valsTVFree)
+    getPercentage(False,baseHS,faultsTVBase,valsTVBase,onepHS, faultsTVOnep, valsTVOnep)
+    getPercentage(False,combHS,faultsTVComb,valsTVComb,onepHS, faultsTVOnep, valsTVOnep)
     # chained
     getPercentage(False,baseChHS,faultsTVChBase,valsTVChBase,combChHS,faultsTVChComb,valsTVChComb)
 
@@ -1891,8 +2280,24 @@ def createPlot(pFile):
     getPercentage(True,baseHS,faultsLVBase,valsLVBase,cheapHS,faultsLVCheap,valsLVCheap)
     getPercentage(True,baseHS,faultsLVBase,valsLVBase,quickHS,faultsLVQuick,valsLVQuick)
     getPercentage(True,baseHS,faultsLVBase,valsLVBase,combHS, faultsLVComb, valsLVComb)
+    getPercentage(True,baseHS,faultsLVBase,valsLVBase,freeHS, faultsLVFree, valsLVFree)
+    getPercentage(True,combHS,faultsLVComb,valsLVComb,freeHS, faultsLVFree, valsLVFree)
+    getPercentage(True,baseHS,faultsLVBase,valsLVBase,onepHS, faultsLVOnep, valsLVOnep)
+    getPercentage(True,combHS,faultsLVComb,valsLVComb,onepHS, faultsLVOnep, valsLVOnep)
     # chained
     getPercentage(True,baseChHS,faultsLVChBase,valsLVChBase,combChHS,faultsLVChComb,valsLVChComb)
+
+    print("Handle gain (basic versions):")
+    # non-chained
+    getPercentage(True,baseHS,faultsHBase,valsHBase,cheapHS,faultsHCheap,valsHCheap)
+    getPercentage(True,baseHS,faultsHBase,valsHBase,quickHS,faultsHQuick,valsHQuick)
+    getPercentage(True,baseHS,faultsHBase,valsHBase,combHS, faultsHComb, valsHComb)
+    getPercentage(True,baseHS,faultsHBase,valsHBase,freeHS, faultsHFree, valsHFree)
+    getPercentage(True,combHS,faultsHComb,valsHComb,freeHS, faultsHFree, valsHFree)
+    getPercentage(True,baseHS,faultsHBase,valsHBase,onepHS, faultsHOnep, valsHOnep)
+    getPercentage(True,combHS,faultsHComb,valsHComb,onepHS, faultsHOnep, valsHOnep)
+    # chained
+    getPercentage(True,baseChHS,faultsHChBase,valsHChBase,combChHS,faultsHChComb,valsHChComb)
 
     LW = 1 # linewidth
     MS = 5 # markersize
@@ -1901,167 +2306,306 @@ def createPlot(pFile):
     #plt.figure(figsize=(2, 6))
     #, dpi=80)
 
+    global plotThroughput
+    global plotLatency
+
+    if (plotHandle or plotCrypto) and not plotView:
+        plotThroughput = False
+        plotLatency    = True
+
+    numPlots=2
+    if (plotThroughput and not plotLatency) or (not plotThroughput and plotLatency):
+        numPlots=1
+
     ## Plotting
-    print("plotting")
-    fig, axs = plt.subplots(2)
+    print("plotting",numPlots,"plot(s)")
+    fig, axs = plt.subplots(numPlots,1)
+    if numPlots == 1:
+        x = axs
+        axs = [x]
     #,figsize=(4, 10)
     if showTitle:
         if debugPlot:
-            fig.suptitle("Throughputs (top) & Latencies (bottom) (file="+pFile+")")
+            info = "file="+pFile
+            info += "; cpus="+str(dockerCpu)
+            info += "; mem="+str(dockerMem)
+            info += "; lat="+str(networkLat)
+            info += "; payload="+str(payloadSize)
+            info += "; repeats1="+str(repeats)
+            info += "; repeats2="+str(repeatsL2)
+            info += "; #views="+str(numViews)
+            info += "; regions="+regions[0]
+            if plotHandle and not plotView:
+                fig.suptitle("Handling time\n("+info+")")
+            else:
+                fig.suptitle("Throughputs (top) & Latencies (bottom)\n("+info+")")
         else:
-            fig.suptitle("Throughputs (top) & Latencies (bottom)")
+            if plotHandle and not plotView:
+                fig.suptitle("Handling time")
+            else:
+                fig.suptitle("Throughputs (top) & Latencies (bottom)")
 
     adjustFigAspect(fig,aspect=0.9)
     #adjustFigAspect(fig,aspect=0.9)
-    fig.set_figheight(6)
+    if numPlots == 2:
+        fig.set_figheight(6)
+    else: # == 1
+        fig.set_figheight(3)
     #fig.set_figwidth(4)
 
-    # naming the x/y axis
-    #axs[0].set(xlabel="#faults", ylabel="throughput")
-    if showYlabel:
-        axs[0].set(ylabel="throughput (Kops/s)")
-    axs[0].set_yscale('log')
-    if whichExp == "EUexp1":
-        axs[0].set_yticks((0.5,1,10,20,70))
-        axs[0].set_ylim([0.5,70])
-        axs[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-    elif whichExp == "ALLexp1":
-        axs[0].set_yticks((0.3,1,6))
-        axs[0].set_ylim([0.3,6])
-        axs[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-    # giving a title to my graph
-    #axs[0].set_title("throughputs")
-    # plotting the points
-    if plotBasic:
-        axs[0].plot(faultsTVBase,   valsTVBase,   color=baseCOL,   linewidth=LW, marker=baseMRK,   markersize=MS, linestyle=baseLS,   label=baseHS)
-        axs[0].plot(faultsTVCheap,  valsTVCheap,  color=cheapCOL,  linewidth=LW, marker=cheapMRK,  markersize=MS, linestyle=cheapLS,  label=cheapHS)
-        axs[0].plot(faultsTVQuick,  valsTVQuick,  color=quickCOL,  linewidth=LW, marker=quickMRK,  markersize=MS, linestyle=quickLS,  label=quickHS)
-        axs[0].plot(faultsTVComb,   valsTVComb,   color=combCOL,   linewidth=LW, marker=combMRK,   markersize=MS, linestyle=combLS,   label=combHS)
-    if plotChained:
-        axs[0].plot(faultsTVChBase, valsTVChBase, color=baseChCOL, linewidth=LW, marker=baseChMRK, markersize=MS, linestyle=baseChLS, label=baseChHS)
-        axs[0].plot(faultsTVChComb, valsTVChComb, color=combChCOL, linewidth=LW, marker=combChMRK, markersize=MS, linestyle=combChLS, label=combChHS)
-    if debugPlot:
-        if plotBasic:
-            for x,y,z in zip(faultsTVBase, valsTVBase, numsTVBase):
-                axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-            for x,y,z in zip(faultsTVCheap, valsTVCheap, numsTVCheap):
-                axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-            for x,y,z in zip(faultsTVQuick, valsTVQuick, numsTVQuick):
-                axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-            for x,y,z in zip(faultsTVComb, valsTVComb, numsTVComb):
-                axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-        if plotChained:
-            for x,y,z in zip(faultsTVChBase, valsTVChBase, numsTVChBase):
-                axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-            for x,y,z in zip(faultsTVChComb, valsTVChComb, numsTVChComb):
-                axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-    if plotHandle:
-        if plotBasic:
-            axs[0].plot(faultsTHBase,   valsTHBase,   color=baseCOL,   linewidth=LW, marker="+", markersize=MS, linestyle=baseLS,   label=baseHS+" (handle)")
-            axs[0].plot(faultsTHCheap,  valsTHCheap,  color=cheapCOL,  linewidth=LW, marker="+", markersize=MS, linestyle=cheapLS,  label=cheapHS+" (handle)")
-            axs[0].plot(faultsTHQuick,  valsTHQuick,  color=quickCOL,  linewidth=LW, marker="+", markersize=MS, linestyle=quickLS,  label=quickHS+" (handle)")
-            axs[0].plot(faultsTHComb,   valsTHComb,   color=combCOL,   linewidth=LW, marker="+", markersize=MS, linestyle=combLS,   label=combHS+" (handle)")
-        if plotChained:
-            axs[0].plot(faultsTHChBase, valsTHChBase, color=baseChCOL, linewidth=LW, marker="+", markersize=MS, linestyle=baseChLS, label=baseChHS+" (handle)")
-            axs[0].plot(faultsTHChComb, valsTHChComb, color=combChCOL, linewidth=LW, marker="+", markersize=MS, linestyle=combChLS, label=combChHS+" (handle)")
-        if debugPlot:
+    if plotThroughput:
+        # naming the x/y axis
+        #axs[0].set(xlabel="#faults", ylabel="throughput")
+        if showYlabel:
+            axs[0].set(ylabel="throughput (Kops/s)")
+        if logScale:
+            axs[0].set_yscale('log')
+        if whichExp == "EUexp1":
+            axs[0].set_yticks((0.5,1,10,20,70))
+            axs[0].set_ylim([0.5,70])
+            axs[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+        elif whichExp == "ALLexp1":
+            axs[0].set_yticks((0.3,1,6))
+            axs[0].set_ylim([0.3,6])
+            axs[0].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+        # giving a title to my graph
+        #axs[0].set_title("throughputs")
+        # plotting the points
+        if plotView:
             if plotBasic:
-                for x,y,z in zip(faultsTHBase, valsTHBase, numsTHBase):
-                    axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-                for x,y,z in zip(faultsTHCheap, valsTHCheap, numsTHCheap):
-                    axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-                for x,y,z in zip(faultsTHQuick, valsTHQuick, numsTHQuick):
-                    axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-                for x,y,z in zip(faultsTHComb, valsTHComb, numsTHComb):
-                    axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                if len(faultsTVBase) > 0:
+                    axs[0].plot(faultsTVBase,   valsTVBase,   color=baseCOL,   linewidth=LW, marker=baseMRK,   markersize=MS, linestyle=baseLS,   label=baseHS)
+                if len(faultsTVCheap) > 0:
+                    axs[0].plot(faultsTVCheap,  valsTVCheap,  color=cheapCOL,  linewidth=LW, marker=cheapMRK,  markersize=MS, linestyle=cheapLS,  label=cheapHS)
+                if len(faultsTVQuick) > 0:
+                    axs[0].plot(faultsTVQuick,  valsTVQuick,  color=quickCOL,  linewidth=LW, marker=quickMRK,  markersize=MS, linestyle=quickLS,  label=quickHS)
+                if len(faultsTVComb) > 0:
+                    axs[0].plot(faultsTVComb,   valsTVComb,   color=combCOL,   linewidth=LW, marker=combMRK,   markersize=MS, linestyle=combLS,   label=combHS)
+                if len(faultsTVFree) > 0:
+                    axs[0].plot(faultsTVFree,   valsTVFree,   color=freeCOL,   linewidth=LW, marker=freeMRK,   markersize=MS, linestyle=freeLS,   label=freeHS)
+                if len(faultsTVOnep) > 0:
+                    axs[0].plot(faultsTVOnep,   valsTVOnep,   color=onepCOL,   linewidth=LW, marker=onepMRK,   markersize=MS, linestyle=onepLS,   label=onepHS)
             if plotChained:
-                for x,y,z in zip(faultsTHChBase, valsTHChBase, numsTHChBase):
-                    axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-                for x,y,z in zip(faultsTHChComb, valsTHChComb, numsTHChComb):
-                    axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                if len(faultsTVChBase) > 0:
+                    axs[0].plot(faultsTVChBase, valsTVChBase, color=baseChCOL, linewidth=LW, marker=baseChMRK, markersize=MS, linestyle=baseChLS, label=baseChHS)
+                if len(faultsTVChComb) > 0:
+                    axs[0].plot(faultsTVChComb, valsTVChComb, color=combChCOL, linewidth=LW, marker=combChMRK, markersize=MS, linestyle=combChLS, label=combChHS)
+            if debugPlot:
+                if plotBasic:
+                    for x,y,z in zip(faultsTVBase, valsTVBase, numsTVBase):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsTVCheap, valsTVCheap, numsTVCheap):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsTVQuick, valsTVQuick, numsTVQuick):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsTVComb, valsTVComb, numsTVComb):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsTVFree, valsTVFree, numsTVFree):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsTVOnep, valsTVOnep, numsTVOnep):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                if plotChained:
+                    for x,y,z in zip(faultsTVChBase, valsTVChBase, numsTVChBase):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsTVChComb, valsTVChComb, numsTVChComb):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
 
-    # legend
-    if showLegend1:
-        axs[0].legend(ncol=2,prop={'size': 9})
+        # legend
+        if showLegend1:
+            axs[0].legend(ncol=2,prop={'size': 9})
 
-    # naming the x/y axis
-    if showYlabel:
-        axs[1].set(xlabel="#faults", ylabel="latency (ms)")
-    else:
-        axs[1].set(xlabel="#faults")
-    axs[1].set_yscale('log')
-    if whichExp == "EUexp1":
-        axs[1].set_yticks((5,100,600))
-        axs[1].set_ylim([5,600])
-        axs[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-    elif whichExp == "ALLexp1":
-        axs[1].set_yticks((60,100,1000))
-        axs[1].set_ylim([60,1000])
-        axs[1].get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-    # giving a title to my graph
-    #axs[1].set_title("latencies")
-    # plotting the points
-    if plotBasic:
-        axs[1].plot(faultsLVBase,   valsLVBase,   color=baseCOL,   linewidth=LW, marker=baseMRK,   markersize=MS, linestyle=baseLS,   label=baseHS)
-        axs[1].plot(faultsLVCheap,  valsLVCheap,  color=cheapCOL,  linewidth=LW, marker=cheapMRK,  markersize=MS, linestyle=cheapLS,  label=cheapHS)
-        axs[1].plot(faultsLVQuick,  valsLVQuick,  color=quickCOL,  linewidth=LW, marker=quickMRK,  markersize=MS, linestyle=quickLS,  label=quickHS)
-        axs[1].plot(faultsLVComb,   valsLVComb,   color=combCOL,   linewidth=LW, marker=combMRK,   markersize=MS, linestyle=combLS,   label=combHS)
-    if plotChained:
-        axs[1].plot(faultsLVChBase, valsLVChBase, color=baseChCOL, linewidth=LW, marker=baseChMRK, markersize=MS, linestyle=baseChLS, label=baseChHS)
-        axs[1].plot(faultsLVChComb, valsLVChComb, color=combChCOL, linewidth=LW, marker=combChMRK, markersize=MS, linestyle=combChLS, label=combChHS)
-    if debugPlot:
-        if plotBasic:
-            for x,y,z in zip(faultsLVBase, valsLVBase, numsLVBase):
-                axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-            for x,y,z in zip(faultsLVCheap, valsLVCheap, numsLVCheap):
-                axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-            for x,y,z in zip(faultsLVQuick, valsLVQuick, numsLVQuick):
-                axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-            for x,y,z in zip(faultsLVComb, valsLVComb, numsLVComb):
-                axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-        if plotChained:
-            for x,y,z in zip(faultsLVChBase, valsLVChBase, numsLVChBase):
-                axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-            for x,y,z in zip(faultsLVChComb, valsLVChComb, numsLVChComb):
-                axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-    if plotHandle:
-        if plotBasic:
-            axs[1].plot(faultsLHBase,   valsLHBase,   color=baseCOL,   linewidth=LW, marker="+", markersize=MS, linestyle=baseLS,   label=baseHS+" (handle)")
-            axs[1].plot(faultsLHCheap,  valsLHCheap,  color=cheapCOL,  linewidth=LW, marker="+", markersize=MS, linestyle=cheapLS,  label=cheapHS+" (handle)")
-            axs[1].plot(faultsLHQuick,  valsLHQuick,  color=quickCOL,  linewidth=LW, marker="+", markersize=MS, linestyle=quickLS,  label=quickHS+" (handle)")
-            axs[1].plot(faultsLHComb,   valsLHComb,   color=combCOL,   linewidth=LW, marker="+", markersize=MS, linestyle=combLS,   label=combHS+" (handle)")
-        if plotChained:
-            axs[1].plot(faultsLHChBase, valsLHChBase, color=baseChCOL, linewidth=LW, marker="+", markersize=MS, linestyle=baseChLS, label=baseChHS+" (handle)")
-            axs[1].plot(faultsLHChComb, valsLHChComb, color=combChCOL, linewidth=LW, marker="+", markersize=MS, linestyle=combChLS, label=combChHS+" (handle)")
-        if debugPlot:
+    if plotLatency:
+        ax=axs[0]
+        if plotThroughput:
+            ax=axs[1]
+        # naming the x/y axis
+        if showYlabel:
+            if plotHandle and not plotView:
+                ax.set(xlabel="#faults", ylabel="handling time (ms)")
+            else:
+                ax.set(xlabel="#faults", ylabel="latency (ms)")
+        else:
+            ax.set(xlabel="#faults")
+        if logScale:
+            ax.set_yscale('log')
+        if whichExp == "EUexp1":
+            ax.set_yticks((5,100,600))
+            ax.set_ylim([5,600])
+            ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+        elif whichExp == "ALLexp1":
+            ax.set_yticks((60,100,1000))
+            ax.set_ylim([60,1000])
+            ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+        # giving a title to my graph
+        #ax.set_title("latencies")
+        # plotting the points
+        if plotView:
             if plotBasic:
-                for x,y,z in zip(faultsLHBase, valsLHBase, numsLHBase):
-                    axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-                for x,y,z in zip(faultsLHCheap, valsLHCheap, numsLHCheap):
-                    axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-                for x,y,z in zip(faultsLHQuick, valsLHQuick, numsLHQuick):
-                    axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-                for x,y,z in zip(faultsLHComb, valsLHComb, numsLHComb):
-                    axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                if len(faultsLVBase) > 0:
+                    ax.plot(faultsLVBase,   valsLVBase,   color=baseCOL,   linewidth=LW, marker=baseMRK,   markersize=MS, linestyle=baseLS,   label=baseHS)
+                if len(faultsLVCheap) > 0:
+                    ax.plot(faultsLVCheap,  valsLVCheap,  color=cheapCOL,  linewidth=LW, marker=cheapMRK,  markersize=MS, linestyle=cheapLS,  label=cheapHS)
+                if len(faultsLVQuick) > 0:
+                    ax.plot(faultsLVQuick,  valsLVQuick,  color=quickCOL,  linewidth=LW, marker=quickMRK,  markersize=MS, linestyle=quickLS,  label=quickHS)
+                if len(faultsLVComb) > 0:
+                    ax.plot(faultsLVComb,   valsLVComb,   color=combCOL,   linewidth=LW, marker=combMRK,   markersize=MS, linestyle=combLS,   label=combHS)
+                if len(faultsLVFree) > 0:
+                    ax.plot(faultsLVFree,   valsLVFree,   color=freeCOL,   linewidth=LW, marker=freeMRK,   markersize=MS, linestyle=freeLS,   label=freeHS)
+                if len(faultsLVOnep) > 0:
+                    ax.plot(faultsLVOnep,   valsLVOnep,   color=onepCOL,   linewidth=LW, marker=onepMRK,   markersize=MS, linestyle=onepLS,   label=onepHS)
             if plotChained:
-                for x,y,z in zip(faultsLHChBase, valsLHChBase, numsLHChBase):
-                    axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-                for x,y,z in zip(faultsLHChComb, valsLHChComb, numsLHChComb):
-                    axs[1].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-    # legend
-    if showLegend2:
-        axs[1].legend(prop={'size': 7})
+                if len(faultsLVChBase) > 0:
+                    ax.plot(faultsLVChBase, valsLVChBase, color=baseChCOL, linewidth=LW, marker=baseChMRK, markersize=MS, linestyle=baseChLS, label=baseChHS)
+                if len(faultsLVChComb) > 0:
+                    ax.plot(faultsLVChComb, valsLVChComb, color=combChCOL, linewidth=LW, marker=combChMRK, markersize=MS, linestyle=combChLS, label=combChHS)
+            if debugPlot:
+                if plotBasic:
+                    for x,y,z in zip(faultsLVBase, valsLVBase, numsLVBase):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsLVCheap, valsLVCheap, numsLVCheap):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsLVQuick, valsLVQuick, numsLVQuick):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsLVComb, valsLVComb, numsLVComb):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsLVFree, valsLVFree, numsLVFree):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsLVOnep, valsLVOnep, numsLVOnep):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                if plotChained:
+                    for x,y,z in zip(faultsLVChBase, valsLVChBase, numsLVChBase):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsLVChComb, valsLVChComb, numsLVChComb):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+        if plotHandle:
+            if plotBasic:
+                if len(faultsHBase) > 0:
+                    ax.plot(faultsHBase,   valsHBase,   color=baseCOL,   linewidth=LW, marker="+", markersize=MS, linestyle=baseLS,   label=baseHS+"")
+                if len(faultsHCheap) > 0:
+                    ax.plot(faultsHCheap,  valsHCheap,  color=cheapCOL,  linewidth=LW, marker="+", markersize=MS, linestyle=cheapLS,  label=cheapHS+"")
+                if len(faultsHQuick) > 0:
+                    ax.plot(faultsHQuick,  valsHQuick,  color=quickCOL,  linewidth=LW, marker="+", markersize=MS, linestyle=quickLS,  label=quickHS+"")
+                if len(faultsHComb) > 0:
+                    ax.plot(faultsHComb,   valsHComb,   color=combCOL,   linewidth=LW, marker="+", markersize=MS, linestyle=combLS,   label=combHS+"")
+                if len(faultsHFree) > 0:
+                    ax.plot(faultsHFree,   valsHFree,   color=freeCOL,   linewidth=LW, marker="+", markersize=MS, linestyle=freeLS,   label=freeHS+"")
+                if len(faultsHOnep) > 0:
+                    ax.plot(faultsHOnep,   valsHOnep,   color=onepCOL,   linewidth=LW, marker="+", markersize=MS, linestyle=onepLS,   label=onepHS+"")
+            if plotChained:
+                if len(faultsHChBase) > 0:
+                    ax.plot(faultsHChBase, valsHChBase, color=baseChCOL, linewidth=LW, marker="+", markersize=MS, linestyle=baseChLS, label=baseChHS+"")
+                if len(faultsHChComb) > 0:
+                    ax.plot(faultsHChComb, valsHChComb, color=combChCOL, linewidth=LW, marker="+", markersize=MS, linestyle=combChLS, label=combChHS+"")
+            if debugPlot:
+                if plotBasic:
+                    for x,y,z in zip(faultsHBase, valsHBase, numsHBase):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsHCheap, valsHCheap, numsHCheap):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsHQuick, valsHQuick, numsHQuick):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsHComb, valsHComb, numsHComb):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsHFree, valsHFree, numsHFree):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsHOnep, valsHOnep, numsHOnep):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                if plotChained:
+                    for x,y,z in zip(faultsHChBase, valsHChBase, numsHChBase):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsHChComb, valsHChComb, numsHChComb):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+        if plotCrypto: # Sign
+            if plotBasic:
+                if len(faultsCSBase) > 0:
+                    axs[0].plot(faultsCSBase,   valsCSBase,   color=baseCOL,   linewidth=LW, marker="1", markersize=MS, linestyle=baseLS,   label=baseHS+" (crypto-sign)")
+                if len(faultsCSCheap) > 0:
+                    axs[0].plot(faultsCSCheap,  valsCSCheap,  color=cheapCOL,  linewidth=LW, marker="1", markersize=MS, linestyle=cheapLS,  label=cheapHS+" (crypto-sign)")
+                if len(faultsCSQuick) > 0:
+                    axs[0].plot(faultsCSQuick,  valsCSQuick,  color=quickCOL,  linewidth=LW, marker="1", markersize=MS, linestyle=quickLS,  label=quickHS+" (crypto-sign)")
+                if len(faultsCSComb) > 0:
+                    axs[0].plot(faultsCSComb,   valsCSComb,   color=combCOL,   linewidth=LW, marker="1", markersize=MS, linestyle=combLS,   label=combHS+" (crypto-sign)")
+                if len(faultsCSFree) > 0:
+                    axs[0].plot(faultsCSFree,   valsCSFree,   color=freeCOL,   linewidth=LW, marker="1", markersize=MS, linestyle=freeLS,   label=freeHS+" (crypto-sign)")
+                if len(faultsCSOnep) > 0:
+                    axs[0].plot(faultsCSOnep,   valsCSOnep,   color=onepCOL,   linewidth=LW, marker="1", markersize=MS, linestyle=onepLS,   label=onepHS+" (crypto-sign)")
+            if plotChained:
+                if len(faultsCSChBase) > 0:
+                    axs[0].plot(faultsCSChBase, valsCSChBase, color=baseChCOL, linewidth=LW, marker="1", markersize=MS, linestyle=baseChLS, label=baseChHS+" (crypto-sign)")
+                if len(faultsCSChComb) > 0:
+                    axs[0].plot(faultsCSChComb, valsCSChComb, color=combChCOL, linewidth=LW, marker="1", markersize=MS, linestyle=combChLS, label=combChHS+" (crypto-sign)")
+            if debugPlot:
+                if plotBasic:
+                    for x,y,z in zip(faultsCSBase, valsCSBase, numsCSBase):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCSCheap, valsCSCheap, numsCSCheap):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCSQuick, valsCSQuick, numsCSQuick):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCCSomb, valsCSComb, numsCSComb):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCSFree, valsCSFree, numsCSFree):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCSOnep, valsCSOnep, numsCSOnep):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                if plotChained:
+                    for x,y,z in zip(faultsCSChBase, valsCSChBase, numsCSChBase):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCSChComb, valsCSChComb, numsCSChComb):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+        if plotCrypto: # Verif
+            if plotBasic:
+                if len(faultsCVBase) > 0:
+                    axs[0].plot(faultsCVBase,   valsCVBase,   color=baseCOL,   linewidth=LW, marker="2", markersize=MS, linestyle=baseLS,   label=baseHS+" (crypto-verif)")
+                if len(faultsCVCheap) > 0:
+                    axs[0].plot(faultsCVCheap,  valsCVCheap,  color=cheapCOL,  linewidth=LW, marker="2", markersize=MS, linestyle=cheapLS,  label=cheapHS+" (crypto-verif)")
+                if len(faultsCVQuick) > 0:
+                    axs[0].plot(faultsCVQuick,  valsCVQuick,  color=quickCOL,  linewidth=LW, marker="2", markersize=MS, linestyle=quickLS,  label=quickHS+" (crypto-verif)")
+                if len(faultsCVComb) > 0:
+                    axs[0].plot(faultsCVComb,   valsCVComb,   color=combCOL,   linewidth=LW, marker="2", markersize=MS, linestyle=combLS,   label=combHS+" (crypto-verif)")
+                if len(faultsCVFree) > 0:
+                    axs[0].plot(faultsCVFree,   valsCVFree,   color=freeCOL,   linewidth=LW, marker="2", markersize=MS, linestyle=freeLS,   label=freeHS+" (crypto-verif)")
+                if len(faultsCVOnep) > 0:
+                    axs[0].plot(faultsCVOnep,   valsCVOnep,   color=onepCOL,   linewidth=LW, marker="2", markersize=MS, linestyle=onepLS,   label=onepHS+" (crypto-verif)")
+            if plotChained:
+                if len(faultsCVChBase) > 0:
+                    axs[0].plot(faultsCVChBase, valsCVChBase, color=baseChCOL, linewidth=LW, marker="2", markersize=MS, linestyle=baseChLS, label=baseChHS+" (crypto-verif)")
+                if len(faultsCVChComb) > 0:
+                    axs[0].plot(faultsCVChComb, valsCVChComb, color=combChCOL, linewidth=LW, marker="2", markersize=MS, linestyle=combChLS, label=combChHS+" (crypto-verif)")
+            if debugPlot:
+                if plotBasic:
+                    for x,y,z in zip(faultsCVBase, valsCVBase, numsCVBase):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCVCheap, valsCVCheap, numsCVCheap):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCVQuick, valsCVQuick, numsCVQuick):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCCVomb, valsCVComb, numsCVComb):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCVFree, valsCVFree, numsCVFree):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCVOnep, valsCVOnep, numsCVOnep):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                if plotChained:
+                    for x,y,z in zip(faultsCVChBase, valsCVChBase, numsCVChBase):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCVChComb, valsCVChComb, numsCVChComb):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+        # legend
+        if showLegend2 or (showLegend1 and not plotThroughput):
+            ax.legend(prop={'size': 9})
 
     #fig.subplots_adjust(hspace=0.5)
     fig.savefig(plotFile, bbox_inches='tight', pad_inches=0.05)
+    print("points are in", pFile)
     print("plot is in", plotFile)
     if displayPlot:
         try:
             subprocess.call([displayApp, plotFile])
         except:
             print("couldn't display the plot using '" + displayApp + "'. Consider changing the 'displayApp' variable.")
-    return (dictTVBase, dictTVCheap, dictTVQuick, dictTVComb, dictTVChBase, dictTVChComb,
-            dictLVBase, dictLVCheap, dictLVQuick, dictLVComb, dictLVChBase, dictLVChComb)
+    return (dictTVBase, dictTVCheap, dictTVQuick, dictTVComb, dictTVFree, dictTVOnep, dictTVChBase, dictTVChComb,
+            dictLVBase, dictLVCheap, dictLVQuick, dictLVComb, dictLVFree, dictLVOnep, dictLVChBase, dictLVChComb)
 # End of createPlot
 
 
@@ -2069,7 +2613,7 @@ def runExperiments():
     # Creating stats directory
     Path(statsdir).mkdir(parents=True, exist_ok=True)
 
-    recompile = True
+    printNodePointParams()
 
     for numFaults in faults:
         # ------
@@ -2100,6 +2644,18 @@ def runExperiments():
         # Combines Cheap&Quick-HotStuff
         if runComb:
             computeAvgStats(recompile,protocol=Protocol.COMB,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults,numRepeats=repeats)
+        else:
+            (0.0,0.0,0.0,0.0)
+        # ------
+        # Free
+        if runFree:
+            computeAvgStats(recompile,protocol=Protocol.FREE,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults,numRepeats=repeats)
+        else:
+            (0.0,0.0,0.0,0.0)
+        # ------
+        # Onep
+        if runOnep:
+            computeAvgStats(recompile,protocol=Protocol.ONEP,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults,numRepeats=repeats)
         else:
             (0.0,0.0,0.0,0.0)
         # ------
@@ -2150,7 +2706,7 @@ def computeClientStats(protocol,numClTrans,sleepTime,numFaults):
 
     # we remove the top and bottom 10% quantiles
     l   = len(latencies)
-    num = int(l/quantileSize)
+    num = int(l/(100/quantileSize))
 
     throughputs = sorted(throughputs)
     latencies   = sorted(latencies)
@@ -2208,6 +2764,14 @@ def createTVLplot(cFile,instances):
     TComb = []
     aComb = []
 
+    LFree = []
+    TFree = []
+    aFree = []
+
+    LOnep = []
+    TOnep = []
+    aOnep = []
+
     LChBase = []
     TChBase = []
     aChBase = []
@@ -2250,6 +2814,14 @@ def createTVLplot(cFile,instances):
                 TComb.append(throughput)
                 LComb.append(latency)
                 aComb.append(sleep)
+            if protVal == "BASIC_FREE":
+                TFree.append(throughput)
+                LFree.append(latency)
+                aFree.append(sleep)
+            if protVal == "BASIC_ONEP":
+                TOnep.append(throughput)
+                LOnep.append(latency)
+                aOnep.append(sleep)
             if protVal == "CHAINED_BASELINE":
                 TChBase.append(throughput)
                 LChBase.append(latency)
@@ -2282,13 +2854,23 @@ def createTVLplot(cFile,instances):
     plt.xlabel("throughput (Kops/sec)", fontsize=12)
     plt.ylabel("latency (ms)", fontsize=12)
     if plotBasic:
-        plt.plot(TBase,   LBase,   color=baseCOL,   linewidth=LW, marker=baseMRK,   markersize=MS, linestyle=baseLS,   label=baseHS)
-        plt.plot(TCheap,  LCheap,  color=cheapCOL,  linewidth=LW, marker=cheapMRK,  markersize=MS, linestyle=cheapLS,  label=cheapHS)
-        plt.plot(TQuick,  LQuick,  color=quickCOL,  linewidth=LW, marker=quickMRK,  markersize=MS, linestyle=quickLS,  label=quickHS)
-        plt.plot(TComb,   LComb,   color=combCOL,   linewidth=LW, marker=combMRK,   markersize=MS, linestyle=combLS,   label=combHS)
+        if len(TBase) > 0:
+            plt.plot(TBase,   LBase,   color=baseCOL,   linewidth=LW, marker=baseMRK,   markersize=MS, linestyle=baseLS,   label=baseHS)
+        if len(TCheap) > 0:
+            plt.plot(TCheap,  LCheap,  color=cheapCOL,  linewidth=LW, marker=cheapMRK,  markersize=MS, linestyle=cheapLS,  label=cheapHS)
+        if len(TQuick) > 0:
+            plt.plot(TQuick,  LQuick,  color=quickCOL,  linewidth=LW, marker=quickMRK,  markersize=MS, linestyle=quickLS,  label=quickHS)
+        if len(TComb) > 0:
+            plt.plot(TComb,   LComb,   color=combCOL,   linewidth=LW, marker=combMRK,   markersize=MS, linestyle=combLS,   label=combHS)
+        if len(TFree) > 0:
+            plt.plot(TFree,   LFree,   color=freeCOL,   linewidth=LW, marker=freeMRK,   markersize=MS, linestyle=freeLS,   label=freeHS)
+        if len(TOnep) > 0:
+            plt.plot(TOnep,   LOnep,   color=onepCOL,   linewidth=LW, marker=onepMRK,   markersize=MS, linestyle=onepLS,   label=onepHS)
     if plotChained:
-        plt.plot(TChBase, LChBase, color=baseChCOL, linewidth=LW, marker=baseChMRK, markersize=MS, linestyle=baseChLS, label=baseChHS)
-        plt.plot(TChComb, LChComb, color=combChCOL, linewidth=LW, marker=combChMRK, markersize=MS, linestyle=combChLS, label=combChHS)
+        if len(TChBase) > 0:
+            plt.plot(TChBase, LChBase, color=baseChCOL, linewidth=LW, marker=baseChMRK, markersize=MS, linestyle=baseChLS, label=baseChHS)
+        if len(TChComb) > 0:
+            plt.plot(TChComb, LChComb, color=combChCOL, linewidth=LW, marker=combChMRK, markersize=MS, linestyle=combChLS, label=combChHS)
     if debugPlot:
         if plotBasic:
             for x,y,z in zip(TBase, LBase, aBase):
@@ -2298,6 +2880,10 @@ def createTVLplot(cFile,instances):
             for x,y,z in zip(TQuick, LQuick, aQuick):
                 plt.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
             for x,y,z in zip(TComb, LComb, aComb):
+                plt.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+            for x,y,z in zip(TFree, LFree, aFree):
+                plt.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+            for x,y,z in zip(TOnep, LOnep, aOnep):
                 plt.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
         if plotChained:
             for x,y,z in zip(TChBase, LChBase, aChBase):
@@ -2312,7 +2898,8 @@ def createTVLplot(cFile,instances):
     plt.legend()
 
     #ax.set_aspect(aspect=0.1)
-    plt.yscale('log')
+    if logScale:
+        plt.yscale('log')
     #plt.yscale('log',base=2)
 
     plt.savefig(tvlFile, bbox_inches='tight', pad_inches=0.05)
@@ -2455,6 +3042,32 @@ def TVL():
     # Cheap&Quick-HotStuff
     if runComb:
         oneTVL(protocol=Protocol.COMB,
+               constFactor=2,
+               numFaults=numFaults,
+               numTransPerBlock=numTransPerBlock,
+               payloadSize=payloadSize,
+               numClTrans=numClTrans,
+               numViews=numViews,
+               cutOffBound=cutOffBound,
+               sleepTimes=sleepTimes,
+               repeats=repeats)
+
+    # Free
+    if runFree:
+        oneTVL(protocol=Protocol.FREE,
+               constFactor=2,
+               numFaults=numFaults,
+               numTransPerBlock=numTransPerBlock,
+               payloadSize=payloadSize,
+               numClTrans=numClTrans,
+               numViews=numViews,
+               cutOffBound=cutOffBound,
+               sleepTimes=sleepTimes,
+               repeats=repeats)
+
+    # Onep
+    if runOnep:
+        oneTVL(protocol=Protocol.ONEP,
                constFactor=2,
                numFaults=numFaults,
                numTransPerBlock=numTransPerBlock,
@@ -2670,6 +3283,36 @@ def TVLaws():
                   sleepTimes=sleepTimes,
                   repeats=repeats)
 
+    if runFree:
+        oneTVLaws(protocol=Protocol.FREE,
+                  constFactor=2,
+                  numFaults=numFaults,
+                  allRepIds=allRepIds,
+                  allClIds=allClIds,
+                  numTransPerBlock=numTransPerBlock,
+                  payloadSize=payloadSize,
+                  numCl=numClients,
+                  numClTrans=numClTrans,
+                  numViews=numViews,
+                  cutOffBound=cutOffBound,
+                  sleepTimes=sleepTimes,
+                  repeats=repeats)
+
+    if runOnep:
+        oneTVLaws(protocol=Protocol.ONEP,
+                  constFactor=2,
+                  numFaults=numFaults,
+                  allRepIds=allRepIds,
+                  allClIds=allClIds,
+                  numTransPerBlock=numTransPerBlock,
+                  payloadSize=payloadSize,
+                  numCl=numClients,
+                  numClTrans=numClTrans,
+                  numViews=numViews,
+                  cutOffBound=cutOffBound,
+                  sleepTimes=sleepTimes,
+                  repeats=repeats)
+
 
     ## Chained Versions
 
@@ -2719,17 +3362,20 @@ def copyLatestExperiments():
     global tvlFile
     global plotBasic
     global plotChained
+    global plotHandle
+    global plotView
     global showYlabel
     global showLegend1
     global showLegend2
     global whichExp
     global showTitle
+    global debugPlot
 
-    showTitle   = False
+    showTitle = False
+    debugPlot = False
 
     plotBasic   = True
     plotChained = True
-
 
     showYlabel  = True
     showLegend1 = True
@@ -2739,7 +3385,7 @@ def copyLatestExperiments():
     whichExp  = "EUexp1"
     pointFile = statsdir+"/points-09-Sep-2021-14:37:34.270859"
     plotFile  = statsdir + "/plot-" + timestampStr + ".png"
-    (dTVBase1,dTVCheap1,dTVQuick1,dTVComb1,dTVChBase1,dTVChComb1,dLVBase1,dLVCheap1,dLVQuick1,dLVComb1,dLVChBase1,dLVChComb1) = createPlot(pointFile)
+    (dTVBase1,dTVCheap1,dTVQuick1,dTVComb1,dTVFree1,dTVOnep1,dTVChBase1,dTVChComb1,dLVBase1,dLVCheap1,dLVQuick1,dLVComb1,dLVFree1,dLVOnep1,dLVChBase1,dLVChComb1) = createPlot(pointFile)
     copyfile(plotFile,"../figures/eval-EUregs-256B.png")
 
     print("--THROUGHPUT/LATENCY EU256")
@@ -2754,7 +3400,7 @@ def copyLatestExperiments():
     whichExp  = "EUexp1"
     pointFile = statsdir+"/points-18-Sep-2021-08:40:10.075174"
     plotFile  = statsdir + "/plot-" + timestampStr + ".png"
-    (dTVBase2,dTVCheap2,dTVQuick2,dTVComb2,dTVChBase2,dTVChComb2,dLVBase2,dLVCheap2,dLVQuick2,dLVComb2,dLVChBase2,dLVChComb2) = createPlot(pointFile)
+    (dTVBase2,dTVCheap2,dTVQuick2,dTVComb2,dTVFree2,dTVOnep2,dTVChBase2,dTVChComb2,dLVBase2,dLVCheap2,dLVQuick2,dLVComb2,dLVFree2,dLVOnep2,dLVChBase2,dLVChComb2) = createPlot(pointFile)
     copyfile(plotFile,"../figures/eval-EUregs-0B.png")
 
     print("--THROUGHPUT/LATENCY EU0")
@@ -2769,7 +3415,7 @@ def copyLatestExperiments():
     whichExp  = "ALLexp1"
     pointFile = statsdir+"/points-12-Sep-2021-21:22:48.294547-v2"
     plotFile  = statsdir + "/plot-" + timestampStr + ".png"
-    (dTVBase3,dTVCheap3,dTVQuick3,dTVComb3,dTVChBase3,dTVChComb3,dLVBase3,dLVCheap3,dLVQuick3,dLVComb3,dLVChBase3,dLVChComb3) = createPlot(pointFile)
+    (dTVBase3,dTVCheap3,dTVQuick3,dTVComb3,dTVFree3,dTVOnep3,dTVChBase3,dTVChComb3,dLVBase3,dLVCheap3,dLVQuick3,dLVComb3,dLVFree3,dLVOnep3,dLVChBase3,dLVChComb3) = createPlot(pointFile)
     copyfile(plotFile,"../figures/eval-ALLregs-256B.png")
 
     print("--THROUGHPUT/LATENCY ALL256")
@@ -2784,7 +3430,7 @@ def copyLatestExperiments():
     whichExp  = "ALLexp1"
     pointFile = statsdir+"/points-23-Sep-2021-20:57:01.200810-v2"
     plotFile  = statsdir + "/plot-" + timestampStr + ".png"
-    (dTVBase4,dTVCheap4,dTVQuick4,dTVComb4,dTVChBase4,dTVChComb4,dLVBase4,dLVCheap4,dLVQuick4,dLVComb4,dLVChBase4,dLVChComb4) = createPlot(pointFile)
+    (dTVBase4,dTVCheap4,dTVQuick4,dTVComb4,dTVFree4,dTVOnep4,dTVChBase4,dTVChComb4,dLVBase4,dLVCheap4,dLVQuick4,dLVComb4,dLVFree4,dLVOnep4,dLVChBase4,dLVChComb4) = createPlot(pointFile)
     copyfile(plotFile,"../figures/eval-ALLregs-0B.png")
 
     print("--THROUGHPUT/LATENCY ALL0")
@@ -2807,39 +3453,123 @@ def copyLatestExperiments():
     createTVLplot(clientsFile,-1)
     copyfile(tvlFile,"../figures/tvl-basic-EUregs-0B.png")
 
+    showYlabel  = True
+    showLegend1 = True
+    showLegend2 = False
+
+    # ONEregion, payload=0
+    whichExp  = "ONEexp1"
+    pointFile = statsdir+"/points-08-Sep-2022-combined"
+    plotFile  = statsdir + "/plot-" + timestampStr + ".png"
+    (dTVBase1,dTVCheap1,dTVQuick1,dTVComb1,dTVFree1,dTVOnep1,dTVChBase1,dTVChComb1,dLVBase1,dLVCheap1,dLVQuick1,dLVComb1,dLVFree1,dLVOnep1,dLVChBase1,dLVChComb1) = createPlot(pointFile)
+    copyfile(plotFile,"../figures/eval-ONEreg-0B.png")
+
+    # ONEregion, payload=256
+    whichExp  = "ONEexp1"
+    pointFile = statsdir+"/points-16-Sep-2022-combined"
+    plotFile  = statsdir + "/plot-" + timestampStr + ".png"
+    (dTVBase1,dTVCheap1,dTVQuick1,dTVComb1,dTVFree1,dTVOnep1,dTVChBase1,dTVChComb1,dLVBase1,dLVCheap1,dLVQuick1,dLVComb1,dLVFree1,dLVOnep1,dLVChBase1,dLVChComb1) = createPlot(pointFile)
+    copyfile(plotFile,"../figures/eval-ONEreg-256B.png")
+
+    plotHandle = True
+    plotView   = False
+
+    # ONEregion, payload=0 -- handleonly
+    whichExp  = "ONEexp1"
+    pointFile = statsdir+"/points-08-Sep-2022-combined"
+    plotFile  = statsdir + "/plot-" + timestampStr + ".png"
+    (dTVBase1,dTVCheap1,dTVQuick1,dTVComb1,dTVFree1,dTVOnep1,dTVChBase1,dTVChComb1,dLVBase1,dLVCheap1,dLVQuick1,dLVComb1,dLVFree1,dLVOnep1,dLVChBase1,dLVChComb1) = createPlot(pointFile)
+    copyfile(plotFile,"../figures/eval-ONEreg-0B-handle.png")
+
+    # ONEregion, payload=256 --handleonly
+    whichExp  = "ONEexp1"
+    pointFile = statsdir+"/points-16-Sep-2022-combined"
+    plotFile  = statsdir + "/plot-" + timestampStr + ".png"
+    (dTVBase1,dTVCheap1,dTVQuick1,dTVComb1,dTVFree1,dTVOnep1,dTVChBase1,dTVChComb1,dLVBase1,dLVCheap1,dLVQuick1,dLVComb1,dLVFree1,dLVOnep1,dLVChBase1,dLVChComb1) = createPlot(pointFile)
+    copyfile(plotFile,"../figures/eval-ONEreg-256B-handle.png")
+
+
+def setRegion(reg):
+    global regions
+    if reg == ONEregionsNAME:
+        regions = (ONEregionsNAME, ONEregions)
+    elif reg == EUregionsNAME:
+        regions = (EUregionsNAME, EUregions)
+    elif reg == ALLregionsNAME:
+        regions = (ALLregionsNAME, ALLregions)
+    else:
+        # default
+        regions = (ONEregionsNAME, ONEregions)
 
 
 parser = argparse.ArgumentParser(description='X-HotStuff evaluation')
-parser.add_argument("--file",     help="file to plot", type=str, default="")
-parser.add_argument("--conf",     type=int, default=0)     # generate a configuration file for 'n' nodes
-parser.add_argument("--tvl",      action="store_true")     # throughput vs. latency experiments
-parser.add_argument("--tvlaws",   action="store_true")     # throughput vs. latency experiments on AWS
-parser.add_argument("--launch",   type=int, default=0)     # launch EC2 instances
-parser.add_argument("--aws",      action="store_true")     # run AWS
-parser.add_argument("--cluster",  action="store_true")     # run cluster
-parser.add_argument("--prepare",  action="store_true")     # prepare cluster
-parser.add_argument("--awstest",  action="store_true")     # test AWS
-parser.add_argument("--stop",     action="store_true")     # to terminate all instances
-parser.add_argument("--latest",   action="store_true")     # copies latest experiments to paper
-parser.add_argument("--copy",     type=str, default="")
-parser.add_argument("--docker",   action="store_true",  help="runs nodes locally in Docker containers")
-parser.add_argument("--repeats",  type=int, default=0,  help="number of repeats per experiment")
-parser.add_argument("--faults",   type=str, default="", help="the number of faults to test, separated by commas: 1,2,3,etc.")
-parser.add_argument("--test",     action="store_true",  help="to stop after checking the arguments")
-parser.add_argument("--payload",  type=int, default=0,  help="size of payloads in Bytes")
-parser.add_argument("--p1",       action="store_true",  help="sets runBase to True (base protocol, i.e., HotStuff)")
-parser.add_argument("--p2",       action="store_true",  help="sets runCheap to True (Damysus-C)")
-parser.add_argument("--p3",       action="store_true",  help="sets runQuick to True (Damysus-A)")
-parser.add_argument("--p4",       action="store_true",  help="sets runComb to True (Damysus)")
-parser.add_argument("--p5",       action="store_true",  help="sets runChBase to True (chained base protocol, i.e., chained HotStuff")
-parser.add_argument("--p6",       action="store_true",  help="sets runChComb to True (chained Damysus)")
-parser.add_argument("--pall",     action="store_true",  help="sets all runXXX to True, i.e., all protocols will be executed")
-parser.add_argument("--netlat",   type=int, default=0,  help="network latency in ms")
-parser.add_argument("--clients1", type=int, default=0,  help="number of clients for the non-chained versions")
-parser.add_argument("--clients2", type=int, default=0,  help="number of clients for the chained versions")
-parser.add_argument("--onecore",  action="store_true",  help="sets useMultiCores to False, i.e., use 1 core only to compile")
-parser.add_argument("--hw",       action="store_true",  help="sets sgxmode to HW, i.e., sgx will be used in hardware mode")
+parser.add_argument("--file",      help="file to plot", type=str, default="")
+parser.add_argument("--conf",       type=int, default=0)     # generate a configuration file for 'n' nodes
+parser.add_argument("--tvl",        action="store_true")     # throughput vs. latency experiments
+parser.add_argument("--tvlaws",     action="store_true")     # throughput vs. latency experiments on AWS
+parser.add_argument("--launch",     type=int, default=0)     # launch EC2 instances
+parser.add_argument("--aws",        action="store_true")     # run AWS
+parser.add_argument("--cluster",    action="store_true")     # run cluster
+parser.add_argument("--prepare",    action="store_true")     # prepare cluster
+parser.add_argument("--containers", type=int, default=0)     # launch Docker instances
+parser.add_argument("--awstest",    action="store_true")     # test AWS
+parser.add_argument("--stop",       action="store_true")     # to terminate all instances in the current region
+parser.add_argument("--stopall",    action="store_true")     # to terminate all instances in all regions
+parser.add_argument("--latest",     action="store_true")     # copies latest experiments to paper
+parser.add_argument("--copy",       type=str, default="",  help="copies all files to the AWS address provided as argument")
+parser.add_argument("--docker",     action="store_true",   help="runs nodes locally in Docker containers")
+parser.add_argument("--repeats",    type=int, default=0,   help="number of repeats per experiment")
+parser.add_argument("--repeats2",   type=int, default=0,   help="number of repeats per experiment (2nd level, i.e., regenerates AWS instances)")
+parser.add_argument("--faults",     type=str, default="",  help="the number of faults to test, separated by commas: 1,2,3,etc.")
+parser.add_argument("--test",       action="store_true",   help="to stop after checking the arguments")
+parser.add_argument("--payload",    type=int, default=0,   help="size of payloads in Bytes")
+parser.add_argument("--p1",         action="store_true",   help="sets runBase to True (base protocol, i.e., HotStuff)")
+parser.add_argument("--p2",         action="store_true",   help="sets runCheap to True (Damysus-C)")
+parser.add_argument("--p3",         action="store_true",   help="sets runQuick to True (Damysus-A)")
+parser.add_argument("--p4",         action="store_true",   help="sets runComb to True (Damysus)")
+parser.add_argument("--p5",         action="store_true",   help="sets runChBase to True (chained base protocol, i.e., chained HotStuff")
+parser.add_argument("--p6",         action="store_true",   help="sets runChComb to True (chained Damysus)")
+parser.add_argument("--p7",         action="store_true",   help="sets runFree to True (hash&signature-free Damysus)")
+parser.add_argument("--p8",         action="store_true",   help="sets runOnep to True (1+1/2 phase Damysus)")
+parser.add_argument("--pall",       action="store_true",   help="sets all runXXX to True, i.e., all protocols will be executed")
+parser.add_argument("--netlat",     type=int, default=0,   help="network latency in ms")
+parser.add_argument("--netvar",     type=int, default=0,   help="variation of the network latency in ms")
+parser.add_argument("--clients1",   type=int, default=0,   help="number of clients for the non-chained versions")
+parser.add_argument("--clients2",   type=int, default=0,   help="number of clients for the chained versions")
+parser.add_argument("--onecore",    action="store_true",   help="sets useMultiCores to False, i.e., use 1 core only to compile")
+parser.add_argument("--hw",         action="store_true",   help="sets sgxmode to HW, i.e., sgx will be used in hardware mode")
+parser.add_argument("--memory",     type=int, default=0,   help="memory used by docker containers")
+parser.add_argument("--cpus",       type=float, default=0, help="cpus used by docker containers")
+parser.add_argument("--nocompil",   action="store_true",   help="to not recompile the code at the beginnong of each experiment (should only be used when runnning an already compiled experiment)")
+parser.add_argument("--cutoff",     type=int, default=0,   help="time after which the experiments are stopped")
+parser.add_argument("--views",      type=int, default=0,   help="number of views to run per experiments")
+parser.add_argument("--regions",    type=str, default="",  help="the AWS regions to use (one, eu, all)")
+parser.add_argument("--handle",     action="store_true",   help="to plot handling times")
+parser.add_argument("--handleonly", action="store_true",   help="to plot handling times only")
+parser.add_argument("--crypto",     action="store_true",   help="to plot crypto times")
+parser.add_argument("--cryptoonly", action="store_true",   help="to plot crypto times only")
+parser.add_argument("--debug",      type=int, default=1,   help="to print debugging information while plotting (0 means no)")
+parser.add_argument("--latency",    type=int, default=1,   help="to not print debugging information while plotting (0 means no)")
+parser.add_argument("--throughput", type=int, default=1,   help="to not print debugging information while plotting (0 means no)")
 args = parser.parse_args()
+
+
+if args.regions:
+    if args.regions in [ONEregionsNAME,EUregionsNAME,ALLregionsNAME]:
+        setRegion(args.regions)
+        print("SUCCESSFULLY PARSED ARGUMENT - regions is", args.regions)
+    else:
+        print("UNSUCCESSFULLY PARSED regions ARGUMENT")
+
+
+if args.views > 0:
+    numViews = args.views
+    print("SUCCESSFULLY PARSED ARGUMENT - the number of views is now:", numViews)
+
+
+if args.cutoff > 0:
+    cutOffBound = args.cutoff
+    print("SUCCESSFULLY PARSED ARGUMENT - the cutoff bound is now:", cutOffBound)
 
 
 if args.repeats > 0:
@@ -2847,9 +3577,29 @@ if args.repeats > 0:
     print("SUCCESSFULLY PARSED ARGUMENT - the number of repeats is now:", repeats)
 
 
+if args.repeats2 > 0:
+    repeatsL2 = args.repeats2
+    print("SUCCESSFULLY PARSED ARGUMENT - the number of 2nd level repeats is now:", repeatsL2)
+
+
+if args.memory > 0:
+    dockerMem = args.memory
+    print("SUCCESSFULLY PARSED ARGUMENT - the memory used by docker containers is now (in MB):", dockerMem)
+
+
+if args.cpus > 0:
+    dockerCpu = args.cpus
+    print("SUCCESSFULLY PARSED ARGUMENT - the cpus used by docker containers is now:", dockerCpu)
+
+
 if args.netlat >= 0:
     networkLat = args.netlat
     print("SUCCESSFULLY PARSED ARGUMENT - the network latency (in ms) will be changed using netem to:", networkLat)
+
+
+if args.netvar >= 0:
+    networkVar = args.netvar
+    print("SUCCESSFULLY PARSED ARGUMENT - the variation of the network latency (in ms) will be changed using netem to:", networkVar)
 
 
 if args.payload >= 0:
@@ -2860,6 +3610,60 @@ if args.payload >= 0:
 if args.docker:
     runDocker = True
     print("SUCCESSFULLY PARSED ARGUMENT - running nodes in Docker containers")
+
+
+if args.nocompil:
+    recompile = False
+    print("SUCCESSFULLY PARSED ARGUMENT - will not re-compile the code")
+
+
+if args.handle:
+    plotHandle = True
+    print("SUCCESSFULLY PARSED ARGUMENT - will plot handling time")
+
+
+if args.crypto:
+    plotCrypto = True
+    print("SUCCESSFULLY PARSED ARGUMENT - will plot crypto time")
+
+
+if args.handleonly:
+    plotHandle = True
+    plotView   = False
+    print("SUCCESSFULLY PARSED ARGUMENT - will plot handling time only")
+
+
+if args.cryptoonly:
+    plotCrypto = True
+    plotView   = False
+    print("SUCCESSFULLY PARSED ARGUMENT - will plot crypto time only")
+
+
+if 0 <= args.debug:
+    if args.debug == 0:
+        debugPlot = False
+        print("SUCCESSFULLY PARSED ARGUMENT - will not print debugging info while plotting")
+    else:
+        debugPlot = True
+        print("SUCCESSFULLY PARSED ARGUMENT - will print debugging info while plotting")
+
+
+if 0 <= args.latency:
+    if args.latency == 0:
+        plotLatency = False
+        print("SUCCESSFULLY PARSED ARGUMENT - will not plot latency")
+    else:
+        plotLatency = True
+        print("SUCCESSFULLY PARSED ARGUMENT - will plot latency")
+
+
+if 0 <= args.throughput:
+    if args.throughput == 0:
+        plotThroughput = False
+        print("SUCCESSFULLY PARSED ARGUMENT - will not plot throughput")
+    else:
+        plotThroughput = True
+        print("SUCCESSFULLY PARSED ARGUMENT - will plot throughput")
 
 
 if args.onecore:
@@ -2902,11 +3706,21 @@ if args.p6:
     runChComb = True
     print("SUCCESSFULLY PARSED ARGUMENT - testing chained Damysus")
 
+if args.p7:
+    runFree = True
+    print("SUCCESSFULLY PARSED ARGUMENT - testing hash&signature-free Damysus")
+
+if args.p8:
+    runOnep = True
+    print("SUCCESSFULLY PARSED ARGUMENT - testing 1+1/2 phase Damysus")
+
 if args.pall:
     runBase   = True
     runCheap  = True
     runQuick  = True
     runComb   = True
+    runFree   = True
+    runOnep   = True
     runChBase = True
     runChComb = True
     print("SUCCESSFULLY PARSED ARGUMENT - testing all protocols")
@@ -2939,6 +3753,52 @@ elif args.tvlaws:
 elif args.launch:
     print("lauching AWS instances")
     startInstances(args.launch,0)
+elif args.containers:
+    print("lauching Docker containers")
+    numContainers = args.containers
+    startContainers(numContainers,0)
+    prot = Protocol.ONEP
+    fact = 2
+    if args.p1:
+        prop = Protocol.BASE
+        fact = 3
+    elif args.p2:
+        prop = Protocol.CHEAP
+        fact = 2
+    elif args.p3:
+        prop = Protocol.QUICK
+        fact = 2
+    elif args.p4:
+        prop = Protocol.COMB
+        fact = 2
+    elif args.p5:
+        prop = Protocol.CHBASE
+        fact = 3
+    elif args.p6:
+        prop = Protocol.CHCOMB
+        fact = 2
+    elif args.p7:
+        prop = Protocol.FREE
+        fact = 2
+    elif args.p8:
+        prop = Protocol.ONEP
+        fact = 2
+    else:
+        prop = Protocol.ONEP
+        fact = 2
+    mkParams(protocol=prot,constFactor=fact,numFaults=1,numTrans=400,payloadSize=0)
+    for i in range(numContainers):
+        instance = dockerBase + str(i)
+        src = "Makefile"
+        dst = instance + ":/app/"
+        subprocess.run([docker + " cp " + src + " " + dst], shell=True, check=True)
+        src =  "App/."
+        dst = instance + ":/app/App/"
+        subprocess.run([docker + " cp " + src + " " + dst], shell=True, check=True)
+        src =  "Enclave/."
+        dst = instance + ":/app/Enclave/"
+        subprocess.run([docker + " cp " + src + " " + dst], shell=True, check=True)
+        subprocess.run([docker + " exec -t " + instance + " bash -c \"" + srcsgx + "; make clean; make -j " + str(1) + " SGX_MODE=" + sgxmode + "\""], shell=True, check=True)
 elif args.copy:
     print("copying files to AWS instance")
     copyToAddr(args.copy)
@@ -2955,8 +3815,11 @@ elif args.prepare:
     print("preparing cluster")
     prepareCluster()
 elif args.stop:
-    print("terminate all AWS instances")
+    print("terminate all AWS instances in the current region")
     terminateAllInstances()
+elif args.stopall:
+    print("terminate all AWS instances in all regions")
+    terminateAllInstancesAllRegs()
 elif args.latest:
     print("copies latest experiments to paper")
     copyLatestExperiments()

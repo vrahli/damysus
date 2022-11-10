@@ -60,7 +60,6 @@ CID cid = 0;                          // id of this client
 unsigned int numInstances = 1;        // by default clients wait for only 1 instance
 std::map<TID,TransInfo> transactions; // current transactions
 std::map<TID,double> execTrans;       // set of executed transaction ids
-Nodes nodes("config");                          // holds the public keys of the nodes
 unsigned int sleepTime = 1;           // time the client sleeps between two sends (in microseconds)
 
 Clock beginning;
@@ -292,6 +291,8 @@ int main(int argc, char const *argv[]) {
 
   numNodes = (constFactor*numFaults)+1;
   qsize = numNodes-numFaults;
+  std::string confFile = "config";
+  Nodes nodes(confFile,numNodes);
   //numInstancesPerNode = numInstances / numNodes;
   //numInstances = numInstancesPerNode * numNodes;
   //std::cout << cnfo() << "instances per node:" << numInstancesPerNode << "; instances:" << numInstances << KNRM << std::endl;
@@ -352,6 +353,21 @@ int main(int argc, char const *argv[]) {
                    sizeof(MsgLdrPrepareComb),
                    sizeof(MsgPrepareComb),
                    sizeof(MsgPreCommitComb)});
+  #elif defined(BASIC_FREE)
+  size = std::max({size,
+                   sizeof(MsgNewViewFree),
+                   sizeof(MsgLdrPrepareFree),
+                   sizeof(MsgBckPrepareFree),
+                   sizeof(MsgPrepareFree),
+                   sizeof(MsgPreCommitFree)});
+  #elif defined(BASIC_ONEP)
+  size = std::max({size,
+                   sizeof(MsgNewViewOPA),
+                   sizeof(MsgNewViewOPB),
+                   sizeof(MsgLdrPrepareOPA),
+                   sizeof(MsgLdrPrepareOPB),
+                   sizeof(MsgBckPrepareOP),
+                   sizeof(MsgPreCommitOP)});
   #elif defined(CHAINED_BASELINE)
   size = std::max({size,
                    sizeof(MsgNewViewCh),

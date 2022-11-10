@@ -1,3 +1,9 @@
+
+
+
+
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -57,15 +63,15 @@ Just TrustedCh::TEEsign() {
 }
 
 
-bool verify(PID id, Nodes nodes, Just just) {
-  return just.getSigns().verify(id,nodes,just.getRData().toString());
+bool verify(Stats &stats, PID id, Nodes nodes, Just just) {
+  return just.getSigns().verify(stats,id,nodes,just.getRData().toString());
 }
 
 
-Just TrustedCh::TEEprepare(Nodes nodes, JBlock block, JBlock block0, JBlock block1) {
+Just TrustedCh::TEEprepare(Stats &stats, Nodes nodes, JBlock block, JBlock block0, JBlock block1) {
   Just just = block.getJust();
   Just just0 = block0.getJust();
-  bool vb = verify(this->id,nodes,just);
+  bool vb = verify(stats,this->id,nodes,just);
   if (vb
       && this->view == just.getRData().getPropv()+1
       && just.wellFormed(this->qsize)

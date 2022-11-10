@@ -149,6 +149,35 @@ bool msgPreCommitCombFrom(std::set<MsgPreCommitComb> msgs, std::set<PID> signers
   return false;
 }
 
+bool msgNewViewFreeFrom(std::set<MsgNewViewFree> msgs, PID signer) {
+  for (std::set<MsgNewViewFree>::iterator it=msgs.begin(); it!=msgs.end(); ++it) {
+    MsgNewViewFree msg = (MsgNewViewFree)*it;
+    PID k = msg.auth.getId();
+    if (signer == k) { return true; }
+  }
+  return false;
+}
+
+bool msgPrepareFreeFrom(PJust msg, PID signer) {
+  std::set<PID> k = msg.getAuths().getSigners();
+  if (signer == msg.getAuth().getId()) { return true; }
+  for (int i = 0; i < msg.getAuths().getSize(); i++) {
+    if (signer == msg.getAuths().get(i).getId()) { return true; }
+  }
+  return false;
+}
+
+bool msgPreCommitFreeFrom(std::set<MsgPreCommitFree> msgs, std::set<PID> signers) {
+  for (std::set<MsgPreCommitFree>::iterator it=msgs.begin(); it!=msgs.end(); ++it) {
+    MsgPreCommitFree msg = (MsgPreCommitFree)*it;
+    std::set<PID> k = msg.auths.getSigners();
+    for (std::set<PID>::iterator it2=k.begin(); it2!=k.end(); ++it2) {
+      signers.erase((PID)*it2);
+      if (signers.empty()) { return true; }
+    }
+  }
+  return false;
+}
 
 unsigned int Log::storeNv(MsgNewView msg) {
   RData rdata = msg.rdata;
@@ -582,8 +611,415 @@ Signs Log::getPrecommitComb(View view, unsigned int n) {
   return signs;
 }
 
+unsigned int Log::storeNvFree(MsgNewViewFree msg) {
+  FData data = msg.data;
+  View v = data.getView();
+  PID signer = msg.auth.getId();
+
+  std::map<View,std::set<MsgNewViewFree>>::iterator it1 = this->newviewsFree.find(v);
+  if (it1 != this->newviewsFree.end()) { // there is already an entry for this view
+    std::set<MsgNewViewFree> msgs = it1->second;
+
+    // We only add 'msg' to the log if the sender hasn't already sent a new-view message for this view
+    if (!msgNewViewFreeFrom(msgs,signer)) {
+      msgs.insert(msg);
+      this->newviewsFree[v]=msgs;
+      //if (DEBUG) { std::cout << KGRN << "updated entry; #=" << msgs.size() << KNRM << std::endl; }
+      return msgs.size();
+      //k[hdr]=msgs;
+      //log[v]=k;
+    }
+
+    //return msgs.size();
+  } else { // there is no entry for this view
+    this->newviewsFree[v]={msg};
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+std::set<MsgNewViewFree> Log::getNewViewFree(View view, unsigned int n) {
+  std::set<MsgNewViewFree> ret;
+  std::map<View,std::set<MsgNewViewFree>>::iterator it1 = this->newviewsFree.find(view);
+  if (it1 != this->newviewsFree.end()) { // there is already an entry for this view
+    std::set<MsgNewViewFree> msgs = it1->second;
+    for (std::set<MsgNewViewFree>::iterator it=msgs.begin(); ret.size() < n && it!=msgs.end(); ++it) {
+      MsgNewViewFree msg = (MsgNewViewFree)*it;
+      ret.insert(msg);
+    }
+  }
+  return ret;
+}
+
+
+unsigned int Log::storePrepFree(PJust msg) {
+  View v = msg.getView();
+
+  std::map<View,std::tuple<PJust>>::iterator it1 = this->preparesFree.find(v);
+  if (it1 != this->preparesFree.end()) { // there is already an entry for this view
+    if (DEBUG1) { std::cout << KGRN << "updating prep for view (" << v << ")" << KNRM << std::endl; }
+    // We update the entry with the new info
+    PJust prep = std::get<0>(it1->second);
+    PJust just(msg.getHash(),msg.getView(),msg.getAuth(),prep.getAuths());
+    it1->second = std::make_tuple(just);
+    return prep.sizeAuth();
+  } else { // there is no entry for this view
+    if (DEBUG1) { std::cout << KGRN << "storing prep for view (" << v << ")" << KNRM << std::endl; }
+    this->preparesFree[v] = std::make_tuple(msg);
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+
+unsigned int Log::storeBckPrepFree(MsgBckPrepareFree msg) {
+  if (DEBUG1) std::cout << KLBLU << "storeBckPrepFree-0" << KNRM << std::endl;
+  View v = msg.view;
+  PID signer = msg.auth.getId();
+
+  std::map<View,std::tuple<PJust>>::iterator it1 = this->preparesFree.find(v);
+  if (it1 != this->preparesFree.end()) { // there is already an entry for this view
+    PJust prep = std::get<0>(it1->second);
+    if (DEBUG1) std::cout << KLBLU << "storeBckPrepFree-1" << KNRM << std::endl;
+
+    // We only add 'msg' to the log if the sender hasn't already sent a new-view message for this view
+    if (!msgPrepareFreeFrom(prep,signer)) {
+      //Auths auths = prep.auths;
+      //auths.add(msg.auth);
+      //MsgPrepareFree newprep = MsgPrepareFree(prep.hash,prep.view,prep.auth,auths);
+      //it1->second = newprep;
+      //this->preparesFree[v].setAuths(auths);
+      if (DEBUG1) { std::cout << KGRN << "updating bck prep for view (" << v << ")" << KNRM << std::endl; }
+      prep.add(msg.auth);
+      it1->second = std::make_tuple(prep);
+      unsigned int s = prep.sizeAuth();
+      if (DEBUG1) std::cout << KLBLU << "storeBckPrepFree-4(" << s << ")" << KNRM << std::endl;
+      //if (DEBUG) { std::cout << KGRN << "updated entry; #=" << msgs.size() << KNRM << std::endl; }
+      return s;
+    }
+  } else { // there is no entry for this view
+    PJust newprep = PJust(Hash(false),msg.view,Auth(false),Auths(msg.auth));
+    if (DEBUG1) { std::cout << KGRN << "storing bck prep for view (" << v << ")" << KNRM << std::endl; }
+    this->preparesFree[v] = std::make_tuple(newprep);
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+unsigned int Log::storeLdrPrepFree(HAccum msg) {
+  View v = msg.getView();
+
+  std::map<View,std::tuple<HAccum>>::iterator it1 = this->ldrpreparesFree.find(v);
+  if (it1 != this->ldrpreparesFree.end()) { // there is already an entry for this view
+    return 1;
+  } else { // there is no entry for this view
+    this->ldrpreparesFree[v] = std::make_tuple(msg);
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+PJust Log::getPrepareFree(View view) {
+  std::map<View,std::tuple<PJust>>::iterator it1 = this->preparesFree.find(view);
+  if (it1 != this->preparesFree.end()) { // there is already an entry for this view
+    return std::get<0>(it1->second);
+  }
+  PJust msg(Hash(false),0,Auth(false),Auths());
+  return msg;
+}
+
+
+unsigned int Log::storePcFree(MsgPreCommitFree msg) {
+  View v = msg.view;
+  std::set<PID> signers = msg.auths.getSigners();
+
+  std::map<View,std::set<MsgPreCommitFree>>::iterator it1 = this->precommitsFree.find(v);
+  if (it1 != this->precommitsFree.end()) { // there is already an entry for this view
+    std::set<MsgPreCommitFree> msgs = it1->second;
+
+    if (!msgPreCommitFreeFrom(msgs,signers)) {
+      msgs.insert(msg);
+      this->precommitsFree[v]=msgs;
+      return msgs.size();
+    }
+  } else { // there is no entry for this view
+    this->precommitsFree[v]={msg};
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+Auths Log::getPrecommitFree(View view, unsigned int n) {
+  Auths auths;
+  std::map<View,std::set<MsgPreCommitFree>>::iterator it1 = this->precommitsFree.find(view);
+  if (it1 != this->precommitsFree.end()) { // there is already an entry for this view
+    std::set<MsgPreCommitFree> msgs = it1->second;
+    for (std::set<MsgPreCommitFree>::iterator it=msgs.begin(); auths.getSize() < n && it!=msgs.end(); ++it) {
+      MsgPreCommitFree msg = (MsgPreCommitFree)*it;
+      Auths others = msg.auths;
+      auths.addUpto(others,n);
+    }
+  }
+  return auths;
+}
+
 
 ///////////////////
+
+
+
+unsigned int Log::storeNvOp(MsgNewViewOPA msg) {
+  View v = msg.prep.getView();
+//  PID signer = msg.prep.auth.getId();
+
+  std::map<View,std::set<OPprepare>>::iterator it1 = this->newviewsOPa.find(v);
+  if (it1 != this->newviewsOPa.end()) { // there is already an entry for this view
+    std::set<OPprepare> msgs = it1->second;
+
+    // if there's already a stored prepared message, we don't do anything
+    if (msgs.size() == 0) {
+      msgs.insert(msg.prep);
+      this->newviewsOPa[v]=msgs;
+    }
+    return msgs.size();
+
+  } else { // there is no entry for this view
+    this->newviewsOPa[v]={msg.prep};
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+bool msgNewViewOpFrom(std::set<OPnvblock> msgs, PID i, View x) {
+  for (std::set<OPnvblock>::iterator it=msgs.begin(); it!=msgs.end(); ++it) {
+    OPnvblock msg = (OPnvblock)*it;
+    if (i == msg.store.getAuth().getId()) { return true; }
+  }
+  return false;
+}
+
+
+unsigned int Log::storeNvOp(MsgNewViewOPB msg) {
+  View v = msg.nv.store.getView();
+  PID  i = msg.nv.store.getAuth().getId();
+  View x = msg.nv.store.getV();
+
+  std::map<View,std::set<OPnvblock>>::iterator it1 = this->newviewsOPb.find(v);
+  if (it1 != this->newviewsOPb.end()) { // there is already an entry for this view
+    std::set<OPnvblock> msgs = it1->second;
+
+    // if there's already a stored prepared message form i, we don't do anything
+    if (!msgNewViewOpFrom(msgs,i,x)) {
+      msgs.insert(msg.nv);
+      this->newviewsOPb[v]=msgs;
+    }
+    return msgs.size();
+
+  } else { // there is no entry for this view
+    this->newviewsOPb[v]={msg.nv};
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+std::set<OPnvblock> Log::getNvOps(View view, unsigned int n) {
+  std::set<OPnvblock> ret;
+  std::map<View,std::set<OPnvblock>>::iterator it1 = this->newviewsOPb.find(view);
+  if (it1 != this->newviewsOPb.end()) { // there is already an entry for this view
+    std::set<OPnvblock> msgs = it1->second;
+    for (std::set<OPnvblock>::iterator it=msgs.begin(); ret.size() < n && it!=msgs.end(); ++it) {
+      OPnvblock msg = (OPnvblock)*it;
+      ret.insert(msg);
+    }
+  }
+  return ret;
+}
+
+
+bool OPstoreFrom(std::set<OPstore> msgs, PID signer) {
+  for (std::set<OPstore>::iterator it=msgs.begin(); it!=msgs.end(); ++it) {
+    OPstore msg = (OPstore)*it;
+    PID k = msg.getAuth().getId();
+    if (signer == k) { return true; }
+  }
+  return false;
+}
+
+
+unsigned int Log::storeStoreOp(OPstore msg) {
+  View v = msg.getView();
+
+  std::map<View,std::set<OPstore>>::iterator it1 = this->storesOP.find(v);
+  if (it1 != this->storesOP.end()) { // there is already an entry for this view
+    std::set<OPstore> msgs = it1->second;
+
+    if (!OPstoreFrom(msgs,msg.getAuth().getId())) {
+      msgs.insert(msg);
+      this->storesOP[v]=msgs;
+      return msgs.size();
+    }
+  } else { // there is no entry for this view
+    this->storesOP[v]={msg};
+    if (DEBUG1) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+OPprepare Log::getOPstores(View view, unsigned int n) {
+  OPprepare ret;
+  std::map<View,std::set<OPstore>>::iterator it1 = this->storesOP.find(view);
+  if (it1 != this->storesOP.end()) { // there is already an entry for this view
+    std::set<OPstore> msgs = it1->second;
+    if (DEBUG1) { std::cout << KGRN << "making prepare (" << msgs.size() << ")" << KNRM << std::endl; }
+    for (std::set<OPstore>::iterator it=msgs.begin(); ret.getAuths().getSize() < n && it!=msgs.end(); ++it) {
+      OPstore msg = (OPstore)*it;
+      if (DEBUG1) { std::cout << KGRN << "store:" << msg.getHash().toString() << KNRM << std::endl; }
+      ret.insert(msg);
+    }
+  }
+  return ret;
+}
+
+
+unsigned int Log::storeLdrPrepOp(LdrPrepareOP msg) {
+  View v = msg.prop.getView();
+
+  std::map<View,std::tuple<LdrPrepareOP>>::iterator it1 = this->ldrpreparesOP.find(v);
+  if (it1 != this->ldrpreparesOP.end()) { // there is already an entry for this view
+    return 1;
+  } else { // there is no entry for this view
+    this->ldrpreparesOP[v] = std::make_tuple(msg);
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+LdrPrepareOP Log::getLdrPrepareOp(View view) {
+  std::map<View,std::tuple<LdrPrepareOP>>::iterator it = this->ldrpreparesOP.find(view);
+  if (it != this->ldrpreparesOP.end()) { // there is already an entry for this view
+    LdrPrepareOP msg = std::get<0>(it->second);
+    return msg;
+  }
+  LdrPrepareOP msg; //(HAccum(),Block());
+  return msg;
+}
+
+
+unsigned int Log::storePrepareOp(OPprepare msg) {
+  View v = msg.getView();
+
+  std::map<View,std::set<OPprepare>>::iterator it1 = this->preparesOP.find(v);
+  if (it1 != this->preparesOP.end()) { // there is already an entry for this view
+    std::set<OPprepare> msgs = it1->second;
+
+    if (msgs.size() == 0) {
+      msgs.insert(msg);
+      this->preparesOP[v]=msgs;
+      return msgs.size();
+    }
+
+  } else { // there is no entry for this view
+    this->preparesOP[v]={msg};
+    if (DEBUG1) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+OPprepare Log::getOPprepare(View view) {
+  OPprepare ret;
+  std::map<View,std::set<OPprepare>>::iterator it1 = this->preparesOP.find(view);
+  if (it1 != this->preparesOP.end()) { // there is already an entry for this view
+    std::set<OPprepare> msgs = it1->second;
+    if (msgs.size() > 0) {
+      std::set<OPprepare>::iterator it=msgs.begin();
+      ret = (OPprepare)*it;
+    }
+  }
+  return ret;
+}
+
+
+unsigned int Log::storeVoteOp(OPvote msg) {
+  View v = msg.getView();
+
+  std::map<View,std::set<OPvote>>::iterator it1 = this->votesOP.find(v);
+  if (it1 != this->votesOP.end()) { // there is already an entry for this view
+    std::set<OPvote> msgs = it1->second;
+
+    std::set<OPvote>::iterator it2 = msgs.begin();
+    while (it2 != msgs.end()) {
+      OPvote vote = (OPvote)*it2;
+      if (msg.getHash() == vote.getHash()) {
+        msgs.erase(it2);
+        vote.insert(msg.getAuths());
+        msgs.insert(vote);
+        this->votesOP[v]=msgs;
+        return vote.getAuths().getSize();
+      }
+    }
+
+    return 0;
+
+  } else { // there is no entry for this view
+    this->votesOP[v]={msg};
+    if (DEBUG1) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return msg.getAuths().getSize();
+  }
+
+  return 0;
+}
+
+
+OPvote Log::getOPvote(View view, unsigned int n) {
+  std::map<View,std::set<OPvote>>::iterator it1 = this->votesOP.find(view);
+  if (it1 != this->votesOP.end()) { // there is already an entry for this view
+    std::set<OPvote> msgs = it1->second;
+    std::set<OPvote>::iterator it2 = msgs.begin();
+    while (it2 != msgs.end()) {
+      OPvote vote = (OPvote)*it2;
+      if (vote.getAuths().getSize() >= n) {
+        return vote;
+      }
+    }
+  }
+  return OPvote();
+}
+
+
+
+///////////////////
+
+
 
 bool msgNewViewChFrom(std::set<MsgNewViewCh> msgs, PID signer) {
   for (std::set<MsgNewViewCh>::iterator it=msgs.begin(); it!=msgs.end(); ++it) {
@@ -1259,6 +1695,17 @@ MsgLdrPrepareComb Log::firstLdrPrepareComb(View view) {
 }
 
 
+HAccum Log::getLdrPrepareFree(View view) {
+  std::map<View,std::tuple<HAccum>>::iterator it = this->ldrpreparesFree.find(view);
+  if (it != this->ldrpreparesFree.end()) { // there is already an entry for this view
+    HAccum msg = std::get<0>(it->second);
+    return msg;
+  }
+  HAccum msg; //(HAccum(),Block());
+  return msg;
+}
+
+
 MsgPrepareComb Log::firstPrepareComb(View view) {
   std::map<View,std::set<MsgPrepareComb>>::iterator it = this->preparesComb.find(view);
   if (it != this->preparesComb.end()) { // there is already an entry for this view
@@ -1283,5 +1730,18 @@ MsgPreCommitComb Log::firstPrecommitComb(View view) {
   }
   RData data;
   MsgPreCommitComb msg(data,{});
+  return msg;
+}
+
+MsgPreCommitFree Log::firstPrecommitFree(View view) {
+  std::map<View,std::set<MsgPreCommitFree>>::iterator it = this->precommitsFree.find(view);
+  if (it != this->precommitsFree.end()) { // there is already an entry for this view
+    std::set<MsgPreCommitFree> msgs = it->second;
+    if (0 < msgs.size()) { // We return the first element
+      return (MsgPreCommitFree)*(msgs.begin());
+    }
+  }
+  View v = 0;
+  MsgPreCommitFree msg(view,{});
   return msg;
 }

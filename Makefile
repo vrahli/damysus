@@ -156,7 +156,7 @@ else
 endif
 Crypto_Library_Name := sgx_tcrypto
 
-Enclave_Cpp_Files := Enclave/EnclaveShare.cpp Enclave/Enclave.cpp Enclave/EnclaveAccum.cpp Enclave/EnclaveComb.cpp Enclave/EnclaveCh.cpp Enclave/EnclaveChComb.cpp
+Enclave_Cpp_Files := Enclave/EnclaveShare.cpp Enclave/Enclave.cpp Enclave/EnclaveAccum.cpp Enclave/EnclaveComb.cpp Enclave/EnclaveFree.cpp Enclave/EnclaveOP.cpp Enclave/EnclaveCh.cpp Enclave/EnclaveChComb.cpp
 #Enclave_C_Files := Enclave/ecdsatest.c
 Enclave_Include_Paths := -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/libcxx -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport -I$(SGXSSL_INCLUDE_PATH)
 
@@ -219,7 +219,7 @@ server: App/Server.o $(Nsgx_App_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(LDLIBS) $(Salticidae_Lib_Paths) -lsalticidae $(Salticidae_Include_Paths)
 	@echo "LINK <= $@"
 
-client: App/Client.o App/Signs.o App/Sign.o App/Nodes.o App/NodeInfo.o App/KeysFun.o App/Transaction.o # $(Nsgx_App_Cpp_Objects)
+client: App/Client.o App/Stats.o App/Signs.o App/Sign.o App/Nodes.o App/NodeInfo.o App/KeysFun.o App/Transaction.o # $(Nsgx_App_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(LDLIBS) $(Salticidae_Lib_Paths) -lsalticidae $(Salticidae_Include_Paths)
 	@echo "LINK <= $@"
 
@@ -246,7 +246,7 @@ $(App_Name): App/Server.cpp App/Enclave_u.o $(App_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(App_Link_Flags) $(App_Include_Paths)
 	@echo "LINK =>  $@"
 
-sgxclient: App/Client.cpp App/Signs.o App/Sign.o App/Nodes.o App/NodeInfo.o App/KeysFun.o App/Transaction.o #App/Enclave_u.o $(App_Cpp_Objects)
+sgxclient: App/Client.cpp App/Stats.o App/Signs.o App/Sign.o App/Nodes.o App/NodeInfo.o App/KeysFun.o App/Transaction.o #App/Enclave_u.o $(App_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(App_Link_Flags) $(App_Include_Paths)
 	@echo "LINK <= $@"
 
@@ -285,4 +285,4 @@ $(Signed_Enclave_Name): $(Enclave_Name)
 .PHONY: clean
 
 clean:
-	@rm -f $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(App_Cpp_Objects) App/Keys.o App/Client.o App/Server.o App/Enclave_u.* $(Enclave_Cpp_Objects) Enclave/Enclave_t.*
+	@rm -f $(App_Name) sgxclient sgxkeys $(Enclave_Name) $(Signed_Enclave_Name) $(App_Cpp_Objects) App/Keys.o App/Client.o App/Server.o App/Enclave_u.* $(Enclave_Cpp_Objects) Enclave/Enclave_t.*

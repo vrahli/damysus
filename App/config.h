@@ -5,38 +5,18 @@
 #include "params.h"
 
 
-// Uncomment to use basic HotStuff-like
-//#define BASIC_BASELINE
-
-// Uncomment to use basic Cheap
-//#define BASIC_CHEAP
-
-// Uncomment to use basic Quick
-//#define BASIC_QUICK
-
-// Uncomment to use basic Quick - debug version (no SGX)
-//#define BASIC_QUICK_DEBUG
-
-// Uncomment to use basic Cheap&Quick
-//#define BASIC_CHEAP_AND_QUICK
-
-// Uncomment to use chained HotStuff-like
-//#define CHAINED_BASELINE
-
-// Uncomment to use chained Cheap&Quick
-//#define CHAINED_CHEAP_AND_QUICK
-
-// Uncomment to use chained Cheap&Quick - debug version (no SGX)
-//#define CHAINED_CHEAP_AND_QUICK_DEBUG
-
 // debug switches
 #define DEBUG   false
 #define DEBUG0  true
 #define DEBUG1  false
 #define DEBUG2  false
-// to, in particular, print 'EXECUTE' messages
+// to print timing info
+#define DEBUGT  false
+// adds ocalls to profile crypto in enclaves
+#define DEBUGOT false
+// to print 'EXECUTE' messages
 #define DEBUGE  true
-// to, in particular, print client messages
+// to print client messages
 #define DEBUGC  false
 
 
@@ -45,6 +25,7 @@
 #define MAXLINE            256
 #define RSA_NUM_BITS4k     4096
 #define RSA_NUM_BITS2k     2048
+#define MAX_SIZE_PAYLOAD   4096 // TODO: change that to something sensible
 
 //#define SOCK_KIND SOCK_STREAM // TCP
 //#define SOCK_KIND SOCK_DGRAM  // UDP

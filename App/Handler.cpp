@@ -25,22 +25,24 @@
 bool hardStop = false;
 
 std::mutex mu_trans;
+std::mutex mu_handle;
 
 Time startTime = std::chrono::steady_clock::now();
 Time startView = std::chrono::steady_clock::now();
-std::string statsThroughputView;   // counts the network delays
-std::string statsLatencyView;      // counts the network delays
-std::string statsThroughputHandle; // doesn't count the network delays
-std::string statsLatencyHandle;    // doesn't count the network delays
+std::string statsVals;             // Throuput + latency + handle + crypto
 std::string statsDone;             // done recording the stats
 
+Time curTime;
+
+Stats stats;                   // To collect statistics
 
 
 std::string Handler::nfo() { return "[" + std::to_string(this->myid) + "]"; }
 
 
 
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
+// These versions use trusted components
 #else
 // Trusted Component (would have to be executed in a TEE):
 TrustedFun tf;
@@ -63,20 +65,35 @@ void setHash(Hash hash, hash_t *h) {
 }
 
 
+void setPayload(std::string s, payload_t *p) {
+  p->size=s.size();
+  memcpy(p->data,s.c_str(),s.size()); // MAX_SIZE_PAYLOAD
+}
+
+
 // stores [rdata] in [d]
 void setRData(RData data, rdata_t *d) {
   // proph
-  d->proph.set=data.getProph().getSet();
-  memcpy(d->proph.hash,data.getProph().getHash(),SHA256_DIGEST_LENGTH);
+  setHash(data.getProph(),&(d->proph));
   // propv
   d->propv=data.getPropv();
   // justh
-  d->justh.set=data.getJusth().getSet();
-  memcpy(d->justh.hash,data.getJusth().getHash(),SHA256_DIGEST_LENGTH);
+  setHash(data.getJusth(),&(d->justh));
   // justv
   d->justv=data.getJustv();
   // phase
   d->phase=data.getPhase();
+}
+
+
+// stores [data] in [d]
+void setFData(FData data, fdata_t *d) {
+  // justj
+  setHash(data.getJusth(),&(d->justh));
+  // justv
+  d->justv=data.getJustv();
+  // view
+  d->view=data.getView();
 }
 
 
@@ -88,6 +105,20 @@ void setSigns(Signs signs, signs_t *s) {
     s->signs[i].signer=signs.get(i).getSigner();
     //for (int k = 0; k < SIGN_LEN; k++) { (s->signs[i].sign)[k] = (signs.get(i).getSign())[k]; }
     memcpy(s->signs[i].sign,signs.get(i).getSign(),SIGN_LEN);
+  }
+}
+
+// stores [auth] in [a]
+void setAuth(Auth auth, auth_t *a) {
+  a->id=auth.getId();
+  setHash(auth.getHash(),&(a->hash));
+}
+
+// stores [auths] in [s]
+void setAuths(Auths auths, auths_t *s) {
+  s->size=auths.getSize();
+  for (int i = 0; i < MAX_NUM_SIGNATURES; i++) {
+    setAuth(auths.get(i),&(s->auths[i]));
   }
 }
 
@@ -120,20 +151,142 @@ void setOneJusts(Just justs[MAX_NUM_SIGNATURES], onejusts_t *js) {
   }
 }
 
+// stores [just] in [j]
+void setFJust(FJust just, fjust_t *j) {
+  // ------ SET ------
+  j->set=just.isSet();
+  // ------ RDATA ------
+  setFData(just.getData(),&(j->data));
+  // ------ AUTH ------
+  setAuth(just.getAuth(),&(j->auth));
+}
+
+void setFJusts(FJust justs[MAX_NUM_SIGNATURES-1], fjusts_t *js) {
+  for (int i = 0; i < MAX_NUM_SIGNATURES-1; i++) {
+    setFJust(justs[i],&(js->justs[i]));
+  }
+}
+
+// stores [just] in [j]
+void setPJust(PJust just, pjust_t *j) {
+  // ------ RDATA ------
+  setHash(just.getHash(),&(j->hash));
+  // ------ VIEW ------
+  j->view=just.getView();
+  // ------ AUTH ------
+  setAuth(just.getAuth(),&(j->auth));
+  // ------ AUTHS ------
+  setAuths(just.getAuths(),&(j->auths));
+}
+
+// stores [just] in [j]
+void setOPproposal(OPproposal just, opproposal_t *j) {
+  // ------ HASH ------
+  setHash(just.getHash(),&(j->hash));
+  // ------ VIEW ------
+  j->view=just.getView();
+  // ------ AUTH ------
+  setAuth(just.getAuth(),&(j->auth));
+}
+
+// loads a Hash from [h]
+Hash getHash(hash_t *h) {
+  return Hash(h->set,h->hash);
+}
+
+FData getFData (fdata_t *d) {
+  Hash   justh = getHash(&(d->justh));
+  View   justv = d->justv;
+  View   view  = d->view;
+  FData  data(justh,justv,view);
+  return data;
+}
+
+RData getRData (rdata_t *d) {
+  Hash   proph = getHash(&(d->proph));
+  View   propv = d->propv;
+  Hash   justh = getHash(&(d->justh));
+  View   justv = d->justv;
+  Phase1 phase = (Phase1)d->phase;
+  RData  data(proph,propv,justh,justv,phase);
+  return data;
+}
+
 // loads a Just from [j]
 Just getJust(just_t *j) {
-  Hash   proph = Hash(j->rdata.proph.set,j->rdata.proph.hash);
-  View   propv = j->rdata.propv;
-  Hash   justh = Hash(j->rdata.justh.set,j->rdata.justh.hash);
-  View   justv = j->rdata.justv;
-  Phase1 phase = (Phase1)j->rdata.phase;
-  RData  rdata(proph,propv,justh,justv,phase);
-  Sign   a[MAX_NUM_SIGNATURES];
+  RData rdata = getRData(&(j->rdata));
+  Sign  a[MAX_NUM_SIGNATURES];
   for (int i = 0; i < MAX_NUM_SIGNATURES; i++) {
     a[i]=Sign(j->signs.signs[i].set,j->signs.signs[i].signer,j->signs.signs[i].sign);
   }
   Signs signs(j->signs.size,a);
   return Just((bool)j->set,rdata,signs);
+}
+
+Auth getAuth(auth_t *a) {
+  return Auth(a->id,getHash(&a->hash));
+}
+
+// loads a HJust from [j]
+HJust getHJust(hjust_t *j) {
+  Hash   hash = getHash(&(j->hash));
+  View   view = j->view;
+  Auth   auth = getAuth(&(j->auth));
+  return HJust((bool)j->set,hash,view,auth);
+}
+
+// loads a FVJust from [j]
+FVJust getFVJust(fvjust_t *j) {
+  bool   set   = j->set;
+  FData  data  = getFData(&(j->data));
+  Auth   auth1 = getAuth(&(j->auth1));
+  Auth   auth2 = getAuth(&(j->auth2));
+  return FVJust(set,data,auth1,auth2);
+}
+
+// loads a OPstore from [j]
+OPstore getOPstore(opstore_t *j) {
+  View   view = j->view;
+  Hash   hash = getHash(&(j->hash));
+  View   v    = j->v;
+  Auth   auth = getAuth(&(j->auth));
+  return OPstore(view,hash,v,auth);
+}
+
+Auths getAuths(auths_t *j) {
+  Auth  a[MAX_NUM_SIGNATURES];
+  for (int i = 0; i < MAX_NUM_SIGNATURES; i++) {
+    a[i]=getAuth(&(j->auths[i]));
+  }
+  return Auths(j->size,a);
+}
+
+
+// loads an OPvote from [j]
+OPvote getOPvote(opvote_t *j) {
+  Hash   hash  = getHash(&(j->hash));
+  View   view  = j->view;
+  Auths  auths = getAuths(&(j->auths));
+  return OPvote(hash,view,auths);
+}
+
+// loads an OPproposal from [j]
+OPproposal getOPproposal(opproposal_t *j) {
+  Hash    hash  = getHash(&(j->hash));
+  View    view  = j->view;
+  Auth    auth  = getAuth(&(j->auth));
+  return OPproposal(hash,view,auth);
+}
+
+// loads an OPaccum from [j]
+OPaccum getOPaccum(opaccum_t *j) {
+  bool    set  = j->set;
+  NVkind  kind = j->kind;
+  View    view = j->view;
+  Hash    hash = getHash(&(j->hash));
+  unsigned int size = j->size;
+  Auth    auth = getAuth(&(j->auth));
+  return OPaccum(set,kind,view,hash,size,auth);
 }
 
 // stores [vote] in [v]
@@ -164,11 +317,6 @@ void setVotes(Vote<Void,Cert> votes[MAX_NUM_SIGNATURES], votes_t *vs) {
 }
 
 
-// loads a Hash from [h]
-Hash getHash(hash_t *h) {
-  return Hash(h->set,h->hash);
-}
-
 
 // loads a Accum from [a]
 Accum getAccum(accum_t *a) {
@@ -179,6 +327,18 @@ Accum getAccum(accum_t *a) {
   unsigned int size = a->size;
   Sign sign  = Sign(a->sign.set,a->sign.signer,a->sign.sign);
   return Accum(set,view,prepv,hash,size,sign);
+}
+
+
+// loads a HAccum from [a]
+HAccum getHAccum(haccum_t *a) {
+  bool set   = a->set;
+  View view  = a->view;
+  Hash hash  = getHash(&(a->hash));
+  unsigned int size = a->size;
+  Auth auth  = Auth(a->auth.id,getHash(&(a->auth.hash)));
+  Auth authp = Auth(a->authp.id,getHash(&(a->authp.hash)));
+  return HAccum(set,view,hash,size,auth,authp);
 }
 
 
@@ -248,7 +408,7 @@ void setCBlock(CBlock block, cblock_t *b) {
 
 // ------------------------------------
 // SGX related stuff
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
 /* Global EID shared by multiple threads */
 sgx_enclave_id_t global_eid = 0;
 
@@ -262,6 +422,24 @@ void ocall_test(KEY *key) {
   std::cout << "OCALL-TEST:signed" << std::endl;
 }
 
+void ocall_setCtime() {
+  curTime = std::chrono::steady_clock::now();
+}
+
+void ocall_recCVtime() {
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - curTime).count();
+  //std::cout << KBLU << stats.getId() << "-stats-A:" << stats.getCryptoVerifNum() << KNRM << std::endl;
+  stats.addCryptoVerifTime(time);
+  //std::cout << KBLU << stats.getId() << "-stats-B:" << stats.getCryptoVerifNum() << KNRM << std::endl;
+}
+
+void ocall_recCStime() {
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - curTime).count();
+  stats.addCryptoSignTime(time);
+}
+
 
 int Handler::initializeSGX() {
   // Initializing enclave
@@ -273,7 +451,7 @@ int Handler::initializeSGX() {
 
   // Initializing variables (for simplicity)
   std::set<PID> pids = this->nodes.getIds();
-  pids.erase(this->myid);
+  //pids.erase(this->myid);
   unsigned int num = pids.size();
   pids_t others;
   others.num_nodes=num;
@@ -284,7 +462,14 @@ int Handler::initializeSGX() {
   }
 
   sgx_status_t ret, status;
+#if defined(BASIC_FREE)
+  status = FREE_initialize_variables(global_eid, &ret, &(this->myid), &(this->qsize));
+#elif defined(BASIC_ONEP)
+  status = OP_initialize_variables(global_eid, &ret, &(this->myid), &(this->qsize));
+#else
   status = initialize_variables(global_eid, &ret, &(this->myid), &others, &(this->qsize));
+#endif
+  if (DEBUG1) std::cout << KBLU << nfo() << "enclave variables are initialized" << KNRM << std::endl;
 
   return 0;
 }
@@ -304,6 +489,10 @@ void Handler::startNewViewOnTimeout() {
   startNewViewAcc();
 #elif defined (BASIC_CHEAP_AND_QUICK)
   startNewViewComb();
+#elif defined (BASIC_FREE)
+  startNewViewFree();
+#elif defined (BASIC_ONEP)
+  startNewViewOP();
 #elif defined (CHAINED_BASELINE)
   startNewViewCh();
 #elif defined (CHAINED_CHEAP_AND_QUICK)
@@ -315,7 +504,24 @@ void Handler::startNewViewOnTimeout() {
 
 
 
-#if defined(BASIC_CHEAP_AND_QUICK)
+#if defined(BASIC_FREE)
+const uint8_t MsgNewViewFree::opcode;
+const uint8_t MsgLdrPrepareFree::opcode;
+const uint8_t MsgBckPrepareFree::opcode;
+const uint8_t MsgPrepareFree::opcode;
+const uint8_t MsgPreCommitFree::opcode;
+#elif defined(BASIC_ONEP)
+const uint8_t MsgNewViewOPA::opcode;
+const uint8_t MsgNewViewOPB::opcode;
+const uint8_t MsgLdrPrepareOPA::opcode;
+const uint8_t MsgLdrPrepareOPB::opcode;
+const uint8_t MsgLdrPrepareOPC::opcode;
+const uint8_t MsgBckPrepareOP::opcode;
+//const uint8_t MsgPrepareOP::opcode;
+const uint8_t MsgPreCommitOP::opcode;
+const uint8_t MsgLdrAddOP::opcode;
+const uint8_t MsgBckAddOP::opcode;
+#elif defined(BASIC_CHEAP_AND_QUICK)
 const uint8_t MsgNewViewComb::opcode;
 const uint8_t MsgLdrPrepareComb::opcode;
 const uint8_t MsgPrepareComb::opcode;
@@ -362,6 +568,22 @@ pnet(pec,pconf), cnet(cec,cconf) {
 
   if (DEBUG1) { std::cout << KBLU << nfo() << "starting handler" << KNRM << std::endl; }
   if (DEBUG1) { std::cout << KBLU << nfo() << "qsize=" << this->qsize << KNRM << std::endl; }
+
+
+  // Trusted Functions
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
+  if (DEBUG0) { std::cout << KBLU << nfo() << "initializing TEE" << KNRM << std::endl; }
+  initializeSGX();
+  if (DEBUG0) { std::cout << KBLU << nfo() << "initialized TEE" << KNRM << std::endl; }
+#else
+  tf = TrustedFun(this->myid,this->priv,this->qsize);
+  ta = TrustedAccum(this->myid,this->priv,this->qsize);
+  tc = TrustedComb(this->myid,this->priv,this->qsize);
+  tp = TrustedCh(this->myid,this->priv,this->qsize);
+  tq = TrustedChComb(this->myid,this->priv,this->qsize);
+#endif
+  //getStarted();
+
 
   // -- Salticidae
   //rep_tcall = new salticidae::ThreadCall(ec);
@@ -437,29 +659,47 @@ pnet(pec,pconf), cnet(cec,cconf) {
       }
     }
   }
-#if defined(BASIC_CHEAP_AND_QUICK)
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newviewcomb, this, _1, _2));
+#if defined(BASIC_FREE)
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newviewfree,    this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrpreparefree, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_bckpreparefree, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_preparefree,    this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_precommitfree,  this, _1, _2));
+#elif defined(BASIC_ONEP)
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newviewopa,    this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newviewopb,    this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_precommitop,   this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrprepareopa, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrprepareopb, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrprepareopc, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_bckprepareop,  this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldraddop,      this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_bckaddop,      this, _1, _2));
+  /*this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_preparefree, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_precommitfree, this, _1, _2));*/
+#elif defined(BASIC_CHEAP_AND_QUICK)
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newviewcomb,    this, _1, _2));
   this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrpreparecomb, this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_preparecomb, this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_precommitcomb, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_preparecomb,    this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_precommitcomb,  this, _1, _2));
 #elif defined(BASIC_QUICK) || defined(BASIC_QUICK_DEBUG)
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newviewacc, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newviewacc,    this, _1, _2));
   this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrprepareacc, this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_prepareacc, this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_precommitacc, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_prepareacc,    this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_precommitacc,  this, _1, _2));
 #elif defined(BASIC_CHEAP) || defined(BASIC_BASELINE)
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newview, this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_prepare, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newview,    this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_prepare,    this, _1, _2));
   this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrprepare, this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_precommit, this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_commit, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_precommit,  this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_commit,     this, _1, _2));
 #elif defined(CHAINED_BASELINE)
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newview_ch, this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_prepare_ch, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newview_ch,    this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_prepare_ch,    this, _1, _2));
   this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrprepare_ch, this, _1, _2));
 #elif defined(CHAINED_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK_DEBUG)
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newview_ch_comb, this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_prepare_ch_comb, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newview_ch_comb,    this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_prepare_ch_comb,    this, _1, _2));
   this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrprepare_ch_comb, this, _1, _2));
 #else
   std::cout << KRED << nfo() << "TODO" << KNRM << std::endl;
@@ -506,30 +746,16 @@ pnet(pec,pconf), cnet(cec,cconf) {
 
   //if (DEBUG0) { std::cout << KBLU << "size of signatures=" << ECDSA_size(this->priv) << KNRM << std::endl; }
 
+
   // Stats
   auto timeNow = std::chrono::system_clock::now();
   std::time_t time = std::chrono::system_clock::to_time_t(timeNow);
   struct tm y2k = {0};
   double seconds = difftime(time,mktime(&y2k));
-  statsThroughputView   = "stats/throughput-view-"   + std::to_string(this->myid) + "-" + std::to_string(seconds);
-  statsLatencyView      = "stats/latency-view-"      + std::to_string(this->myid) + "-" + std::to_string(seconds);
-  statsThroughputHandle = "stats/throughput-handle-" + std::to_string(this->myid) + "-" + std::to_string(seconds);
-  statsLatencyHandle    = "stats/latency-handle-"    + std::to_string(this->myid) + "-" + std::to_string(seconds);
-  statsDone             = "stats/done-"              + std::to_string(this->myid) + "-" + std::to_string(seconds);
-  this->stats.setId(this->myid);
+  statsVals = "stats/vals-" + std::to_string(this->myid) + "-" + std::to_string(seconds);
+  statsDone = "stats/done-" + std::to_string(this->myid) + "-" + std::to_string(seconds);
+  stats.setId(this->myid);
 
-  // Trusted Functions
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
-  if (DEBUG0) { std::cout << KBLU << nfo() << "initializing TEE" << KNRM << std::endl; }
-  initializeSGX();
-#else
-  tf = TrustedFun(this->myid,this->priv,this->qsize);
-  ta = TrustedAccum(this->myid,this->priv,this->qsize);
-  tc = TrustedComb(this->myid,this->priv,this->qsize);
-  tp = TrustedCh(this->myid,this->priv,this->qsize);
-  tq = TrustedChComb(this->myid,this->priv,this->qsize);
-#endif
-  //getStarted();
 
   auto pshutdown = [&](int) {pec.stop();};
   salticidae::SigEvent pev_sigterm(pec, pshutdown);
@@ -541,7 +767,16 @@ pnet(pec,pconf), cnet(cec,cconf) {
 
   c_thread = std::thread([this]() { cec.dispatch(); });
 
+  if (DEBUG0) { std::cout << KBLU << nfo() << "dispatching" << KNRM << std::endl; }
   pec.dispatch();
+}
+
+
+void Handler::printNowTime(std::string msg) {
+  auto now = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(now - startView).count();
+  double etime = (stats.getTotalViewTime(0).tot + time) / (1000*1000);
+  std::cout << KBLU << nfo() << msg << " @ " << etime << KNRM << std::endl;
 }
 
 
@@ -627,21 +862,25 @@ void Handler::sendMsgNewView(MsgNewView msg, Peers recipients) {
 void Handler::sendMsgPrepare(MsgPrepare msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPrepare");
 }
 
 void Handler::sendMsgLdrPrepare(MsgLdrPrepare msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending(" << sizeof(msg) << "-" << sizeof(MsgLdrPrepare) << "):" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgLdrPrepare");
 }
 
 void Handler::sendMsgPreCommit(MsgPreCommit msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPreCommit");
 }
 
 void Handler::sendMsgCommit(MsgCommit msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgCommit");
 }
 
 
@@ -661,16 +900,19 @@ void Handler::sendMsgNewViewAcc(MsgNewViewAcc msg, Peers recipients) {
 void Handler::sendMsgLdrPrepareAcc(MsgLdrPrepareAcc msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgLdrPrepareAcc");
 }
 
 void Handler::sendMsgPrepareAcc(MsgPrepareAcc msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPrepareAcc");
 }
 
 void Handler::sendMsgPreCommitAcc(MsgPreCommitAcc msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPreCommitAcc");
 }
 
 
@@ -682,17 +924,104 @@ void Handler::sendMsgNewViewComb(MsgNewViewComb msg, Peers recipients) {
 void Handler::sendMsgLdrPrepareComb(MsgLdrPrepareComb msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgLdrPrepareComb");
 }
 
 void Handler::sendMsgPrepareComb(MsgPrepareComb msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPrepareComb");
 }
 
 void Handler::sendMsgPreCommitComb(MsgPreCommitComb msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPreCommitComb");
 }
+
+
+void Handler::sendMsgNewViewFree(MsgNewViewFree msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+}
+
+void Handler::sendMsgNewViewOP(MsgNewViewOPA msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+}
+
+void Handler::sendMsgNewViewOP(MsgNewViewOPB msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+}
+
+void Handler::sendMsgLdrPrepareFree(MsgLdrPrepareFree msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgLdrPrepareFree");
+}
+
+void Handler::sendMsgLdrPrepareOPA(MsgLdrPrepareOPA msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgLdrPrepareOPA");
+}
+
+void Handler::sendMsgLdrPrepareOPC(MsgLdrPrepareOPC msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgLdrPrepareOPC");
+}
+
+void Handler::sendMsgLdrPrepareOPB(MsgLdrPrepareOPB msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgLdrPrepareOPB");
+}
+
+void Handler::sendMsgPreCommitOP(MsgPreCommitOP msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPreCommitOP");
+}
+
+void Handler::sendMsgBckPrepareFree(MsgBckPrepareFree msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgBckPrepareFree");
+}
+
+void Handler::sendMsgBckPrepareOP(MsgBckPrepareOP msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgBckPrepareOP");
+}
+
+void Handler::sendMsgPrepareFree(MsgPrepareFree msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPrepareFree");
+}
+
+void Handler::sendMsgPreCommitFree(MsgPreCommitFree msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPreCommitFree");
+}
+
+void Handler::sendMsgLdrAddOP(MsgLdrAddOP msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgLdrAddOP");
+}
+
+void Handler::sendMsgBckAddOP(MsgBckAddOP msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgBckAddOP");
+}
+
+
 
 
 void Handler::sendMsgNewViewCh(MsgNewViewCh msg, Peers recipients) {
@@ -703,11 +1032,13 @@ void Handler::sendMsgNewViewCh(MsgNewViewCh msg, Peers recipients) {
 void Handler::sendMsgPrepareCh(MsgPrepareCh msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPrepareCh");
 }
 
 void Handler::sendMsgLdrPrepareCh(MsgLdrPrepareCh msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending(" << sizeof(msg) << "-" << sizeof(MsgLdrPrepareCh) << "):" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgLdrPrepareCh");
 }
 
 
@@ -719,23 +1050,26 @@ void Handler::sendMsgNewViewChComb(MsgNewViewChComb msg, Peers recipients) {
 void Handler::sendMsgPrepareChComb(MsgPrepareChComb msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPrepareChComb");
 }
 
 void Handler::sendMsgLdrPrepareChComb(MsgLdrPrepareChComb msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending(" << sizeof(msg) << "-" << sizeof(MsgLdrPrepareChComb) << "):" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
   this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgLdrPrepareChComb");
 }
+
 
 
 Just Handler::callTEEsign() {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   just_t jout;
   sgx_status_t ret;
   sgx_status_t status = TEEsign(global_eid, &ret, &jout);
   Just just = getJust(&jout);
 #else
-  Just just = tf.TEEsign();
+  Just just = tf.TEEsign(stats);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -747,7 +1081,7 @@ Just Handler::callTEEsign() {
 
 Just Handler::callTEEprepare(Hash h, Just j) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   just_t jout;
   just_t jin;
   setJust(j,&jin);
@@ -757,7 +1091,7 @@ Just Handler::callTEEprepare(Hash h, Just j) {
   sgx_status_t status = TEEprepare(global_eid, &ret, &hin, &jin, &jout);
   Just just = getJust(&jout);
 #else
-  Just just = tf.TEEprepare(this->nodes,h,j);
+  Just just = tf.TEEprepare(stats,this->nodes,h,j);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -769,7 +1103,7 @@ Just Handler::callTEEprepare(Hash h, Just j) {
 
 Just Handler::callTEEstore(Just j) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   just_t jout;
   just_t jin;
   setJust(j,&jin);
@@ -777,7 +1111,7 @@ Just Handler::callTEEstore(Just j) {
   sgx_status_t status = TEEstore(global_eid, &ret, &jin, &jout);
   Just just = getJust(&jout);
 #else
-  Just just = tf.TEEstore(this->nodes,j);
+  Just just = tf.TEEstore(stats,this->nodes,j);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -809,15 +1143,18 @@ Just Handler::callTEEstore(Just j) {
 
 Accum Handler::callTEEaccum(Vote<Void,Cert> votes[MAX_NUM_SIGNATURES]) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   accum_t aout;
   votes_t vin;
   setVotes(votes,&vin);
   sgx_status_t ret;
+  if (DEBUG1) std::cout << KLBLU << nfo() << "calling TEEaccum" << KNRM << std::endl;
   sgx_status_t status = TEEaccum(global_eid, &ret, &vin, &aout);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "callied TEEaccum" << KNRM << std::endl;
   Accum acc = getAccum(&aout);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "accum built" << KNRM << std::endl;
 #else
-  Accum acc = ta.TEEaccum(this->nodes,votes);
+  Accum acc = ta.TEEaccum(stats,this->nodes,votes);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -830,13 +1167,13 @@ Accum Handler::callTEEaccum(Vote<Void,Cert> votes[MAX_NUM_SIGNATURES]) {
 // a simpler version of callTEEaccum for when all votes are for the same payload
 Accum Handler::callTEEaccumSp(uvote_t vote) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   accum_t aout;
   sgx_status_t ret;
   sgx_status_t status = TEEaccumSp(global_eid, &ret, &vote, &aout);
   Accum acc = getAccum(&aout);
 #else
-  Accum acc = ta.TEEaccumSp(this->nodes,vote);
+  Accum acc = ta.TEEaccumSp(stats,this->nodes,vote);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -848,7 +1185,7 @@ Accum Handler::callTEEaccumSp(uvote_t vote) {
 
 Accum Handler::callTEEaccumComb(Just justs[MAX_NUM_SIGNATURES]) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   accum_t aout;
   onejusts_t jin;
   setOneJusts(justs,&jin);
@@ -856,7 +1193,7 @@ Accum Handler::callTEEaccumComb(Just justs[MAX_NUM_SIGNATURES]) {
   sgx_status_t status = COMB_TEEaccum(global_eid, &ret, &jin, &aout);
   Accum acc = getAccum(&aout);
 #else
-  Accum acc = tc.TEEaccum(this->nodes,justs);
+  Accum acc = tc.TEEaccum(stats,this->nodes,justs);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -868,13 +1205,13 @@ Accum Handler::callTEEaccumComb(Just justs[MAX_NUM_SIGNATURES]) {
 // a simpler version of callTEEaccum for when all votes are for the same payload
 Accum Handler::callTEEaccumCombSp(just_t just) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   accum_t aout;
   sgx_status_t ret;
   sgx_status_t status = COMB_TEEaccumSp(global_eid, &ret, &just, &aout);
   Accum acc = getAccum(&aout);
 #else
-  Accum acc = tc.TEEaccumSp(this->nodes,just);
+  Accum acc = tc.TEEaccumSp(stats,this->nodes,just);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -885,7 +1222,7 @@ Accum Handler::callTEEaccumCombSp(just_t just) {
 
 Just Handler::callTEEsignComb() {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   just_t jout;
   sgx_status_t ret;
   sgx_status_t status = COMB_TEEsign(global_eid, &ret, &jout);
@@ -902,7 +1239,7 @@ Just Handler::callTEEsignComb() {
 
 Just Handler::callTEEprepareComb(Hash h, Accum acc) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   just_t jout;
   accum_t ain;
   setAccum(acc,&ain);
@@ -912,7 +1249,7 @@ Just Handler::callTEEprepareComb(Hash h, Accum acc) {
   sgx_status_t status = COMB_TEEprepare(global_eid, &ret, &hin, &ain, &jout);
   Just just = getJust(&jout);
 #else
-  Just just = tc.TEEprepare(this->nodes,h,acc);
+  Just just = tc.TEEprepare(stats,this->nodes,h,acc);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -923,7 +1260,7 @@ Just Handler::callTEEprepareComb(Hash h, Accum acc) {
 
 Just Handler::callTEEstoreComb(Just j) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   just_t jout;
   just_t jin;
   setJust(j,&jin);
@@ -931,7 +1268,7 @@ Just Handler::callTEEstoreComb(Just j) {
   sgx_status_t status = COMB_TEEstore(global_eid, &ret, &jin, &jout);
   Just just = getJust(&jout);
 #else
-  Just just = tc.TEEstore(this->nodes,j);
+  Just just = tc.TEEstore(stats,this->nodes,j);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -941,10 +1278,334 @@ Just Handler::callTEEstoreComb(Just j) {
 }
 
 
+bool Handler::callTEEverifyFree(Auths auths, std::string s) {
+  auto start = std::chrono::steady_clock::now();
+  bool b = false;
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE)
+  payload_t pin;
+  setPayload(s,&pin);
+  auths_t ain;
+  setAuths(auths,&ain);
+  sgx_status_t ret;
+  sgx_status_t status = FREE_TEEverify(global_eid, &ret, &pin, &ain, &b);
+#else
+  // TODO
+  exit(0);
+  //b = tf.TEEverify(this->nodes,j);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEverify(time);
+  stats.addTEEtime(time);
+  return b;
+}
+
+// TODO: turn that into a list instead
+bool Handler::callTEEverifyFree2(Auths auths1, std::string s1, Auths auths2, std::string s2) {
+  auto start = std::chrono::steady_clock::now();
+  bool b = false;
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE)
+  payload_t pin1;
+  setPayload(s1,&pin1);
+  auths_t ain1;
+  setAuths(auths1,&ain1);
+  payload_t pin2;
+  setPayload(s2,&pin2);
+  auths_t ain2;
+  setAuths(auths2,&ain2);
+  sgx_status_t ret;
+  sgx_status_t status = FREE_TEEverify2(global_eid, &ret, &pin1, &ain1, &pin2, &ain2, &b);
+#else
+  // TODO
+  exit(0);
+  //b = tf.TEEverify(this->nodes,j);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEverify(time);
+  stats.addTEEtime(time);
+  return b;
+}
+
+
+Auth Handler::callTEEauthFree(std::string s) {
+  auto start = std::chrono::steady_clock::now();
+  Auth a;
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE)
+  payload_t pin;
+  setPayload(s,&pin);
+  auth_t aout;
+  sgx_status_t ret;
+  sgx_status_t status = FREE_TEEauth(global_eid, &ret, &pin, &aout);
+  a = getAuth(&aout);
+  //b = (bool)bout;
+#else
+  // TODO
+  exit(0);
+  //b = tf.TEEverify(this->nodes,j);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEverify(time);
+  stats.addTEEtime(time);
+  return a;
+}
+
+
+std::string h2s(hash_t hash) {
+  std::string text;
+  for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) { text += hash.hash[i]; }
+  text += std::to_string(hash.set);
+  return text;
+}
+
+
+std::string h2sx(hash_t hash) {
+  std::string text;
+  for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) { text += std::to_string((int)hash.hash[i]); }
+  return text;
+}
+
+
+/*
+HJust Handler::callTEEprepareFree(Hash h) {
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
+  hjust_t jout;
+  hash_t hin;
+  setHash(h,&hin);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "preparing hash:" << h2s(hin) << KNRM << std::endl;
+  if (DEBUG1) std::cout << KLBLU << nfo() << "preparing hash:" << h2sx(hin) << KNRM << std::endl;
+  sgx_status_t ret;
+  sgx_status_t status = FREE_TEEprepare(global_eid, &ret, &hin, &jout);
+  HJust just = getHJust(&jout);
+#else
+  HJust just; //TODO: = tc.TEEprepare(this->nodes,h,acc);
+  exit(0);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEprepare(time);
+  stats.addTEEtime(time);
+  return just;
+}
+*/
+
+
+FVJust Handler::callTEEstoreFree(PJust j) {
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
+  fvjust_t jout;
+  pjust_t jin;
+  setPJust(j,&jin);
+  sgx_status_t ret;
+  sgx_status_t status = FREE_TEEstore(global_eid, &ret, &jin, &jout);
+  FVJust just = getFVJust(&jout);
+#else
+  FVJust just; // TODO: = tc.TEEstore(this->nodes,j);
+  exit(0);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEstore(time);
+  stats.addTEEtime(time);
+  return just;
+}
+
+
+HAccum Handler::callTEEaccumFree(FJust high, FJust justs[MAX_NUM_SIGNATURES-1], Hash hash) {
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
+  haccum_t aout;
+  fjust_t jin;
+  fjusts_t jsin;
+  hash_t hin;
+  setFJust(high,&jin);
+  setFJusts(justs,&jsin);
+  setHash(hash,&hin);
+  sgx_status_t ret;
+  sgx_status_t status = FREE_TEEaccum(global_eid, &ret, &jin, &jsin, &hin, &aout);
+  HAccum acc = getHAccum(&aout);
+#else
+  //TODO
+  exit(0);
+  HAccum acc; // = tc.TEEaccum(this->nodes,justs);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEaccum(time);
+  stats.addTEEtime(time);
+  return acc;
+}
+
+// a simpler version of callTEEaccum for when all votes are for the same payload
+HAccum Handler::callTEEaccumFreeSp(ofjust_t just, Hash hash) {
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
+  haccum_t aout;
+  hash_t hin;
+  setHash(hash,&hin);
+  sgx_status_t ret;
+  sgx_status_t status = FREE_TEEaccumSp(global_eid, &ret, &just, &hin, &aout);
+  HAccum acc = getHAccum(&aout);
+#else
+  //TODO
+  exit(0);
+  HAccum acc; // = tc.TEEaccumSp(this->nodes,just);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEaccum(time);
+  stats.addTEEtime(time);
+  return acc;
+}
+
+
+OPproposal Handler::callTEEprepareOP(Hash h) {
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_ONEP)
+  opproposal_t pout;
+  hash_t hin;
+  setHash(h,&hin);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "preparing hash:" << h2s(hin) << KNRM << std::endl;
+  if (DEBUG1) std::cout << KLBLU << nfo() << "preparing hash:" << h2sx(hin) << KNRM << std::endl;
+  sgx_status_t ret;
+  sgx_status_t status = OP_TEEprepare(global_eid, &ret, &hin, &pout);
+  OPproposal prop = getOPproposal(&pout);
+#else
+  OPproposal prop;
+  exit(0);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEprepare(time);
+  stats.addTEEtime(time);
+  return prop;
+}
+
+
+OPstore Handler::callTEEstoreOP(OPproposal prop) {
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_ONEP)
+  opstore_t sout;
+  opproposal_t pin;
+  setOPproposal(prop,&pin);
+  sgx_status_t ret;
+  sgx_status_t status = OP_TEEstore(global_eid, &ret, &pin, &sout);
+  OPstore store = getOPstore(&sout);
+#else
+  OPstore store;
+  exit(0);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEstore(time);
+  stats.addTEEtime(time);
+  return store;
+}
+
+
+bool Handler::callTEEverifyOP(Auths auths, std::string s) {
+  auto start = std::chrono::steady_clock::now();
+  bool b = false;
+#if defined(BASIC_ONEP)
+  payload_t pin;
+  setPayload(s,&pin);
+  auths_t ain;
+  setAuths(auths,&ain);
+  sgx_status_t ret;
+  sgx_status_t status = OP_TEEverify(global_eid, &ret, &pin, &ain, &b);
+#else
+  // TODO
+  exit(0);
+  //b = tf.TEEverify(this->nodes,j);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEverify(time);
+  stats.addTEEtime(time);
+  return b;
+}
+
+
+OPaccum Handler::callTEEaccumOp(OPstore high, OPstore justs[MAX_NUM_SIGNATURES-1]) {
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_ONEP)
+  if (DEBUG1) std::cout << KBLU << nfo() << "TODO" << KNRM << std::endl;
+  exit(0);
+/*  haccum_t aout;
+  fjust_t jin;
+  fjusts_t jsin;
+  hash_t hin;
+  setFJust(high,&jin);
+  setFJusts(justs,&jsin);
+  setHash(hash,&hin);
+  sgx_status_t ret;
+  sgx_status_t status = FREE_TEEaccum(global_eid, &ret, &jin, &jsin, &hin, &aout);*/
+  OPaccum acc; /* = getHAccum(&aout);*/
+#else
+  //TODO
+  exit(0);
+  OPaccum acc; // = tc.TEEaccum(this->nodes,justs);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEaccum(time);
+  stats.addTEEtime(time);
+  return acc;
+}
+
+// a simpler version of callTEEaccum for when all votes are for the same payload
+OPaccum Handler::callTEEaccumOpSp(OPprepare just) {
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_ONEP)
+  if (DEBUG1) std::cout << KBLU << nfo() << "TODO" << KNRM << std::endl;
+  exit(0);
+/*  haccum_t aout;
+  hash_t hin;
+  setHash(hash,&hin);
+  sgx_status_t ret;
+  sgx_status_t status = FREE_TEEaccumSp(global_eid, &ret, &just, &hin, &aout);*/
+  OPaccum acc; // = getHAccum(&aout);
+#else
+  //TODO
+  exit(0);
+  OPaccum acc; // = tc.TEEaccumSp(this->nodes,just);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEaccum(time);
+  stats.addTEEtime(time);
+  return acc;
+}
+
+
+OPvote Handler::callTEEvoteOP(Hash h) {
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_ONEP)
+  opvote_t vout;
+  hash_t hin;
+  setHash(h,&hin);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "voteing on hash:" << h2s(hin) << KNRM << std::endl;
+  if (DEBUG1) std::cout << KLBLU << nfo() << "voting on hash:" << h2sx(hin) << KNRM << std::endl;
+  sgx_status_t ret;
+  sgx_status_t status = OP_TEEvote(global_eid, &ret, &hin, &vout);
+  OPvote vote = getOPvote(&vout);
+#else
+  OPvote vote;
+  exit(0);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEprepare(time);
+  stats.addTEEtime(time);
+  return vote;
+}
+
 
 Just Handler::callTEEsignCh() {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   just_t jout;
   sgx_status_t ret;
   sgx_status_t status = CH_TEEsign(global_eid, &ret, &jout);
@@ -962,7 +1623,7 @@ Just Handler::callTEEsignCh() {
 
 Just Handler::callTEEprepareCh(JBlock block, JBlock block0, JBlock block1) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   just_t jout;
   // 1st block
   jblock_t jin;
@@ -978,7 +1639,7 @@ Just Handler::callTEEprepareCh(JBlock block, JBlock block0, JBlock block1) {
   sgx_status_t status = CH_TEEprepare(global_eid, &ret, &jin, &jin0, &jin1, &jout);
   Just just = getJust(&jout);
 #else
-  Just just = tp.TEEprepare(this->nodes,block,block0,block1);
+  Just just = tp.TEEprepare(stats,this->nodes,block,block0,block1);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -990,7 +1651,7 @@ Just Handler::callTEEprepareCh(JBlock block, JBlock block0, JBlock block1) {
 
 Just Handler::callTEEsignChComb() {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   just_t jout;
   sgx_status_t ret;
   sgx_status_t status = CH_COMB_TEEsign(global_eid, &ret, &jout);
@@ -1008,7 +1669,7 @@ Just Handler::callTEEsignChComb() {
 
 Just Handler::callTEEprepareChComb(CBlock block, Hash hash) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   just_t jout;
   // 1st block
   cblock_t cin;
@@ -1023,7 +1684,7 @@ Just Handler::callTEEprepareChComb(CBlock block, Hash hash) {
   sgx_status_t status = CH_COMB_TEEprepare(global_eid, &ret, &cin, &hin, &jout);
   Just just = getJust(&jout);
 #else
-  Just just = tq.TEEprepare(this->nodes,block,hash);
+  Just just = tq.TEEprepare(stats,this->nodes,block,hash);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -1035,7 +1696,7 @@ Just Handler::callTEEprepareChComb(CBlock block, Hash hash) {
 
 Accum Handler::callTEEaccumChComb(Just justs[MAX_NUM_SIGNATURES]) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   accum_t aout;
   onejusts_t jin;
   setOneJusts(justs,&jin);
@@ -1043,7 +1704,7 @@ Accum Handler::callTEEaccumChComb(Just justs[MAX_NUM_SIGNATURES]) {
   sgx_status_t status = CH_COMB_TEEaccum(global_eid, &ret, &jin, &aout);
   Accum acc = getAccum(&aout);
 #else
-  Accum acc = tq.TEEaccum(this->nodes,justs);
+  Accum acc = tq.TEEaccum(stats,this->nodes,justs);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -1056,7 +1717,7 @@ Accum Handler::callTEEaccumChComb(Just justs[MAX_NUM_SIGNATURES]) {
 // a simpler version of callTEEaccumChComb for when all votes are for the same payload
 Accum Handler::callTEEaccumChCombSp(just_t just) {
   auto start = std::chrono::steady_clock::now();
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
   accum_t aout;
   sgx_status_t ret;
   sgx_status_t status = CH_COMB_TEEaccumSp(global_eid, &ret, &just, &aout);
@@ -1064,7 +1725,7 @@ Accum Handler::callTEEaccumChCombSp(just_t just) {
   //if (DEBUG0) { std::cout << KBLU << nfo() << "just's hash:" << getHash(&(just.rdata.justh)).toString() << KNRM << std::endl; }
   //if (DEBUG0) { std::cout << KBLU << nfo() << "new accun's hash:" << acc.getPreph().toString() << KNRM << std::endl; }
 #else
-  Accum acc = tc.TEEaccumSp(this->nodes,just);
+  Accum acc = tc.TEEaccumSp(stats,this->nodes,just);
 #endif
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -1074,9 +1735,19 @@ Accum Handler::callTEEaccumChCombSp(just_t just) {
 }
 
 
+Sign Handler::Ssign(KEY priv, PID signer, std::string text) {
+  auto start = std::chrono::steady_clock::now();
+  Sign s = Sign(priv,signer,text);
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addCryptoSignTime(time);
+  return s;
+}
+
+
 MsgNewViewAcc Handler::createMsgNewViewAcc() {
   CData<Void,Cert> data(PH1_NEWVIEW,this->view,Void(),this->qcprep);
-  Sign sign = Sign(this->priv,this->myid,data.toString());
+  Sign sign = Ssign(this->priv,this->myid,data.toString());
   MsgNewViewAcc msgNv(data,sign);
   return msgNv;
 }
@@ -1091,6 +1762,7 @@ void Handler::setTimer() {
 
 
 void Handler::getStarted() {
+  //if (DEBUG1) std::cout << KLRED << nfo() << "starting" << KNRM << std::endl;
   startTime = std::chrono::steady_clock::now();
   startView = std::chrono::steady_clock::now();
   // Send new-view to the leader of the current view
@@ -1112,6 +1784,27 @@ void Handler::getStarted() {
     if (amCurrentLeader()) { handleNewviewComb(msg); }
     else { sendMsgNewViewComb(msg,recipients); }
   }
+  if (DEBUG) std::cout << KBLU << nfo() << "sent new-view to leader(" << leader << ")" << KNRM << std::endl;
+#elif defined(BASIC_FREE)
+  // we still need more messages to get started
+  this->prepjust=PJust(Hash(false),0,Auth(false),Auths());
+  //if (DEBUG1) std::cout << KLRED << nfo() << "storing" << KNRM << std::endl;
+  FVJust j = callTEEstoreFree(this->prepjust);
+  //if (DEBUG1) std::cout << KLRED << nfo() << "stored" << KNRM << std::endl;
+  MsgNewViewFree msg(j.getData(),j.getAuth2());
+  if (DEBUG1) std::cout << KLRED << nfo() << "starting with:" << msg.prettyPrint() << KNRM << std::endl;
+  if (amCurrentLeader()) { handleNewviewFree(msg); }
+  else { sendMsgNewViewFree(msg,recipients); }
+  if (DEBUG) std::cout << KBLU << nfo() << "sent new-view to leader(" << leader << ")" << KNRM << std::endl;
+#elif defined(BASIC_ONEP)
+  this->opprep=OPprepare(0,Hash(false),0,Auths());
+  //if (DEBUG1) std::cout << KLRED << nfo() << "storing" << KNRM << std::endl;
+  //FVJust j = callTEEstoreFree(this->opprep);
+  //if (DEBUG1) std::cout << KLRED << nfo() << "stored" << KNRM << std::endl;
+  MsgNewViewOPA msg(this->opprep);
+  if (DEBUG1) std::cout << KLRED << nfo() << "starting with:" << msg.prettyPrint() << KNRM << std::endl;
+  if (amCurrentLeader()) { handleNewviewOP(msg); }
+  else { sendMsgNewViewOP(msg,recipients); }
   if (DEBUG) std::cout << KBLU << nfo() << "sent new-view to leader(" << leader << ")" << KNRM << std::endl;
 #elif defined(BASIC_QUICK) || defined(BASIC_QUICK_DEBUG)
   MsgNewViewAcc msg = createMsgNewViewAcc();
@@ -1261,44 +1954,59 @@ void Handler::startNewView() {
 void Handler::recordStats() {
   if (DEBUG1) std::cout << KLGRN << nfo() << "DONE - printing stats" << KNRM << std::endl;
 
+  // *** TODO: MAKE THIS A PARAMETER ***
+  unsigned int quant1 = 0;
+  unsigned int quant2 = 10;
+
   // Throughput
   //auto endTime = std::chrono::steady_clock::now();
   //double time = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
-  double kops = (((this->view)+1)*(MAX_NUM_TRANSACTIONS)*1.0) / 1000;
+  Times totv = stats.getTotalViewTime(quant2);
+  double kopsv = ((totv.n)*(MAX_NUM_TRANSACTIONS)*1.0) / 1000;
+  double secsView = /*time*/ totv.tot / (1000*1000);
+  if (DEBUG0) std::cout << KBLU << nfo() << "VIEW|view=" << this->view << ";Kops=" << kopsv << ";secs=" << secsView << ";n=" << totv.n << KNRM << std::endl;
+  double throughputView = kopsv/secsView;
 
-  double secsView = /*time*/ stats.getTotalViewTime() / (1000*1000);
-  if (DEBUG0) std::cout << KBLU << nfo() << "VIEW|view=" << this->view << ";Kops=" << kops << ";secs=" << secsView << KNRM << std::endl;
-  double throughputView = kops/secsView;
-  std::ofstream fileThroughputView(statsThroughputView);
-  fileThroughputView << std::to_string(throughputView);
-  fileThroughputView.close();
+  // Debugging - handle
+  Times toth = stats.getTotalHandleTime(quant1);
+  double kopsh = ((toth.n)*(MAX_NUM_TRANSACTIONS)*1.0) / 1000;
+  double secsHandle = /*time*/ toth.tot / (1000*1000);
+  if (DEBUG0) std::cout << KBLU << nfo() << "HANDLE|view=" << this->view << ";Kops=" << kopsh << ";secs=" << secsHandle << ";n=" << toth.n << KNRM << std::endl;
+  //double throughputHandle = kopsh/secsHandle;
+  //std::ofstream fileThroughputHandle(statsThroughputHandle);
+  //fileThroughputHandle << std::to_string(throughputHandle);
+  //fileThroughputHandle.close();
 
-  double secsHandle = /*time*/ stats.getTotalHandleTime() / (1000*1000);
-  if (DEBUG0) std::cout << KBLU << nfo() << "HANDLE|view=" << this->view << ";Kops=" << kops << ";secs=" << secsHandle << KNRM << std::endl;
-  double throughputHandle = kops/secsHandle;
-  std::ofstream fileThroughputHandle(statsThroughputHandle);
-  fileThroughputHandle << std::to_string(throughputHandle);
-  fileThroughputHandle.close();
-
-  // Latency - view
+  // Latency
 #if defined (CHAINED_BASELINE) || defined(CHAINED_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK_DEBUG)
   double latencyView = (stats.getExecTimeAvg() / 1000)/* milli-seconds spent on views */;
 #else
-  double latencyView = (stats.getTotalViewTime()/(this->view+1) / 1000)/* milli-seconds spent on views */;
+  double latencyView = (totv.tot/totv.n / 1000)/* milli-seconds spent on views */;
 #endif
-  std::ofstream fileLatencyView(statsLatencyView);
-  fileLatencyView << std::to_string(latencyView);
-  fileLatencyView.close();
 
-  // Latency - handle
-  double latencyHandle = (stats.getTotalHandleTime()/(this->view+1) / 1000)/* milli-seconds spent on views */;
-  std::ofstream fileLatencyHandle(statsLatencyHandle);
-  fileLatencyHandle << std::to_string(latencyHandle);
-  fileLatencyHandle.close();
+  // Handle
+  double handle = (toth.tot / 1000); /* milli-seconds spent on handling messages */
+
+  // Crypto
+  double ctimeS  = stats.getCryptoSignTime();
+  double cryptoS = (ctimeS / 1000); /* milli-seconds spent on crypto */
+  double ctimeV  = stats.getCryptoVerifTime();
+  double cryptoV = (ctimeV / 1000); /* milli-seconds spent on crypto */
+
+  std::ofstream fileVals(statsVals);
+  fileVals << std::to_string(throughputView)
+           << " " << std::to_string(latencyView)
+           << " " << std::to_string(handle)
+           << " " << std::to_string(stats.getCryptoSignNum())
+           << " " << std::to_string(cryptoS)
+           << " " << std::to_string(stats.getCryptoVerifNum())
+           << " " << std::to_string(cryptoV);
+  fileVals.close();
 
   // Done
   std::ofstream fileDone(statsDone);
   fileDone.close();
+  if (DEBUG1) std::cout << KBLU << nfo() << "printing 'done' file: " << statsDone << KNRM << std::endl;
 
 
   if (hardStop) {
@@ -1482,6 +2190,7 @@ Block Handler::createNewBlock(Hash hash) {
 
 // For leader to do begin a view (prepare phase)
 void Handler::prepare() {
+  auto start = std::chrono::steady_clock::now();
   // We first create a block that extends the highest prepared block
   Just justNV = this->log.findHighestNv(this->view);
 
@@ -1516,6 +2225,9 @@ void Handler::prepare() {
   } else {
     if (DEBUG2) std::cout << KBLU << nfo() << "bad justification" << justPrep.prettyPrint() << KNRM << std::endl;
   }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalPrepTime(time);
 }
 
 
@@ -1538,6 +2250,7 @@ void Handler::handleNewview(MsgNewView msg) {
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   stats.addTotalHandleTime(time);
+  stats.addTotalNvTime(time);
 }
 
 void Handler::handle_newview(MsgNewView msg, const PeerNet::conn_t &conn) {
@@ -1560,8 +2273,17 @@ void Handler::respondToProposal(Just justNv, Block block) {
 }
 
 
+bool Handler::Sverify(Signs signs, PID id, Nodes nodes, std::string s) {
+  //std::cout << KBLU << nfo() << "verifying:" << signs.getSize() << KNRM << std::endl;
+  //std::cout << KBLU << nfo() << "stats-1:" << stats.getCryptoVerifNum() << KNRM << std::endl;
+  bool b = signs.verify(stats, id, nodes, s);
+  //std::cout << KBLU << nfo() << "stats-2:" << stats.getCryptoVerifNum() << KNRM << std::endl;
+  return b;
+}
+
+
 bool Handler::verifyJust(Just just) {
-  return just.getSigns().verify(this->myid,this->nodes,just.getRData().toString());
+  return Sverify(just.getSigns(),this->myid,this->nodes,just.getRData().toString());
 }
 
 
@@ -1577,9 +2299,10 @@ void Handler::handleLdrPrepare(MsgLdrPrepare msg) {
   // We re-construct the justification generated by the leader
   RData rdataLdrPrep(b.hash(),rdataNV.getPropv(),rdataNV.getJusth(),rdataNV.getJustv(),PH1_PREPARE);
   Just ldrJustPrep(rdataLdrPrep,msg.signs);
+  bool vm = verifyJust(ldrJustPrep);
 
   if (rdataNV.getPropv() >= this->view
-      && verifyJust(ldrJustPrep)
+      && vm
       && b.extends(rdataNV.getJusth())) {
     // If the message is for the current view we act upon it right away
     if (rdataNV.getPropv() == this->view) {
@@ -1593,10 +2316,12 @@ void Handler::handleLdrPrepare(MsgLdrPrepare msg) {
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   stats.addTotalHandleTime(time);
+  if (DEBUGT) std::cout << KMAG << nfo() << "MsgLdrPrepare3:" << time << KNRM << std::endl;
 }
 
 
 void Handler::handle_ldrprepare(MsgLdrPrepare msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgLdrPrepare");
   handleLdrPrepare(msg);
 }
 
@@ -1835,14 +2560,14 @@ void Handler::handle_stop(MsgStop msg, const ClientNet::conn_t &conn) {
 // For backups to verify accumulators sent by leaders
 bool Handler::verifyAcc(Accum acc) {
   Signs signs = Signs(acc.getSign());
-  return signs.verify(this->myid,this->nodes,acc.data2string());
+  return Sverify(signs,this->myid,this->nodes,acc.data2string());
 }
 
 
 // For backups to verify MsgLdrPrepareAcc messages send by leaders
 bool Handler::verifyLdrPrepareAcc(MsgLdrPrepareAcc msg) {
   Signs signs = Signs(msg.sign);
-  return signs.verify(this->myid,this->nodes,msg.cdata.toString());
+  return Sverify(signs,this->myid,this->nodes,msg.cdata.toString());
 }
 
 
@@ -1850,7 +2575,7 @@ bool Handler::verifyLdrPrepareAcc(MsgLdrPrepareAcc msg) {
 bool Handler::verifyPrepareAccCert(MsgPrepareAcc msg) {
   Signs signs = msg.signs;
   if (signs.getSize() == this->qsize) {
-    return signs.verify(this->myid,this->nodes,msg.cdata.toString());
+    return Sverify(signs,this->myid,this->nodes,msg.cdata.toString());
   }
   return false;
 }
@@ -1860,7 +2585,7 @@ bool Handler::verifyPrepareAccCert(MsgPrepareAcc msg) {
 bool Handler::verifyPreCommitAccCert(MsgPreCommitAcc msg) {
   Signs signs = msg.signs;
   if (signs.getSize() == this->qsize) {
-    return signs.verify(this->myid,this->nodes,msg.cdata.toString());
+    return Sverify(signs,this->myid,this->nodes,msg.cdata.toString());
   }
   return false;
 }
@@ -1893,15 +2618,16 @@ Accum Handler::newviews2acc(std::set<MsgNewViewAcc> newviews) {
     setSigns(ss,&vote.signs);
     acc = callTEEaccumSp(vote);
   } else{
-    if (DEBUG1) std::cout << KLRED << nfo() << "newviews diff (" << ss.getSize() << ")" << KNRM << std::endl;
+    if (DEBUG1) std::cout << KLRED << nfo() << "{acc} newviews diff (" << ss.getSize() << ")" << KNRM << std::endl;
     acc = callTEEaccum(votes);
   }
   return acc;
 }
 
 
-// For leader to being a view (prepare phase) -- in the Accum mode
+// For leader to begin a view (prepare phase) -- in the Accum mode
 void Handler::prepareAcc() {
+  auto start = std::chrono::steady_clock::now();
   std::set<MsgNewViewAcc> newviews = this->log.getNewViewAcc(this->view,this->qsize);
   if (newviews.size() == this->qsize) {
 
@@ -1930,6 +2656,9 @@ void Handler::prepareAcc() {
       if (DEBUG2) std::cout << KBLU << nfo() << "bad accumulator" << acc.prettyPrint() << KNRM << std::endl;
     }
   }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalPrepTime(time);
 }
 
 void Handler::handleEarlierMessagesAcc() {
@@ -2036,7 +2765,7 @@ MsgPreCommitAcc Handler::createMsgPreCommitAcc(View view, Hash hash) {
   Void vd = Void();
   CData<Hash,Void> cdata(PH1_PRECOMMIT,view,hash,vd);
   std::string text = cdata.toString();
-  Sign sign = Sign(this->priv,this->myid,text);
+  Sign sign = Ssign(this->priv,this->myid,text);
   MsgPreCommitAcc msgPc(cdata,sign);
   return msgPc;
 }
@@ -2069,7 +2798,7 @@ MsgPrepareAcc Handler::createMsgPrepareAcc(Block block) {
   Void vd = Void();
   CData<Hash,Void> data(PH1_PREPARE,this->view,hash,vd);
   std::string text = data.toString();
-  Sign sign = Sign(this->priv,this->myid,text);
+  Sign sign = Ssign(this->priv,this->myid,text);
   MsgPrepareAcc msgPrep(data,{sign});
   return msgPrep;
 }
@@ -2093,6 +2822,7 @@ void Handler::handleNewviewAcc(MsgNewViewAcc msg) {
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   stats.addTotalHandleTime(time);
+  stats.addTotalNvTime(time);
 }
 
 void Handler::handle_newviewacc(MsgNewViewAcc msg, const PeerNet::conn_t &conn) {
@@ -2152,6 +2882,7 @@ void Handler::handleLdrPrepareAcc(MsgLdrPrepareAcc msg) {
 }
 
 void Handler::handle_ldrprepareacc(MsgLdrPrepareAcc msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgLdrPrepareAcc");
   handleLdrPrepareAcc(msg);
 }
 
@@ -2260,14 +2991,14 @@ Accum Handler::newviews2accComb(std::set<MsgNewViewComb> newviews) {
   Accum acc;
   if (ss.getSize() >= this->qsize) {
     // Then all the payloads are the same, in which case, we can use the simpler version of the accumulator
-    if (DEBUG1) std::cout << KLGRN << nfo() << "newviews same" << KNRM << std::endl;
+    if (DEBUG1) std::cout << KLGRN << nfo() << "newviews same(" << ss.getSize() << ")" << KNRM << std::endl;
     just_t just;
     just.set = 1;
     setRData(rdata,&just.rdata);
     setSigns(ss,&just.signs);
     acc = callTEEaccumCombSp(just);
   } else{
-    if (DEBUG1) std::cout << KLRED << nfo() << "newviews diff (" << ss.getSize() << ")" << KNRM << std::endl;
+    if (DEBUG1) std::cout << KLRED << nfo() << "{comb} newviews diff (" << ss.getSize() << ")" << KNRM << std::endl;
     acc = callTEEaccumComb(justs);
   }
 
@@ -2275,7 +3006,7 @@ Accum Handler::newviews2accComb(std::set<MsgNewViewComb> newviews) {
 }
 
 
-// For leader to being a view (prepare phase) -- in the Comb mode
+// For leader to begin a view (prepare phase) -- in the Comb mode
 void Handler::prepareComb() {
   std::set<MsgNewViewComb> newviews = this->log.getNewViewComb(this->view,this->qsize);
   if (newviews.size() == this->qsize) {
@@ -2298,10 +3029,16 @@ void Handler::prepareComb() {
         if (msgPrep.signs.getSize() == 1) {
           Sign sig = msgPrep.signs.get(0);
 
+          auto start = std::chrono::steady_clock::now();
+
           // This one goes to the backups
           MsgLdrPrepareComb msgLdrPrep(acc,block,sig);
           Peers recipients = remove_from_peers(this->myid);
           sendMsgLdrPrepareComb(msgLdrPrep,recipients);
+
+          auto end = std::chrono::steady_clock::now();
+          double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+          stats.addTotalPrepTime(time);
 
           if (this->log.storePrepComb(msgPrep) == this->qsize) {
             preCommitComb(msgPrep.data);
@@ -2330,6 +3067,7 @@ void Handler::handleNewviewComb(MsgNewViewComb msg) {
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   stats.addTotalHandleTime(time);
+  stats.addTotalNvTime(time);
 }
 
 void Handler::handle_newviewcomb(MsgNewViewComb msg, const PeerNet::conn_t &conn) {
@@ -2343,7 +3081,7 @@ bool Handler::verifyLdrPrepareComb(MsgLdrPrepareComb msg) {
   Block block = msg.block;
   RData rdataLdrPrep(block.hash(),acc.getView(),acc.getPreph(),acc.getPrepv(),PH1_PREPARE);
   Signs signs = Signs(msg.sign);
-  return signs.verify(this->myid,this->nodes,rdataLdrPrep.toString());
+  return Sverify(signs,this->myid,this->nodes,rdataLdrPrep.toString());
 }
 
 
@@ -2397,9 +3135,11 @@ void Handler::handleLdrPrepareComb(MsgLdrPrepareComb msg) {
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   stats.addTotalHandleTime(time);
+  if (DEBUGT) std::cout << KMAG << nfo() << "MsgLdrPrepareComb3:" << time << KNRM << std::endl;
 }
 
 void Handler::handle_ldrpreparecomb(MsgLdrPrepareComb msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgLdrPrepareComb");
   handleLdrPrepareComb(msg);
 }
 
@@ -2572,7 +3312,7 @@ void Handler::executeComb(RData data) {
 bool Handler::verifyPreCommitCombCert(MsgPreCommitComb msg) {
   Signs signs = msg.signs;
   if (signs.getSize() == this->qsize) {
-    return signs.verify(this->myid,this->nodes,msg.data.toString());
+    return Sverify(signs,this->myid,this->nodes,msg.data.toString());
   }
   return false;
 }
@@ -2631,6 +3371,1417 @@ void Handler::handle_precommitcomb(MsgPreCommitComb msg, const PeerNet::conn_t &
 }
 
 
+
+
+// ----------------------------------------------
+// -- Free version
+// --
+
+
+MsgNewViewFree Handler::highestNewViewFree(std::set<MsgNewViewFree> *newviews) {
+  std::set<MsgNewViewFree>::iterator it0=newviews->begin();
+  if (DEBUG1) std::cout << KBLU << nfo() << "highest-size1:" << newviews->size() << KNRM << std::endl;
+  MsgNewViewFree highest = (MsgNewViewFree)*it0;
+  for (std::set<MsgNewViewFree>::iterator it = it0; it!=newviews->end(); ++it) {
+    MsgNewViewFree msg = (MsgNewViewFree)*it;
+    if (msg.data.getJustv() > highest.data.getJustv()) { it0 = it; highest = msg; }
+  }
+  newviews->erase(it0);
+  if (DEBUG1) std::cout << KBLU << nfo() << "highest-size2:" << newviews->size() << KNRM << std::endl;
+  return highest;
+}
+
+
+HAccum Handler::newviews2accFree(MsgNewViewFree high, std::set<MsgNewViewFree> others, Hash hash) {
+  // TODO: We don't quite need Justs here because we need only 1 signature
+  FJust justs[MAX_NUM_SIGNATURES-1]; // MAX_NUM_SIGNATURES is supposed to be == this->qsize
+
+  FData data = high.data;
+  Auths ss(high.auth);
+
+  unsigned int i = 0;
+  for (std::set<MsgNewViewFree>::iterator it=others.begin(); it!=others.end() && i < MAX_NUM_SIGNATURES-1; ++it, i++) {
+    MsgNewViewFree msg = (MsgNewViewFree)*it;
+    if (msg.data == data) {
+      if (DEBUG1) std::cout << KBLU << nfo() << "adding:" << msg.auth.prettyPrint() << KNRM << std::endl;
+      ss.add(msg.auth);
+    }
+    justs[i] = FJust(msg.data,msg.auth);
+    if (DEBUG1) std::cout << KBLU << nfo() << "newview:" << msg.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KBLU << nfo() << "just:" << justs[i].prettyPrint() << KNRM << std::endl;
+  }
+
+  HAccum acc;
+  if (ss.getSize() >= this->qsize) {
+    // Then all the payloads are the same, in which case, we can use the simpler version of the accumulator
+    if (DEBUG1) std::cout << KLGRN << nfo() << "newviews same(" << ss.getSize() << ")" << KNRM << std::endl;
+    ofjust_t just;
+    just.set = 1;
+    setFData(data,&just.data);
+    setAuths(ss,&just.auths);
+    acc = callTEEaccumFreeSp(just,hash);
+  } else{
+    if (DEBUG1) std::cout << KLRED << nfo() << "{free} newviews diff (" << ss.getSize() << ")" << KNRM << std::endl;
+    FJust jhigh = FJust(high.data,high.auth);
+    acc = callTEEaccumFree(jhigh,justs,hash);
+  }
+
+  return acc;
+}
+
+
+// For leader to begin a view (prepare phase) -- in the Free mode
+void Handler::prepareFree() {
+  if (DEBUG1) std::cout << KBLU << nfo() << "leader preparing" << KNRM << std::endl;
+  std::set<MsgNewViewFree> newviews = this->log.getNewViewFree(this->view,this->qsize);
+  if (newviews.size() == this->qsize) {
+    // New block
+    if (DEBUG1) std::cout << KBLU << nfo() << "highest-sizeA:" << newviews.size() << KNRM << std::endl;
+    MsgNewViewFree highest = highestNewViewFree(&newviews);
+    if (DEBUG1) std::cout << KBLU << nfo() << "highest-sizeB:" << newviews.size() << KNRM << std::endl;
+    Block block = createNewBlock(highest.data.getJusth());
+    Hash hash = block.hash();
+
+    HAccum acc = newviews2accFree(highest,newviews,hash);
+    if (DEBUG1) std::cout << KBLU << nfo() << "acc=" << acc.prettyPrint() << KNRM << std::endl;
+
+    if (acc.isSet()) {
+      // This one we'll store, and wait until we have this->qsize of them
+      //HJust justPrep = callTEEprepareFree(hash);
+//      if (justPrep.isSet()) {
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << hash.toString() << KNRM << std::endl;
+        this->blocks[this->view]=block;
+
+        //if (DEBUG1) std::cout << KBLU << nfo() << "ldr-prepare:" << msgPrep.signs.getSize() << KNRM << std::endl;
+        if (acc.getAuthp().getHash().getSet()) {
+
+          auto start = std::chrono::steady_clock::now();
+
+          // This one goes to the backups
+          MsgLdrPrepareFree msgLdrPrep(acc,block);
+          Peers recipients = remove_from_peers(this->myid);
+          sendMsgLdrPrepareFree(msgLdrPrep,recipients);
+
+          auto end = std::chrono::steady_clock::now();
+          double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+          stats.addTotalPrepTime(time);
+
+          PJust msgPrep(hash,acc.getView(),acc.getAuthp(),Auths());
+          if (this->log.storePrepFree(msgPrep) == this->qsize) {
+            if (DEBUG1) std::cout << KBLU << nfo() << "stored..." << KNRM << std::endl;
+            preCommitFree(msgPrep.getView());
+          }
+          if (DEBUG1) std::cout << KBLU << nfo() << "prepareFree done" << KNRM << std::endl;
+        }
+//      } else {
+//        if (DEBUG1) std::cout << KBLU << nfo() << "bad prepare certificate" << justPrep.prettyPrint() << KNRM << std::endl;
+//      }
+    } else {
+      if (DEBUG1) std::cout << KBLU << nfo() << "bad accumulator" << acc.prettyPrint() << KNRM << std::endl;
+    }
+  } else {
+    if (DEBUG1) std::cout << KBLU << nfo() << "not enough newviews" << KNRM << std::endl;
+  }
+}
+
+
+// Run by the leader
+void Handler::handleNewviewFree(MsgNewViewFree msg) {
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  View v = msg.data.getView();
+  if (v >= this->view && amLeaderOf(v)) {
+    if (DEBUG1) std::cout << KBLU << nfo() << "storing new-view from: " << msg.auth.getId() << KNRM << std::endl;
+    if (!this->started) {
+      if (DEBUG1) std::cout << KBLU << nfo() << "getting started from new-view" << KNRM << std::endl;
+      this->started=true;
+      getStarted();
+    }
+    if (this->log.storeNvFree(msg) == this->qsize && v == this->view) {
+      if (DEBUG1) std::cout << KBLU << nfo() << "preparing" << KNRM << std::endl;
+      prepareFree();
+    }
+    if (DEBUG1) std::cout << KBLU << nfo() << "stored new-view from: " << msg.auth.getId() << KNRM << std::endl;
+  } else {
+    if (DEBUG1) std::cout << KMAG << nfo() << "discarded:" << msg.prettyPrint() << KNRM << std::endl;
+  }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+  stats.addTotalNvTime(time);
+}
+
+
+void Handler::handle_newviewfree(MsgNewViewFree msg, const PeerNet::conn_t &conn) {
+  handleNewviewFree(msg);
+}
+
+
+// For backups to verify MsgLdrPrepareFree messages send by leaders
+bool Handler::verifyLdrPrepareFree(HAccum acc, Block block) {
+  auto start = std::chrono::steady_clock::now();
+
+  Hash hash   = block.hash();
+  View view   = acc.getView(); //,,acc.getPreph(),acc.getPrepv(),PH1_PREPARE);
+  Auth auth   = acc.getAuthp();
+  std::string s1 = acc.data2string();
+  std::string sh = hash.toString();
+  std::string s2 = sh + std::to_string(view);
+  // Accumulator & Proposal:
+  bool b = callTEEverifyFree2(acc.getAuth(),s1,auth,s2);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare:" << b << "(" << s1.size() << ")-(" << s2.size() << ")" << KNRM << std::endl;
+  if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare (prep-hash:" << sh.size() << "):" << sh << KNRM << std::endl;
+  if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare (prep-view):" << view << KNRM << std::endl;
+
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  if (DEBUGT) std::cout << KMAG << nfo() << "verifyLdrPrepareFree:" << time << KNRM << std::endl;
+
+  return b;
+}
+
+
+// For backups to respond to correct MsgLdrPrepareFree messages received from leaders
+void Handler::respondToLdrPrepareFree(HAccum acc) {
+  //Just justPrep = callTEEprepareFree(block.hash(),acc);
+  //if (justPrep.isSet()) {
+  //if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+
+  View view = acc.getView();
+  std::string s = std::to_string(PH2A) + std::to_string(view);
+  if (DEBUG1) std::cout << KRED << nfo() << "authenticating:" << s << KNRM << std::endl;
+  Auth auth = callTEEauthFree(s);
+
+  MsgBckPrepareFree msgPrep(view,auth);
+  PID leader = getCurrentLeader();
+  Peers recipients = keep_from_peers(leader);
+  sendMsgBckPrepareFree(msgPrep,recipients);
+  //}
+}
+
+
+// Run by the backups in the prepare phase
+void Handler::handleLdrPrepareFree(HAccum acc, Block block) {
+  if (DEBUGT) printNowTime("handle MsgLdrPrepareFree");
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << "PREPARE-LDR-FREE[" + acc.prettyPrint() + "," + block.prettyPrint() + "]" << KNRM << std::endl;
+  View v      = acc.getView();
+  Hash hash   = acc.getPreph();
+  bool vm     = verifyLdrPrepareFree(acc,block);
+  if (v >= this->view
+      && !amLeaderOf(v)
+      && getCurrentLeader() == acc.getAuth().getId()
+      && vm
+      && acc.getSize() == this->qsize
+      && block.extends(hash)) {
+    this->blocks[this->view]=block;
+    if (v == this->view) {
+      respondToLdrPrepareFree(acc);
+    } else {
+      // If the message is for later, we store it
+      if (DEBUG1) std::cout << KMAG << nfo() << "storing:" << acc.prettyPrint() << KNRM << std::endl;
+      this->log.storeLdrPrepFree(acc);
+    }
+  } else {
+    if (DEBUG1) std::cout << KMAG << nfo() << "discarded:" << acc.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KMAG << nfo() << "because:"
+                          << "check-view=" << std::to_string(v >= this->view)
+                          << ";check-leader=" << std::to_string(!amLeaderOf(v))
+                          << ";verif-msg=" << std::to_string(vm)
+                          << ";check-quorum=" << std::to_string(acc.getSize() == this->qsize)
+                          << "(acc-size=" << std::to_string(acc.getSize()) << ",quorum-size=" << std::to_string(this->qsize) << ")"
+                          << ";check-extends=" << std::to_string(block.extends(hash))
+                          << KNRM << std::endl;
+  }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+  if (DEBUGT) std::cout << KMAG << nfo() << "MsgLdrPrepareFree3:" << time << KNRM << std::endl;
+}
+
+
+void Handler::handle_ldrpreparefree(MsgLdrPrepareFree msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgLdrPrepareFree");
+  handleLdrPrepareFree(msg.acc,msg.block);
+}
+
+
+// For leaders to send prepare certificates to backups at the beginning of the pre-commit phase
+// This auth is a backup auth, not the leader's
+void Handler::preCommitFree(View view) {
+  if (DEBUG1) std::cout << KLBLU << nfo() << "pre-committing:" << view << KNRM << std::endl;
+  MsgPrepareFree msgPrep = (this->log).getPrepareFree(view);
+  // We should not need to check the size of 'signs' as this function should only be called, when this is possible
+  if (msgPrep.sizeAuth() == this->qsize) {
+    Peers recipients = remove_from_peers(this->myid);
+    sendMsgPrepareFree(msgPrep,recipients);
+    if (DEBUG1) std::cout << KLBLU << nfo() << "hash of logged prepare:" << msgPrep.just.getHash().toString() << KNRM << std::endl;
+
+    // The leader also stores the prepare message
+    //TODO: send a pair of a store certificate (a ??) and a new-view certificate (a FJust)
+    PJust pjust      = msgPrep.just;
+    FVJust justStore = callTEEstoreFree(pjust);
+    FJust justNv     = FJust(justStore.getData(),justStore.getAuth2());
+    this->prepjust   = pjust;
+    this->nvjust     = justNv;
+    // TODO: this is the store certificate:
+    MsgPreCommitFree msgPc(justStore.getData().getView(),Auths(justStore.getAuth1()));
+
+    // We store our own commit in the log
+    if (this->qsize <= this->log.storePcFree(msgPc)) {
+      decideFree(justStore.getData());
+    }
+  }
+}
+
+
+// For leaders to handle votes on their proposals (pre-prepare)
+void Handler::handleBckPrepareFree(MsgBckPrepareFree msg) {
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  View v = msg.view;
+  if (v == this->view) {
+    if (amLeaderOf(v)) {
+      //if (DEBUG1) std::cout << KLBLU << nfo() << "storing backup-prepare:" << msg.prettyPrint() << KNRM << std::endl;
+      // Beginning of pre-commit phase, we store messages until we get enough of them to start pre-committing
+      if (DEBUG1) std::cout << KLBLU << nfo() << "A0" << KNRM << std::endl;
+      unsigned int ns = this->log.storeBckPrepFree(msg);
+      if (DEBUG1) std::cout << KLBLU << nfo() << "A1" << KNRM << std::endl;
+      if (ns == this->qsize) {
+        //if (DEBUG1) std::cout << KLBLU << nfo() << "A" << KNRM << std::endl;
+        preCommitFree(msg.view);
+        //if (DEBUG1) std::cout << KLBLU << nfo() << "B" << KNRM << std::endl;
+      }
+      //if (DEBUG1) std::cout << KLBLU << nfo() << "C" << KNRM << std::endl;
+    }
+  } else {
+    //if (DEBUG1) std::cout << KMAG << nfo() << "storing:" << msg.prettyPrint() << KNRM << std::endl;
+    if (v > this->view) { log.storeBckPrepFree(msg); }
+  }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "handled:" << msg.prettyPrint() << KNRM << std::endl;
+}
+
+
+void Handler::handle_bckpreparefree(MsgBckPrepareFree msg, const PeerNet::conn_t &conn) {
+  handleBckPrepareFree(msg);
+}
+
+
+// For backups to respond to MsgPrepareFree messages receveid from leaders
+void Handler::respondToPrepareFree(MsgPrepareFree msg) {
+  PJust pjust = msg.just;
+  this->prepjust = pjust;
+  FVJust justStore = callTEEstoreFree(pjust);
+  // pre-commit certificate
+  VJust justPc = VJust(PH2A,justStore.getData().getView(),justStore.getAuth1());
+  FJust justNv = FJust(justStore.getData(),justStore.getAuth2());
+  this->nvjust = justNv;
+  if (DEBUG1) { std::cout << KMAG << nfo() << "TEEstoreFree just:" << justStore.prettyPrint() << KNRM << std::endl; }
+  if (DEBUG1) { std::cout << KMAG << nfo() << "TEEstoreFree nv just:" << justNv.prettyPrint() << KNRM << std::endl; }
+  MsgPreCommitFree msgPc(justPc.getView(),Auth(justPc.getAuth()));
+  Peers recipients = keep_from_peers(getCurrentLeader());
+  sendMsgPreCommitFree(msgPc,recipients);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "send pre-commit" << KNRM << std::endl;
+}
+
+
+// For backups to handle prepare certificates
+void Handler::handlePrepareFree(MsgPrepareFree msg) {
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  View v = msg.just.getView();
+  if (v == this->view) {
+    if (!amLeaderOf(v)) {
+      // Backups wait for a MsgPrepareAcc message from the leader that contains qsize signatures in the pre-commit phase
+      respondToPrepareFree(msg);
+    }
+  } else {
+    if (DEBUG1) std::cout << KMAG << nfo() << "storing:" << msg.prettyPrint() << KNRM << std::endl;
+    if (v > this->view) { log.storePrepFree(msg.just); }
+  }
+  if (DEBUG1) std::cout << KLBLU << nfo() << "almost handled prepare" << KNRM << std::endl;
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "handled:" << msg.prettyPrint() << KNRM << std::endl;
+}
+
+
+void Handler::handle_preparefree(MsgPrepareFree msg, const PeerNet::conn_t &conn) {
+  handlePrepareFree(msg);
+}
+
+
+void Handler::handleEarlierMessagesFree() {
+  // *** THIS IS FOR LATE NODES TO PRO-ACTIVELY PROCESS MESSAGES THEY HAVE ALREADY RECEIVED FOR THE NEW VIEW ***
+  // We now check whether we already have enough information to start the next view if we're the leader
+  if (amCurrentLeader()) {
+    std::set<MsgNewViewFree> newviews = this->log.getNewViewFree(this->view,this->qsize);
+    if (newviews.size() == this->qsize) {
+      // we have enough new view messages to start the new view
+      prepareFree();
+    }
+  } else {
+    // First we check whether the view has already been locked
+    // (i.e., we received a pre-commit certificate from the leader),
+    // in which case we don't need to go through the previous steps.
+    Auths signsPc = (this->log).getPrecommitFree(this->view,this->qsize);
+    if (signsPc.getSize() == this->qsize) {
+      if (DEBUG1) std::cout << KMAG << nfo() << "catching up using pre-commit certificate" << KNRM << std::endl;
+      // We skip the prepare phase (this is otherwise a TEEprepareFree):
+      //callTEEsignFree();
+      // We skip the pre-commit phase (this is otherwise a TEEstoreFree):
+      //callTEEsignFree();
+      // We execute
+      MsgPreCommitFree msgPc = this->log.firstPrecommitFree(this->view);
+      respondToPreCommitFree(msgPc);
+    } else { // We don't have enough pre-commit signatures
+      MsgPrepareFree msgPrep = (this->log).getPrepareFree(this->view);
+      if (msgPrep.sizeAuth() == this->qsize) {
+        if (DEBUG1) std::cout << KMAG << nfo() << "catching up using prepare certificate" << KNRM << std::endl;
+        // TODO: If we're late, we currently store two prepare messages (in the prepare phase,
+        // the one from the leader with 1 sig; and in the pre-commit phase, the one with f+1 sigs.
+        // We skip the prepare phase (this is otherwise a TEEprepare):
+        //callTEEsign();
+        // We store the prepare certificate
+        respondToPrepareFree(msgPrep);
+      } else {
+        HAccum acc = this->log.getLdrPrepareFree(this->view);
+        if (acc.getAuthp().getHash().getSet()) { // If we've stored the leader's proposal
+          if (DEBUG1) std::cout << KMAG << nfo() << "catching up using leader proposal" << KNRM << std::endl;
+          respondToLdrPrepareFree(acc);
+        }
+      }
+    }
+  }
+}
+
+
+// TODO: also trigger new-views when there is a timeout
+void Handler::startNewViewFree() {
+  if (DEBUG1) std::cout << KBLU << nfo() << "starting a new view" << KNRM << std::endl;
+
+  FJust just = this->nvjust;
+  if (DEBUG1) std::cout << KBLU << nfo() << "new-view cert (" << just.getData().getView() << "," << this->view << ")" << KNRM << std::endl;
+  // generate justifications until we can generate one for the next view
+  while (just.getData().getView() < this->view+1) {
+    FVJust j = callTEEstoreFree(this->prepjust);
+    just = FJust(j.isSet(),j.getData(),j.getAuth2());
+    this->nvjust = just;
+  }
+  // increment the view
+  // *** THE NODE HAS NOW MOVED TO THE NEW-VIEW ***
+  this->view++;
+
+  // We start the timer
+  setTimer();
+
+  // if the lastest justification we've generated is for what is now the current view (since we just incremented it)
+  // and round 0, then send a new-view message
+  if (just.getData().getView() == this->view) {
+    if (DEBUG1) std::cout << KBLU << nfo() << "start-new-view:ok" << KNRM << std::endl;
+    MsgNewViewFree msg(just.getData(),just.getAuth());
+    if (amCurrentLeader()) {
+      handleEarlierMessagesFree();
+      handleNewviewFree(msg);
+    }
+    else {
+      PID leader = getCurrentLeader();
+      Peers recipients = keep_from_peers(leader);
+      sendMsgNewViewFree(msg,recipients);
+      handleEarlierMessagesFree();
+    }
+  } else {
+    if (DEBUG1) std::cout << KBLU << nfo() << "start-new-view:something wrong happened" << KNRM << std::endl;
+    // Something wrong happened
+  }
+}
+
+
+
+void Handler::executeFree(FData data) {
+  //std::lock_guard<std::mutex> guard(mu_trans);
+  auto endView = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(endView - startView).count();
+  startView = endView;
+  stats.incExecViews();
+  stats.addTotalViewTime(time);
+  if (this->transactions.empty()) { this->viewsWithoutNewTrans++; } else { this->viewsWithoutNewTrans = 0; }
+
+  // Execute
+  // TODO: We should wait until we received the block corresponding to the hash to execute
+  if (DEBUG0 && DEBUGE) std::cout << KRED << nfo() << "FREE-EXECUTE(" << this->view << "/" << this->maxViews << ":" << time << ")" << stats.toString() << KNRM << std::endl;
+
+  // Reply
+  replyHash(data.getJusth());
+
+  if (timeToStop()) {
+    recordStats();
+  } else {
+    startNewViewFree();
+  }
+}
+
+
+// Checks that it contains qsize correct signatures
+bool Handler::verifyPreCommitFreeCert(MsgPreCommitFree msg) {
+  Auths auths = msg.auths;
+  if (auths.getSize() == this->qsize) {
+    // TODO: call TEEverify
+    std::string s = std::to_string(PH2A) + std::to_string(msg.view);
+    bool b = callTEEverifyFree(auths,s);
+    if (DEBUG1) std::cout << KLGRN << nfo() << "verify pre-commit(" << b << "-" << s.size() << ")" << KNRM << std::endl;
+    return b;
+  }
+  return false;
+}
+
+
+// For leaders to send pre-commit certificates to backups at the beginning of the decide phase
+void Handler::decideFree(FData data) {
+  View view = data.getView();
+  Auths auths = (this->log).getPrecommitFree(view,this->qsize);
+  if (auths.getSize() == this->qsize) {
+    MsgPreCommitFree msgPc(view,auths);
+    Peers recipients = remove_from_peers(this->myid);
+    sendMsgPreCommitFree(msgPc,recipients);
+
+    if (verifyPreCommitFreeCert(msgPc)) {
+      executeFree(data);
+    }
+  }
+}
+
+
+// For backups to respond to MsgPreCommitFree messages received from leaders
+void Handler::respondToPreCommitFree(MsgPreCommitFree msg) {
+  bool b = verifyPreCommitFreeCert(msg);
+  if (DEBUG1) std::cout << KLGRN << nfo() << "respond to pre-commit(" << b << "," << msg.auths.getSize() << ")" << msg.prettyPrint() << KNRM << std::endl;
+  if (b) {
+    FData data = FData(this->prepjust.getHash(),this->prepjust.getView(),msg.view);
+    executeFree(data);
+  }
+}
+
+
+void Handler::handlePreCommitFree(MsgPreCommitFree msg) {
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  View v = msg.view;
+  // A pre-commit vote is a store certificate that will have a view corresponding to the next view
+  if (v == this->view+1) {
+    if (amLeaderOf(this->view)) {
+      // Beginning of decide phase, we store messages until we get enough of them to start deciding
+      if (DEBUG1) std::cout << KBLU << nfo() << "storing pre-commit" << KNRM << std::endl;
+      if (this->log.storePcFree(msg) == this->qsize) {
+        if (DEBUG1) std::cout << KBLU << nfo() << "deciding" << KNRM << std::endl;
+        FData data = FData(this->prepjust.getHash(),this->prepjust.getView(),v);
+        decideFree(data);
+      }
+      if (DEBUG1) std::cout << KBLU << nfo() << "stored pre-commit" << KNRM << std::endl;
+    } else {
+      // Backups wait for a MsgPreCommitFree message from the leader that contains qsize signatures in the decide phase
+      respondToPreCommitFree(msg);
+    }
+  } else {
+    if (DEBUG1) std::cout << KMAG << nfo() << "storing:" << msg.prettyPrint() << KNRM << std::endl;
+    if (v > this->view) { log.storePcFree(msg); }
+    if (DEBUG1) std::cout << KMAG << nfo() << "stored pre-commit!" << KNRM << std::endl;
+  }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+}
+
+void Handler::handle_precommitfree(MsgPreCommitFree msg, const PeerNet::conn_t &conn) {
+  handlePreCommitFree(msg);
+}
+
+
+
+// ----------------------------------------------
+// -- OP version
+// --
+
+
+// TODO
+void Handler::handleEarlierMessagesOP() {
+  if (!amCurrentLeader()) {
+    // check whether we already have a prepare message for the new view
+    OPprepare prep = this->log.getOPprepare(this->view);
+    if (prep.getAuths().getSize() == this->qsize) {
+      if (DEBUG1) std::cout << KMAG << nfo() << "catching up using pre-commit certificate (" << this->view << ")" << KNRM << std::endl;
+      respondToPreCommitOP(prep);
+    } else {
+      // we don't have a prepare message yet but check whether we have a MsgLdrPrepareOP
+      LdrPrepareOP prop = this->log.getLdrPrepareOp(this->view);
+      if (prop.prop.getAuth().getHash().getSet()) {
+        if (DEBUG1) std::cout << KMAG << nfo() << "catching up using leader proposal (" << this->view << ")" << KNRM << std::endl;
+        if (prop.tag == OPCacc) {
+          respondToLdrPrepareOP(prop.block,prop.prop,OPcert(prop.vote));
+        } else {
+          respondToLdrPrepareOP(prop.block,prop.prop,OPcert(prop.prep));
+        }
+      }
+    }
+  }
+  /*
+  // *** THIS IS FOR LATE NODES TO PRO-ACTIVELY PROCESS MESSAGES THEY HAVE ALREADY RECEIVED FOR THE NEW VIEW ***
+  // We now check whether we already have enough information to start the next view if we're the leader
+  if (amCurrentLeader()) {
+    std::set<MsgNewViewFree> newviews = this->log.getNewViewFree(this->view,this->qsize);
+    if (newviews.size() == this->qsize) {
+      // we have enough new view messages to start the new view
+      prepareFree();
+    }
+  } else {
+    // First we check whether the view has already been locked
+    // (i.e., we received a pre-commit certificate from the leader),
+    // in which case we don't need to go through the previous steps.
+    Auths signsPc = (this->log).getPrecommitFree(this->view,this->qsize);
+    if (signsPc.getSize() == this->qsize) {
+      if (DEBUG1) std::cout << KMAG << nfo() << "catching up using pre-commit certificate" << KNRM << std::endl;
+      // We skip the prepare phase (this is otherwise a TEEprepareFree):
+      //callTEEsignFree();
+      // We skip the pre-commit phase (this is otherwise a TEEstoreFree):
+      //callTEEsignFree();
+      // We execute
+      MsgPreCommitFree msgPc = this->log.firstPrecommitFree(this->view);
+      respondToPreCommitFree(msgPc);
+    } else { // We don't have enough pre-commit signatures
+      MsgPrepareFree msgPrep = (this->log).getPrepareFree(this->view);
+      if (msgPrep.sizeAuth() == this->qsize) {
+        if (DEBUG1) std::cout << KMAG << nfo() << "catching up using prepare certificate" << KNRM << std::endl;
+        // TODO: If we're late, we currently store two prepare messages (in the prepare phase,
+        // the one from the leader with 1 sig; and in the pre-commit phase, the one with f+1 sigs.
+        // We skip the prepare phase (this is otherwise a TEEprepare):
+        //callTEEsign();
+        // We store the prepare certificate
+        respondToPrepareFree(msgPrep);
+      } else {
+        MsgLdrPrepareFree msgProp = this->log.getLdrPrepareFree(this->view);
+        if (msgProp.acc.getAuthp().getHash().getSet()) { // If we've stored the leader's proposal
+          if (DEBUG1) std::cout << KMAG << nfo() << "catching up using leader proposal" << KNRM << std::endl;
+          respondToLdrPrepareFree(msgProp.block,msgProp.acc);
+        }
+      }
+    }
+  }
+  */
+}
+
+
+void Handler::startNewViewOnTimeoutOP() {
+  if (DEBUG1) std::cout << KBLU << nfo() << "starting a new view on timeout" << KNRM << std::endl;
+
+  this->view++;
+
+  // We restart the timer
+  setTimer();
+
+  Block block = (this->opprop).block;
+  OPproposal prop = (this->opprop).prop;
+  OPcert cert = (this->opprop).cert;
+
+  OPstore store = callTEEstoreOP(prop);
+
+  OPnvblock nv(block,store,cert);
+  MsgNewViewOPB msg(nv);
+
+  if (amCurrentLeader()) {
+    handleEarlierMessagesOP();
+    handleNewviewOP(msg);
+  }
+  else {
+    PID leader = getCurrentLeader();
+    Peers recipients = keep_from_peers(leader);
+    sendMsgNewViewOP(msg,recipients);
+    handleEarlierMessagesOP();
+  }
+}
+
+
+
+void Handler::startNewViewOP() {
+  if (DEBUG1) std::cout << KBLU << nfo() << "starting a new view" << KNRM << std::endl;
+
+  OPprepare prep = this->opprep;
+  if (DEBUG1) std::cout << KBLU << nfo() << "new-view cert (" << prep.getView() << "," << this->view << ")" << KNRM << std::endl;
+  // generate justifications until we can generate one for the next view
+  //  while (prep.getView() < this->view) {
+  //    if (DEBUG1) std::cout << KBLU << nfo() << "TODO(startNewViewOP)" << KNRM << std::endl;
+  //    exit(0);
+  //    // TODO
+  //    /*    FVJust j = callTEEstoreFree(this->prepjust);
+  //    just = FJust(j.isSet(),j.getData(),j.getAuth2());
+  //    this->nvjust = just;*/
+  //  }
+  // increment the view
+  // *** THE NODE HAS NOW MOVED TO THE NEW-VIEW ***
+  this->view++;
+
+  // We start the timer
+  setTimer();
+
+  // if the lastest justification we've generated is for what is now the current view (since we just incremented it)
+  // and round 0, then send a new-view message
+  if (prep.getView() == this->view - 1) {
+    if (DEBUG1) std::cout << KBLU << nfo() << "start-new-view:ok" << KNRM << std::endl;
+    MsgNewViewOPA msg(prep);
+    if (amCurrentLeader()) {
+      handleEarlierMessagesOP();
+      handleNewviewOP(msg);
+    }
+    else {
+      PID leader = getCurrentLeader();
+      Peers recipients = keep_from_peers(leader);
+      sendMsgNewViewOP(msg,recipients);
+      handleEarlierMessagesOP();
+    }
+  } else {
+    if (DEBUG1) std::cout << KBLU << nfo() << "start-new-view:something wrong happened(" << prep.getView() << "," << this->view << ")" << KNRM << std::endl;
+    // Something wrong happened
+  }
+}
+
+
+void Handler::preCommitOP(View v) {
+  OPprepare cert = this->log.getOPstores(v,this->qsize);
+  if (DEBUG1) { std::cout << KGRN << "prepare-cert:" << cert.prettyPrint() << KNRM << std::endl; }
+  if (cert.getView() == cert.getV() && cert.getAuths().getSize() == this->qsize) {
+    MsgPreCommitOP msg(cert);
+    Peers recipients = remove_from_peers(this->myid);
+    sendMsgPreCommitOP(msg,recipients);
+    this->opprep = cert;
+    executeOP(cert);
+  }
+}
+
+
+// For leader to begin a view (prepare phase) -- in the OP mode
+void Handler::prepareOp(OPprepare prep) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "leader preparing" << KNRM << std::endl;
+  Block block = createNewBlock(prep.getHash());
+  Hash hash = block.hash();
+
+  // This one we'll store, and wait until we have this->qsize of them
+  OPproposal prop = callTEEprepareOP(hash);
+  if (DEBUG1) std::cout << KBLU << nfo() << "generated proposal:" << prop.prettyPrint() << KNRM << std::endl;
+
+  if (prop.getView() != this->view) {
+    if (DEBUG1) std::cout << KBRED << nfo() << "bad proposal view:" << prop.getView() << "," << this->view << KNRM << std::endl;
+  }
+
+  if (prop.getAuth().getHash().getSet()) {
+    if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << hash.toString() << KNRM << std::endl;
+    this->blocks[this->view]=block;
+
+    // This one goes to the backups
+    MsgLdrPrepareOPA msgLdrPrep(block,prop,prep);
+    Peers recipients = remove_from_peers(this->myid);
+    sendMsgLdrPrepareOPA(msgLdrPrep,recipients);
+
+    this->opprop = OPprp(block,prop,OPcert(prep));
+    OPstore store = callTEEstoreOP(prop);
+
+    if (this->log.storeStoreOp(store) == this->qsize) {
+      if (DEBUG1) std::cout << KBLU << nfo() << "stored..." << KNRM << std::endl;
+      preCommitOP(store.getView());
+    }
+    if (DEBUG1) std::cout << KBLU << nfo() << "prepareOp done" << KNRM << std::endl;
+  } else {
+    if (DEBUG1) std::cout << KBLU << nfo() << "prepareOp failed" << KNRM << std::endl;
+  }
+}
+
+
+// For leaders to begin the prepare phase when the accumulator is for a OPprepare certificate
+void Handler::prepareOpAcc(OPaccum acc, OPprepare prep) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "leader preparing" << KNRM << std::endl;
+  Block block = createNewBlock(acc.getHash());
+  Hash hash = block.hash();
+
+  // This one we'll store, and wait until we have this->qsize of them
+  OPproposal prop = callTEEprepareOP(hash);
+  if (DEBUG1) std::cout << KBLU << nfo() << "generated proposal:" << prop.prettyPrint() << KNRM << std::endl;
+
+  if (prop.getView() != this->view) {
+    if (DEBUG1) std::cout << KBRED << nfo() << "bad proposal view:" << prop.getView() << "," << this->view << KNRM << std::endl;
+  }
+
+  if (prop.getAuth().getHash().getSet()) {
+    if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << hash.toString() << KNRM << std::endl;
+    this->blocks[this->view]=block;
+
+    // This one goes to the backups
+    MsgLdrPrepareOPB msgLdrPrep(block,prop,acc,prep);
+    Peers recipients = remove_from_peers(this->myid);
+    sendMsgLdrPrepareOPB(msgLdrPrep,recipients);
+
+    this->opprop = OPprp(block,prop,OPcert(prep));
+    OPstore store = callTEEstoreOP(prop);
+
+    if (this->log.storeStoreOp(store) == this->qsize) {
+      if (DEBUG1) std::cout << KBLU << nfo() << "stored..." << KNRM << std::endl;
+      preCommitOP(store.getView());
+    }
+    if (DEBUG1) std::cout << KBLU << nfo() << "prepareOp done" << KNRM << std::endl;
+  } else {
+    if (DEBUG1) std::cout << KBLU << nfo() << "prepareOp failed" << KNRM << std::endl;
+  }
+}
+
+
+
+// For leaders to begin the prepare phase when getting a vote certificate from the additional phase
+void Handler::prepareOpVote(OPvote vote) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "leader preparing" << KNRM << std::endl;
+  Block block = createNewBlock(vote.getHash());
+  Hash hash = block.hash();
+
+  // This one we'll store, and wait until we have this->qsize of them
+  OPproposal prop = callTEEprepareOP(hash);
+  if (DEBUG1) std::cout << KBLU << nfo() << "generated proposal:" << prop.prettyPrint() << KNRM << std::endl;
+
+  if (prop.getView() != this->view) {
+    if (DEBUG1) std::cout << KBRED << nfo() << "bad proposal view:" << prop.getView() << "," << this->view << KNRM << std::endl;
+  }
+
+  if (prop.getAuth().getHash().getSet()) {
+    if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << hash.toString() << KNRM << std::endl;
+    this->blocks[this->view]=block;
+
+    // This one goes to the backups
+    MsgLdrPrepareOPC msgLdrPrep(block,prop,vote);
+    Peers recipients = remove_from_peers(this->myid);
+    sendMsgLdrPrepareOPC(msgLdrPrep,recipients);
+
+    this->opprop = OPprp(block,prop,OPcert(vote));
+    OPstore store = callTEEstoreOP(prop);
+
+    if (this->log.storeStoreOp(store) == this->qsize) {
+      if (DEBUG1) std::cout << KBLU << nfo() << "stored..." << KNRM << std::endl;
+      preCommitOP(store.getView());
+    }
+    if (DEBUG1) std::cout << KBLU << nfo() << "prepareOp done" << KNRM << std::endl;
+  } else {
+    if (DEBUG1) std::cout << KBLU << nfo() << "prepareOp failed" << KNRM << std::endl;
+  }
+}
+
+
+// Run by the leader
+void Handler::handleNewviewOP(MsgNewViewOPA msg) {
+  std::lock_guard<std::mutex> guard(mu_handle);
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  View v = msg.prep.getView();
+  // The leader of view v+1 collects messages from view v (or we're handling the initial view)
+  if (v+1 >= this->view && amLeaderOf(v+1)) {
+    if (v+1 == this->view && this->blocks.find(this->view) == this->blocks.end()) {
+      if (DEBUG1) std::cout << KBLU << nfo() << "preparing" << KNRM << std::endl;
+      prepareOp(msg.prep);
+    } else {
+      if (DEBUG1) std::cout << KBLU << nfo() << "not preparing" << KNRM << std::endl;
+      if (v+1 > this->view) {
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing new-view for later" << KNRM << std::endl;
+        this->log.storeNvOp(msg);
+        if (DEBUG1) std::cout << KBLU << nfo() << "stored new-view" << KNRM << std::endl;
+      }
+    }
+    if (DEBUG1) std::cout << KBLU << nfo() << "handled new-view" << KNRM << std::endl;
+  } else if (v == 0 && this->view == 0 && amLeaderOf(0) && this->blocks.find(this->view) == this->blocks.end()) {
+    // special case of the initial view
+    if (DEBUG1) std::cout << KBLU << nfo() << "preparing for initial view " << KNRM << std::endl;
+    prepareOp(msg.prep);
+  } else {
+    if (DEBUG1) std::cout << KMAG << nfo() << "discarded:" <<  this->view << "-" << msg.prettyPrint() << KNRM << std::endl;
+  }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+}
+
+
+OPnvblock Handler::highestNewViewOpb(std::set<OPnvblock> *newviews) {
+  std::set<OPnvblock>::iterator it0=newviews->begin();
+  if (DEBUG1) std::cout << KBLU << nfo() << "highest-size1:" << newviews->size() << KNRM << std::endl;
+  OPnvblock highest = (OPnvblock)*it0;
+  for (std::set<OPnvblock>::iterator it = it0; it!=newviews->end(); ++it) {
+    OPnvblock msg = (OPnvblock)*it;
+    if (msg.store.getV() > highest.store.getV()) { it0 = it; highest = msg; }
+  }
+  newviews->erase(it0);
+  if (DEBUG1) std::cout << KBLU << nfo() << "highest-size2:" << newviews->size() << KNRM << std::endl;
+  return highest;
+}
+
+
+OPaccum Handler::newviews2accOp(OPnvblock high, std::set<OPnvblock> others) {
+  OPstore justs[MAX_NUM_SIGNATURES-1];
+  Auths ss(high.store.getAuth());
+  OPstore data = high.store;
+
+  unsigned int i = 0;
+  for (std::set<OPnvblock>::iterator it=others.begin(); it!=others.end() && i < MAX_NUM_SIGNATURES-1; ++it, i++) {
+    OPnvblock msg = (OPnvblock)*it;
+    if (msg.store.getView() == data.getView() && msg.store.getHash() == data.getHash() && msg.store.getV() == data.getV()) {
+      if (DEBUG1) std::cout << KBLU << nfo() << "adding:" << msg.store.getAuth().prettyPrint() << KNRM << std::endl;
+      ss.add(msg.store.getAuth());
+    }
+    justs[i] = msg.store;
+    if (DEBUG1) std::cout << KBLU << nfo() << "newview:" << msg.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KBLU << nfo() << "just:" << justs[i].prettyPrint() << KNRM << std::endl;
+  }
+
+  OPaccum acc;
+  if (ss.getSize() >= this->qsize) {
+    // Then all the payloads are the same, in which case, we can use the simpler version of the accumulator
+    if (DEBUG1) std::cout << KLGRN << nfo() << "newviews same(" << ss.getSize() << ")" << KNRM << std::endl;
+    OPprepare p(data.getView(),data.getHash(),data.getV(),ss);
+    acc = callTEEaccumOpSp(p);
+  } else{
+    if (DEBUG1) std::cout << KLRED << nfo() << "{op} newviews diff (" << ss.getSize() << ")" << KNRM << std::endl;
+    acc = callTEEaccumOp(data,justs);
+  }
+
+  return acc;
+}
+
+
+OPprepare nvSameStores(OPnvblock nv, std::set<OPnvblock> nvs, unsigned int n) {
+  View view = nv.store.getView();
+  Hash hash = nv.store.getHash();
+  View v    = nv.store.getV();
+
+  Auths auths(nv.store.getAuth());
+  std::set<PID> signers;
+  signers.insert(nv.store.getAuth().getId());
+
+  for (std::set<OPnvblock>::iterator it=nvs.begin(); auths.getSize() < n && it!=nvs.end(); ++it) {
+    OPnvblock nv1 = (OPnvblock)*it;
+    if (view == nv1.store.getView()
+        && hash == nv1.store.getHash()
+        && v == nv1.store.getV()
+        && signers.find(nv1.store.getAuth().getId()) == signers.end()) {
+      auths.add(nv1.store.getAuth());
+      signers.insert(nv1.store.getAuth().getId());
+    }
+  }
+
+  return OPprepare(view,hash,v,auths);
+}
+
+
+void Handler::prepareOpb(View v) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "leader preparing" << KNRM << std::endl;
+  if (v+1 == this->view) {
+    std::set<OPnvblock> nvs = this->log.getNvOps(v, this->qsize);
+    if (nvs.size() == this->qsize) {
+      OPnvblock highest = highestNewViewOpb(&nvs);
+      OPprepare maybePrep = nvSameStores(highest,nvs,this->qsize);
+      if (highest.store.getView() == this->view-1 && maybePrep.getAuths().getSize() == this->qsize) {
+        prepareOp(maybePrep);
+      } else {
+        OPaccum acc = newviews2accOp(highest,nvs);
+        if (DEBUG1) std::cout << KBLU << nfo() << "acc=" << acc.prettyPrint() << KNRM << std::endl;
+
+        if (acc.isSet()) {
+          if (highest.cert.tag == OPCprep) {
+            prepareOpAcc(acc,highest.cert.prep);
+          } else {
+            MsgLdrAddOP msg(acc,highest);
+            Peers recipients = remove_from_peers(this->myid);
+            sendMsgLdrAddOP(msg,recipients);
+          }
+        }
+      }
+    }
+  } else {
+    if (DEBUG1) std::cout << KBLU << nfo() << "leader not preparing, wrong view: " << v << "," << this->view << KNRM << std::endl;
+  }
+}
+
+
+void Handler::handleNewviewOP(MsgNewViewOPB msg) {
+  std::lock_guard<std::mutex> guard(mu_handle);
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+
+  View v = msg.nv.store.getView();
+  // The leader of view v+1 collects messages from view v (or we're handling the initial view)
+  if (v+1 >= this->view && amLeaderOf(v+1)) {
+
+    if (this->log.storeNvOp(msg) == this->qsize && v+1 == this->view) {
+      prepareOpb(v);
+    }
+/*
+    if (v+1 == this->view && this->blocks.find(this->view) == this->blocks.end()) {
+      if (DEBUG1) std::cout << KBLU << nfo() << "preparing" << KNRM << std::endl;
+      prepareOp(msg.prep);
+    } else {
+      if (DEBUG1) std::cout << KBLU << nfo() << "not preparing" << KNRM << std::endl;
+      if (v+1 > this->view) {
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing new-view for later" << KNRM << std::endl;
+        this->log.storeNvOp(msg);
+        if (DEBUG1) std::cout << KBLU << nfo() << "stored new-view" << KNRM << std::endl;
+      }
+    }
+    if (DEBUG1) std::cout << KBLU << nfo() << "handled new-view" << KNRM << std::endl;
+*/
+
+  } else if (v == 0 && this->view == 0 && amLeaderOf(0) && this->blocks.find(this->view) == this->blocks.end()) {
+    // special case of the initial view
+    if (DEBUG1) std::cout << KBLU << nfo() << "preparing for initial view " << KNRM << std::endl;
+    prepareOp(this->opprep);
+  } else {
+    if (DEBUG1) std::cout << KMAG << nfo() << "discarded:" <<  this->view << "-" << msg.prettyPrint() << KNRM << std::endl;
+  }
+
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+  stats.addTotalNvTime(time);
+}
+
+
+void Handler::handle_newviewopa(MsgNewViewOPA msg, const PeerNet::conn_t &conn) {
+  handleNewviewOP(msg);
+}
+
+
+void Handler::handle_newviewopb(MsgNewViewOPB msg, const PeerNet::conn_t &conn) {
+  handleNewviewOP(msg);
+}
+
+
+// For backups to verify MsgLdrPrepareOP messages send by leaders
+bool Handler::verifyLdrPrepareOP(MsgLdrPrepareOPA msg) {
+  Block      block = msg.block;
+  OPproposal prop  = msg.prop;
+  OPprepare  prep  = msg.prep;
+  std::string s1 = prop.data();
+  std::string s2 = prep.data();
+  // Proposal:
+  Auths auths(prop.getAuth());
+  bool b1     = callTEEverifyOP(auths,s1);
+  // Prepare:
+  bool b2     = callTEEverifyOP(prep.getAuths(),s2);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare:" << b1 << "(" << s1.size() << ")-" << b2 << "(" << s2.size() << ")" << KNRM << std::endl;
+  //if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare (prep-hash:" << sh.size() << "):" << sh << KNRM << std::endl;
+  //if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare (prep-view):" << view << KNRM << std::endl;
+  return b1 && b2;
+}
+
+
+// For backups to verify MsgLdrPrepareOP messages send by leaders
+bool Handler::verifyLdrPrepareOP(MsgLdrPrepareOPB msg) {
+  Block      block = msg.block;
+  OPproposal prop  = msg.prop;
+  OPaccum    acc   = msg.acc;
+  OPprepare  prep  = msg.prep;
+  // Proposal:
+  std::string s1 = prop.data();
+  Auths auths1(prop.getAuth());
+  bool b1 = callTEEverifyOP(auths1,s1);
+  // Prepare:
+  std::string s2 = acc.data();
+  Auths auths2(acc.getAuth());
+  bool b2 = callTEEverifyOP(auths2,s2);
+  // Prepare:
+  std::string s3 = prep.data();
+  bool b3 = callTEEverifyOP(prep.getAuths(),s3);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare:" << b1 << "(" << s1.size() << ")-" << b2 << "(" << s2.size() << ")" << b3 << "(" << s3.size() << ")" << KNRM << std::endl;
+  //if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare (prep-hash:" << sh.size() << "):" << sh << KNRM << std::endl;
+  //if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare (prep-view):" << view << KNRM << std::endl;
+  return b1 && b2 && b3;
+}
+
+
+// For backups to verify MsgLdrPrepareOP messages send by leaders
+bool Handler::verifyLdrPrepareOP(MsgLdrPrepareOPC msg) {
+  Block      block = msg.block;
+  OPproposal prop  = msg.prop;
+  OPvote     vote  = msg.vote;
+  std::string s1 = prop.data();
+  std::string s2 = vote.data();
+  // Proposal:
+  Auths auths(prop.getAuth());
+  bool b1     = callTEEverifyOP(auths,s1);
+  // Prepare:
+  bool b2     = callTEEverifyOP(vote.getAuths(),s2);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare:" << b1 << "(" << s1.size() << ")-" << b2 << "(" << s2.size() << ")" << KNRM << std::endl;
+  //if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare (prep-hash:" << sh.size() << "):" << sh << KNRM << std::endl;
+  //if (DEBUG1) std::cout << KLBLU << nfo() << "verifying ldr-prepare (prep-view):" << view << KNRM << std::endl;
+  return b1 && b2;
+}
+
+
+// For backups to respond to correct MsgLdrPrepareFree messages received from leaders
+void Handler::respondToLdrPrepareOP(Block block, OPproposal prop, OPcert cert) {
+  this->blocks[this->view]=block;
+
+  this->opprop = OPprp(block,prop,cert);
+  OPstore store = callTEEstoreOP(prop);
+  this->log.storeStoreOp(store);
+
+  MsgBckPrepareOP msg(store);
+  PID leader = getCurrentLeader();
+  Peers recipients = keep_from_peers(leader);
+  sendMsgBckPrepareOP(msg,recipients);
+}
+
+
+
+// Run by the backups in the prepare phase
+void Handler::handleLdrPrepareOP(MsgLdrPrepareOPA msg) {
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  Block block     = msg.block;
+  OPproposal prop = msg.prop;
+  OPprepare prep  = msg.prep;
+  View v      = prop.getView();
+  View v1     = prep.getView();
+  View v2     = prep.getV();
+  bool vm     = verifyLdrPrepareOP(msg);
+  if (v >= this->view
+      && v1 == v2
+      && (v1 == v - 1 || (v == 0 && v1 == 0)) // handling the initial view
+      && !amLeaderOf(v)
+      && getLeaderOf(v) == prop.getAuth().getId()
+      && vm
+      && block.extends(prep.getHash())
+      && prop.getHash() == block.hash()) {
+    if (v == this->view) {
+      respondToLdrPrepareOP(block,prop,OPcert(prep));
+    } else {
+      // If the message is for later, we store it
+      if (DEBUG1) std::cout << KMAG << nfo() << "storing:" << msg.prettyPrint() << KNRM << std::endl;
+      this->log.storeLdrPrepOp(msg);
+    }
+  } else {
+    if (DEBUG1) std::cout << KMAG << nfo() << "discarded:" << msg.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KMAG << nfo() << "because:"
+                          << "check-view1=" << std::to_string(v >= this->view)
+                          << ";check-view2=" << std::to_string(v1 == v2)
+                          << ";check-view3=" << std::to_string(v1 == v - 1 || (v == 0 && v1 == 0)) << "(" << v1 << "," << v << ")"
+                          << ";check-leader1=" << std::to_string(!amLeaderOf(v)) << "(" << v << ")"
+                          << ";check-leader2=" << std::to_string(getCurrentLeader() == prop.getAuth().getId())
+                          << ";verif-msg=" << std::to_string(vm)
+                          << ";check-extends=" << std::to_string(block.extends(prep.getHash()))
+                          << ";check-hash=" << std::to_string(prop.getHash() == block.hash())
+                          << KNRM << std::endl;
+  }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+}
+
+
+void Handler::handleLdrPrepareOP(MsgLdrPrepareOPB msg) {
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  Block      block = msg.block;
+  OPproposal prop  = msg.prop;
+  OPaccum    acc   = msg.acc;
+  OPprepare  prep  = msg.prep;
+  View v      = prop.getView();
+  View v1     = prep.getView();
+  View v2     = prep.getV();
+  bool vm     = verifyLdrPrepareOP(msg);
+  if (v >= this->view
+      && v1 == v2
+      && (v1 == v - 1 || (v == 0 && v1 == 0)) // handling the initial view
+      && !amLeaderOf(v)
+      && getLeaderOf(v) == prop.getAuth().getId()
+      && vm
+      && block.extends(prep.getHash())
+      && prop.getHash() == block.hash()
+      // check that acc and prep match
+      && (v1 == acc.getView() && prep.getHash() == acc.getHash())) {
+    if (v == this->view) {
+      respondToLdrPrepareOP(block,prop,OPcert(prep));
+    } else {
+      // If the message is for later, we store it
+      if (DEBUG1) std::cout << KMAG << nfo() << "storing:" << msg.prettyPrint() << KNRM << std::endl;
+      this->log.storeLdrPrepOp(msg);
+    }
+  } else {
+    if (DEBUG1) std::cout << KMAG << nfo() << "discarded:" << msg.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KMAG << nfo() << "because:"
+                          << "check-view1=" << std::to_string(v >= this->view)
+                          << ";check-view2=" << std::to_string(v1 == v2)
+                          << ";check-view3=" << std::to_string(v1 == v - 1 || (v == 0 && v1 == 0)) << "(" << v1 << "," << v << ")"
+                          << ";check-leader1=" << std::to_string(!amLeaderOf(v)) << "(" << v << ")"
+                          << ";check-leader2=" << std::to_string(getCurrentLeader() == prop.getAuth().getId())
+                          << ";verif-msg=" << std::to_string(vm)
+                          << ";check-extends=" << std::to_string(block.extends(prep.getHash()))
+                          << ";check-hash=" << std::to_string(prop.getHash() == block.hash())
+                          << KNRM << std::endl;
+  }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+}
+
+
+void Handler::handleLdrPrepareOP(MsgLdrPrepareOPC msg) {
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  Block      block = msg.block;
+  OPproposal prop  = msg.prop;
+  OPvote     vote  = msg.vote;
+  View v      = prop.getView();
+  View v1     = vote.getView();
+  bool vm     = verifyLdrPrepareOP(msg);
+  if (v >= this->view
+      && (v1 == v - 1 || (v == 0 && v1 == 0)) // handling the initial view
+      && !amLeaderOf(v)
+      && getLeaderOf(v) == prop.getAuth().getId()
+      && vm
+      && block.extends(vote.getHash())
+      && prop.getHash() == block.hash()) {
+    if (v == this->view) {
+      respondToLdrPrepareOP(block,prop,OPcert(vote));
+    } else {
+      // If the message is for later, we store it
+      if (DEBUG1) std::cout << KMAG << nfo() << "storing:" << msg.prettyPrint() << KNRM << std::endl;
+      this->log.storeLdrPrepOp(msg);
+    }
+  } else {
+    if (DEBUG1) std::cout << KMAG << nfo() << "discarded:" << msg.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KMAG << nfo() << "because:"
+                          << "check-view1=" << std::to_string(v >= this->view)
+                          << ";check-view3=" << std::to_string(v1 == v - 1 || (v == 0 && v1 == 0)) << "(" << v1 << "," << v << ")"
+                          << ";check-leader1=" << std::to_string(!amLeaderOf(v)) << "(" << v << ")"
+                          << ";check-leader2=" << std::to_string(getCurrentLeader() == prop.getAuth().getId())
+                          << ";verif-msg=" << std::to_string(vm)
+                          << ";check-extends=" << std::to_string(block.extends(vote.getHash()))
+                          << ";check-hash=" << std::to_string(prop.getHash() == block.hash())
+                          << KNRM << std::endl;
+  }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+}
+
+
+void Handler::handle_ldrprepareopa(MsgLdrPrepareOPA msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgLdrPrepareOPA");
+  handleLdrPrepareOP(msg);
+}
+
+
+void Handler::handle_ldrprepareopb(MsgLdrPrepareOPB msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgLdrPrepareOPB");
+  handleLdrPrepareOP(msg);
+}
+
+
+void Handler::handle_ldrprepareopc(MsgLdrPrepareOPC msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgLdrPrepareOPC");
+  handleLdrPrepareOP(msg);
+}
+
+
+// For leaders to handle votes on their proposals
+void Handler::handleBckPrepareOP(MsgBckPrepareOP msg) {
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  View v = msg.store.getView();
+  if (v == this->view) {
+    if (amLeaderOf(v)) {
+      //if (DEBUG1) std::cout << KLBLU << nfo() << "storing backup-prepare:" << msg.prettyPrint() << KNRM << std::endl;
+      // Beginning of pre-commit phase, we store messages until we get enough of them to start pre-committing
+      unsigned int ns = this->log.storeStoreOp(msg.store);
+      if (DEBUG1) std::cout << KLBLU << nfo() << "#bck-prepare-op=" << ns << KNRM << std::endl;
+      if (ns == this->qsize) {
+        //if (DEBUG1) std::cout << KLBLU << nfo() << "A" << KNRM << std::endl;
+        preCommitOP(msg.store.getView());
+        //if (DEBUG1) std::cout << KLBLU << nfo() << "B" << KNRM << std::endl;
+      }
+      //if (DEBUG1) std::cout << KLBLU << nfo() << "C" << KNRM << std::endl;
+    }
+  } else {
+    //if (DEBUG1) std::cout << KMAG << nfo() << "storing:" << msg.prettyPrint() << KNRM << std::endl;
+    if (v > this->view) { log.storeStoreOp(msg.store); }
+  }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+  if (DEBUG1) std::cout << KLBLU << nfo() << "handled:" << msg.prettyPrint() << KNRM << std::endl;
+}
+
+
+void Handler::handle_bckprepareop(MsgBckPrepareOP msg, const PeerNet::conn_t &conn) {
+  handleBckPrepareOP(msg);
+}
+
+
+// Checks that it contains qsize correct signatures
+bool Handler::verifyPrepareOP(OPprepare cert) {
+  Auths auths = cert.getAuths();
+  if (auths.getSize() == this->qsize) {
+    std::string s = cert.data();
+    bool b = callTEEverifyOP(auths,s);
+    if (DEBUG1) std::cout << KLGRN << nfo() << "verify store-cert(" << b << "-" << auths.getSize() << ")" << KNRM << std::endl;
+    return b;
+  }
+  return false;
+}
+
+
+void Handler::executeOP(OPprepare cert) {
+  //std::lock_guard<std::mutex> guard(mu_trans);
+  auto endView = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(endView - startView).count();
+  startView = endView;
+  stats.incExecViews();
+  stats.addTotalViewTime(time);
+  if (this->transactions.empty()) { this->viewsWithoutNewTrans++; } else { this->viewsWithoutNewTrans = 0; }
+
+  // Execute
+  // TODO: We should wait until we received the block corresponding to the hash to execute
+  if (DEBUG0 && DEBUGE) std::cout << KRED << nfo() << "OP-EXECUTE(" << this->view << "/" << this->maxViews << ":" << time << ")" << stats.toString() << KNRM << std::endl;
+
+  // Reply
+  replyHash(cert.getHash());
+
+  if (timeToStop()) {
+    recordStats();
+  } else {
+    startNewViewOP();
+  }
+}
+
+
+void Handler::respondToPreCommitOP(OPprepare cert) {
+  // In case we haven't generated a store cert., we generate it now
+  if (this->log.getOPstores(this->view,1).getAuths().getSize() != 1) { callTEEstoreOP((this->opprop).prop); }
+
+  // and we execute
+  this->opprep = cert;
+  executeOP(cert);
+}
+
+
+// This is really the decide phase
+void Handler::handlePreCommitOP(MsgPreCommitOP msg) {
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  OPprepare cert = msg.cert;
+  View v = cert.getView();
+  // A pre-commit vote is a combination of f+1 store certificates
+  if (v >= this->view && v == cert.getV() && verifyPrepareOP(cert)) {
+    if (v == this->view) {
+      respondToPreCommitOP(cert);
+    } else {
+      this->log.storePrepareOp(cert);
+    }
+  }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+}
+
+
+void Handler::handle_precommitop(MsgPreCommitOP msg, const PeerNet::conn_t &conn) {
+  handlePreCommitOP(msg);
+}
+
+
+bool Handler::validAddOp(View v, OPaccum acc, OPnvblock nv) {
+  Block block = nv.block;
+  OPstore store = nv.store;
+  OPcert cert = nv.cert;
+
+  if (store.getView() == v
+      && store.getV() == cert.getView()
+      && block.hash() == store.getHash()
+      && block.extends(cert.getHash())
+      && acc.getView() == v
+      && acc.getHash() == store.getHash()
+      && acc.getSize() == this->qsize) {
+    Auths a1(acc.getAuth());
+    Auths a2(store.getAuth());
+    Auths a3(cert.getAuths());
+    return callTEEverifyOP(a1,acc.data()) && callTEEverifyOP(a2,store.data()) && callTEEverifyOP(a3,cert.data());
+  } else { return false; }
+}
+
+
+void Handler::handleLdrAddOP(MsgLdrAddOP msg) {
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  OPaccum acc = msg.acc;
+  OPnvblock nv  = msg.nv;
+
+  View v = acc.getView();
+  if (validAddOp(v,acc,nv)) {
+    if (v == this->view-1) {
+      OPvote vote = callTEEvoteOP(acc.getHash());
+      PID leader = getCurrentLeader();
+      Peers recipients = keep_from_peers(leader);
+      sendMsgBckAddOP(vote,recipients);
+    } else {
+      if (DEBUG1) std::cout << KRED << nfo() << "TODO" << KNRM << std::endl;
+      // TODO : store for later
+    }
+  }
+
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+}
+
+
+void Handler::handle_ldraddop(MsgLdrAddOP msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgLdrAddOP");
+  handleLdrAddOP(msg);
+}
+
+
+bool Handler::validOPvote(OPvote vote) {
+  Auths a(vote.getAuths());
+  return callTEEverifyOP(a,vote.data());
+}
+
+
+// For the leader: receive f+1 votes and creates a certificates out of it
+void Handler::handleBckAddOP(OPvote vote) {
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << vote.prettyPrint() << KNRM << std::endl;
+
+  if (vote.getView() >= this->view && validOPvote(vote)) {
+    unsigned int n = this->log.storeVoteOp(vote);
+    // TODO: make sure we only do this once!
+    if (n == this->qsize && vote.getView() == this->view) {
+      OPvote vote = this->log.getOPvote(this->view,this->qsize);
+      prepareOpVote(vote);
+    }
+  }
+
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+}
+
+
+void Handler::handle_bckaddop(MsgBckAddOP msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgBckAddOP");
+  handleBckAddOP(msg.vote);
+}
+
+
+
+//---------------------------------------------------------------------------------------------------
 
 
 /////////////////////////////////////////////////////////
@@ -2937,6 +5088,7 @@ void Handler::handleNewviewCh(MsgNewViewCh msg) {
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   stats.addTotalHandleTime(time);
+  stats.addTotalNvTime(time);
 }
 
 
@@ -2966,7 +5118,7 @@ void Handler::handleLdrPrepareCh(MsgLdrPrepareCh msg) {
 
   if (v >= this->view
       && !amLeaderOf(v) // v is the sender
-      && just.getSigns().verify(this->myid,this->nodes,just.getRData().toString())) {
+      && Sverify(just.getSigns(),this->myid,this->nodes,just.getRData().toString())) {
     // We first store the ldrPrepare as well as the prepare message corresponding to the ldrPrepare message
     if (amLeaderOf(v+1)) {
       //this->log.storeLdrPrepCh(msg);
@@ -2992,6 +5144,7 @@ void Handler::handleLdrPrepareCh(MsgLdrPrepareCh msg) {
 
 
 void Handler::handle_ldrprepare_ch(MsgLdrPrepareCh msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgLdrPrepareCh");
   handleLdrPrepareCh(msg);
 }
 
@@ -3308,7 +5461,7 @@ Accum Handler::newviews2accChComb(std::set<MsgNewViewChComb> newviews) {
     setSigns(ss,&just.signs);
     acc = callTEEaccumChCombSp(just);
   } else{
-    if (DEBUG1) std::cout << KLRED << nfo() << "newviews diff (" << ss.getSize() << ")" << KNRM << std::endl;
+    if (DEBUG1) std::cout << KLRED << nfo() << "{ch-comb} newviews diff (" << ss.getSize() << ")" << KNRM << std::endl;
     acc = callTEEaccumChComb(justs);
   }
 
@@ -3377,6 +5530,7 @@ void Handler::handleNewviewChComb(MsgNewViewChComb msg) {
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   stats.addTotalHandleTime(time);
+  stats.addTotalNvTime(time);
 }
 
 
@@ -3406,7 +5560,7 @@ void Handler::handleLdrPrepareChComb(MsgLdrPrepareChComb msg) {
 
   if (v >= this->view
       && !amLeaderOf(v) // v is the sender
-      && just.getSigns().verify(this->myid,this->nodes,just.getRData().toString())) {
+      && Sverify(just.getSigns(),this->myid,this->nodes,just.getRData().toString())) {
     // We first store the prepare message corresponding to the ldrPrepare message
     if (amLeaderOf(v+1)) { this->log.storePrepChComb(MsgPrepareChComb(just.getRData(),just.getSigns().get(0))); }
     if (v == this->view) {
@@ -3425,6 +5579,7 @@ void Handler::handleLdrPrepareChComb(MsgLdrPrepareChComb msg) {
 
 
 void Handler::handle_ldrprepare_ch_comb(MsgLdrPrepareChComb msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgLdrPrepareChComb");
   handleLdrPrepareChComb(msg);
 }
 

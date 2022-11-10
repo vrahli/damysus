@@ -219,6 +219,32 @@ As mentioned above, you can use the `--cluster` option to start distributed expe
   ```
 
 
+### AWS
+
+The AWS experiments are more adhoc. They require images to already
+exist in the regions. Change `regions` to select the regions you want
+to use.  Then run something like this (as before with the  `--aws`
+option):
+  ```
+    python3 experiments.py --aws --p1 --repeats 1 --faults 1
+  ```
+
+In case something goes wrong, you can stop all instances as follows:
+  ```
+    python3 experiments.py --stop
+  ```
+
+To debug on AWS, try something like this:
+  ```
+    python3 experiments.py --launch 1
+    python3 experiments.py --copy XXX
+  ```
+to launch an instance at some address XXX, which will be printed by
+the first command; then copy all files to the instance. After that you
+can ssh the address, and do whatever you want there.
+
+
+
 # Acknowledgments
 
 Jiangshan Yu was partially supported by the Australian Research Council

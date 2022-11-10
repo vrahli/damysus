@@ -33,7 +33,9 @@ sgx_status_t TEEaccum(votes_t *vs, accum_t *res) {
 
   std::set<PID> signers;
   std::set<vote_t,vote_compare> ordVotes;
+  if (DEBUG1) ocall_print((nfo() + "max_num_sign=" + std::to_string(MAX_NUM_SIGNATURES) + ";qsize=" + std::to_string(getQsize())).c_str());
   for (int i = 0; i < MAX_NUM_SIGNATURES && i < getQsize(); i++) {
+    if (DEBUG1) ocall_print((nfo() + "TEEaccum[" + std::to_string(i) + "]").c_str());
     vote_t vote = vs->votes[i];
     cdata_t data = vote.cdata;
     sign_t sign = vote.sign;

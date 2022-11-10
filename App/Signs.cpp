@@ -54,17 +54,22 @@ Sign Signs::get(unsigned int n) {
 }
 
 
-bool Signs::verify(PID id, Nodes nodes, std::string s) {
+bool Signs::verify(Stats &stats, PID id, Nodes nodes, std::string s) {
   //if (DEBUG1) { std::cout << KYEL << "size signs=" << this->size << KNRM << std::endl; }
   for (int i = 0; i < this->size; i++) {
     Sign sign = this->signs[i];
     PID node = sign.getSigner();
     //if (DEBUG1) { std::cout << KYEL << "node:" << node << KNRM << std::endl; }
-    if (id != node) { // we don't check our own signature
+    if (true) { //(id != node) { // we don't check our own signature
       NodeInfo *nfo = nodes.find(node);
       if (nfo) {
         // TODO: The id of the signer should also be added to the string (for signing and verifying---maybe in Sign.cpp instead?)
-        if (!sign.verify(nfo->getPub(),s)) {
+        auto start = std::chrono::steady_clock::now();
+        bool b = sign.verify(nfo->getPub(),s);
+        auto end = std::chrono::steady_clock::now();
+        double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        stats.addCryptoVerifTime(time);
+        if (!b) {
           if (DEBUG1) { std::cout << KYEL << "couldn't verify signature from " << nfo->getId() << KNRM << std::endl; }
           return false;
         }

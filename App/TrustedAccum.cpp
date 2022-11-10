@@ -18,20 +18,20 @@ TrustedAccum::TrustedAccum(PID id, KEY priv, unsigned int qsize) {
 }
 
 
-bool TrustedAccum::verifyCData(Nodes nodes, CData<Void,Cert> data, Sign sign) {
+bool TrustedAccum::verifyCData(Stats &stats, Nodes nodes, CData<Void,Cert> data, Sign sign) {
   Signs signs = Signs(sign);
-  return signs.verify(this->id,nodes,data.toString());
+  return signs.verify(stats,this->id,nodes,data.toString());
 }
 
 
 // When verifying certificates, we have to verify MsgPrepareAcc's as certificates are generated from those
-bool TrustedAccum::verifyCert(Nodes nodes, Cert c) {
+bool TrustedAccum::verifyCert(Stats &stats, Nodes nodes, Cert c) {
   CData<Hash,Void> data(PH1_PREPARE,c.getView(),c.getHash(),Void());
-  return c.getSigns().verify(this->id,nodes,data.toString());
+  return c.getSigns().verify(stats,this->id,nodes,data.toString());
 }
 
 
-Accum TrustedAccum::TEEaccum(Nodes nodes, Vote<Void,Cert> votes[MAX_NUM_SIGNATURES]) {
+Accum TrustedAccum::TEEaccum(Stats &stats, Nodes nodes, Vote<Void,Cert> votes[MAX_NUM_SIGNATURES]) {
   View v = votes[0].getCData().getView();
   View highest = 0;
   Hash hash = Hash();
@@ -43,8 +43,8 @@ Accum TrustedAccum::TEEaccum(Nodes nodes, Vote<Void,Cert> votes[MAX_NUM_SIGNATUR
     Sign sign  = vote.getSign();
     PID signer = sign.getSigner();
     Cert cert  = data.getCert();
-    bool vd = verifyCData(nodes,data,sign);
-    bool vc = verifyCert(nodes,cert);
+    bool vd = verifyCData(stats,nodes,data,sign);
+    bool vc = verifyCert(stats,nodes,cert);
     if (data.getPhase() == PH1_NEWVIEW
         && data.getView() == v
         && signers.find(signer) == signers.end()
@@ -76,7 +76,7 @@ Accum TrustedAccum::TEEaccum(Nodes nodes, Vote<Void,Cert> votes[MAX_NUM_SIGNATUR
 }
 
 
-Accum TrustedAccum::TEEaccumSp(Nodes nodes, uvote_t vote) {
+Accum TrustedAccum::TEEaccumSp(Stats &stats, Nodes nodes, uvote_t vote) {
   cdata_t cdata = vote.cdata;
   signs_t ss = vote.signs;
   // extracted from cdata:
@@ -96,7 +96,7 @@ Accum TrustedAccum::TEEaccumSp(Nodes nodes, uvote_t vote) {
   }
   Signs signs(c.signs.size,a);
   Cert cert = Cert(highest,h,signs);
-  bool vc = verifyCert(nodes,cert);
+  bool vc = verifyCert(stats,nodes,cert);
 
   if (p == PH1_NEWVIEW && vc) {
     std::string data = std::to_string(p) + std::to_string(v) + cert.toString();
@@ -104,7 +104,7 @@ Accum TrustedAccum::TEEaccumSp(Nodes nodes, uvote_t vote) {
     for (int i = 0; i < MAX_NUM_SIGNATURES && i < this->qsize && i < ss.size; i++) {
       PID signer = ss.signs[i].signer;
       Signs sign = Sign(ss.signs[i].set,signer,ss.signs[i].sign);
-      bool vd = Signs(sign).verify(this->id,nodes,data);
+      bool vd = Signs(sign).verify(stats,this->id,nodes,data);
       if (vd && signers.find(signer) == signers.end()) { signers.insert(signer); }
     }
   }

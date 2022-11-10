@@ -5,15 +5,26 @@
 
 #include "Nodes.h"
 #include "Signs.h"
+#include "Auth.h"
+#include "Auths.h"
 #include "RData.h"
+#include "FData.h"
 #include "Proposal.h"
 #include "Transaction.h"
 #include "CData.h"
 #include "Void.h"
 #include "Cert.h"
 #include "Accum.h"
+#include "HAccum.h"
 #include "JBlock.h"
 #include "CBlock.h"
+#include "PJust.h"
+#include "OPproposal.h"
+#include "OPprepare.h"
+#include "OPstore.h"
+#include "OPstoreCert.h"
+#include "OPvote.h"
+#include "OPaccum.h"
 
 
 #include "salticidae/msg.h"
@@ -352,6 +363,471 @@ struct MsgPreCommitComb {
   void serialize(salticidae::DataStream &s) const { s << data << signs; }
 };
 
+
+
+
+/////////////////////////////////////////////////////
+// Basic version - FREE
+
+
+struct MsgNewViewFree {
+  static const uint8_t opcode = HDR_NEWVIEW_FREE;
+  salticidae::DataStream serialized;
+  FData data;
+  Auth auth;
+  MsgNewViewFree(const FData &data, const Auth &auth) : data(data),auth(auth) { serialized << data << auth; }
+  MsgNewViewFree(salticidae::DataStream &&s) { s >> data >> auth; }
+  bool operator<(const MsgNewViewFree& s) const {
+    if (auth < s.auth) { return true; }
+    return false;
+  }
+  std::string prettyPrint() {
+    return "NEWVIEW-FREE[" + data.prettyPrint() + "," + auth.prettyPrint() + "]";
+  }
+  unsigned int sizeMsg() { return (sizeof(FData) + sizeof(Auth)); }
+  void serialize(salticidae::DataStream &s) const { s << data << auth; }
+};
+
+
+struct MsgLdrPrepareFree {
+  static const uint8_t opcode = HDR_PREPARE_LDR_FREE;
+  salticidae::DataStream serialized;
+  HAccum acc;
+  Block block;
+  //MsgLdrPrepareFree() : acc(HAccum()),block(Block()) { serialized << acc << block; }
+  //MsgLdrPrepareFree(const MsgLdrPrepareFree& m) : acc(m.acc),block(m.block) { serialized << acc << block; }
+  MsgLdrPrepareFree(const HAccum &acc, const Block &block) : acc(acc),block(block) { serialized << acc << block; }
+  MsgLdrPrepareFree(salticidae::DataStream &&s) { s >> acc >> block; }
+  bool operator<(const MsgLdrPrepareFree& s) const {
+    if (acc < s.acc) { return true; }
+    return false;
+  }
+  std::string prettyPrint() {
+    return "PREPARE-LDR-FREE[" + acc.prettyPrint() + "," + block.prettyPrint() + "]";
+  }
+  unsigned int sizeMsg() { return (sizeof(HAccum) + sizeof(Block)); }
+  void serialize(salticidae::DataStream &s) const { s << acc << block; }
+};
+
+struct MsgBckPrepareFree {
+  static const uint8_t opcode = HDR_PREPARE_BCK_FREE;
+  salticidae::DataStream serialized;
+  View view;
+  Auth auth;
+  MsgBckPrepareFree(const View &view, const Auth &auth) : view(view),auth(auth) { serialized << view << auth; }
+  MsgBckPrepareFree(salticidae::DataStream &&s) { s >> view >> auth; }
+  bool operator<(const MsgBckPrepareFree& s) const {
+    if (auth < s.auth) { return true; }
+    return false;
+  }
+  std::string prettyPrint() {
+    return "PREPARE-BCK-FREE[" + std::to_string(view) + "," + auth.prettyPrint() + "]";
+  }
+  unsigned int sizeMsg() { return (sizeof(View) + sizeof(Auth)); }
+  void serialize(salticidae::DataStream &s) const { s << view << auth; }
+};
+
+struct MsgPrepareFree {
+  static const uint8_t opcode = HDR_PREPARE_FREE;
+  salticidae::DataStream serialized;
+  PJust just;
+  MsgPrepareFree() : just(PJust(false)) { serialized << just; }
+  MsgPrepareFree(const MsgPrepareFree& m) : just(m.just) { serialized << just; }
+  MsgPrepareFree(const PJust &just) : just(just) { serialized << just; }
+  MsgPrepareFree(salticidae::DataStream &&s) { s >> just; }
+  bool operator<(const MsgPrepareFree& s) const {
+    if (just < s.just) { return true; }
+    return false;
+  }
+  std::string prettyPrint() {
+    return "PREPARE-FREE[" + just.prettyPrint() + "]";
+  }
+  unsigned int sizeMsg() { return (sizeof(PJust)); }
+  unsigned int sizeAuth() { return just.sizeAuth(); }
+  /*  void addAuth(Auth a) {
+    just.add(a);
+    serialized << just;
+    }*/
+  //void set(Hash h, View v, Auth a) { hash = h; view = v; auth = a; }
+  void serialize(salticidae::DataStream &s) const { s << just; }
+};
+
+struct MsgPreCommitFree {
+  static const uint8_t opcode = HDR_PRECOMMIT_FREE;
+  salticidae::DataStream serialized;
+  View view;
+  Auths auths;
+  MsgPreCommitFree(const View &view, const Auths &auths) : view(view),auths(auths) { serialized << view << auths; }
+  MsgPreCommitFree(salticidae::DataStream &&s) { s >> view >> auths; }
+  bool operator<(const MsgPreCommitFree& s) const {
+    if (auths < s.auths) { return true; }
+    return false;
+  }
+  std::string prettyPrint() {
+    return "PRECOMMIT-FREE[" + std::to_string(view) + "," + auths.prettyPrint() + "]";
+  }
+  unsigned int sizeMsg() { return (sizeof(View) + sizeof(Auths)); }
+  void serialize(salticidae::DataStream &s) const { s << view << auths; }
+};
+
+
+/////////////////////////////////////////////////////
+// Basic version - OP
+
+
+struct OPcert {
+  OPCtag tag;
+  union{ OPprepare prep; OPvote vote; OPaccum accum; };
+  // Constructors
+  OPcert()            : tag(OPCprep),prep(OPprepare()) {}
+  OPcert(OPprepare p) : tag(OPCprep),prep(p)           {}
+  OPcert(OPvote v)    : tag(OPCvote),vote(v)           {}
+  OPcert(OPaccum a)   : tag(OPCacc),accum(a)           {}
+  // Printing
+  std::string toString() {
+    if (tag == OPCprep) { return prep.toString(); }
+    else if (tag == OPCvote) { return vote.toString(); }
+    return accum.toString();
+  }
+  std::string prettyPrint() {
+    if (tag == OPCprep) { return prep.prettyPrint(); }
+    else if (tag == OPCvote) { return vote.prettyPrint(); }
+    return accum.prettyPrint();
+  }
+  std::string data() {
+    if (tag == OPCprep) { return prep.data(); }
+    else if (tag == OPCvote) { return vote.data(); }
+    return accum.data();
+  }
+  // Getters
+  Hash getHash() {
+    if (tag == OPCprep) { return prep.getHash(); }
+    else if (tag == OPCvote) { return vote.getHash(); }
+    return accum.getHash();
+  }
+  View getView() {
+    if (tag == OPCprep) { return prep.getView(); }
+    else if (tag == OPCvote) { return vote.getView(); }
+    return accum.getView();
+  }
+  Auths getAuths() {
+    if (tag == OPCprep) { return prep.getAuths(); }
+    else if (tag == OPCvote) { return vote.getAuths(); }
+    return Auths(accum.getAuth());
+  }
+  // Setters
+  void setPrep(OPprepare p) {
+    tag = OPCprep;
+    prep = p;
+  }
+  void setVote(OPvote v) {
+    tag = OPCvote;
+    vote = v;
+  }
+  void setAccum(OPaccum a) {
+    tag = OPCacc;
+    accum = a;
+  }
+  // Serialization
+  void serialize(salticidae::DataStream &data) const {
+    data << tag;
+    if (tag == OPCprep) { data << prep; }
+    else if (tag == OPCvote) { data << vote; }
+    else { data << accum; }
+  }
+  void unserialize(salticidae::DataStream &data) {
+    data >> tag;
+    if (tag == OPCprep) { data >> prep; }
+    else if (tag == OPCvote) { data >> vote; }
+    else { data >> accum; }
+  }
+};
+
+
+struct OPnvblock {
+  Block block;
+  OPstore store;
+  OPcert cert;
+  // Constructors
+  OPnvblock() : block(Block()),store(OPstore()),cert(OPcert()) {}
+  OPnvblock(Block block, OPstore store, OPcert cert) : block(block),store(store),cert(cert) {}
+  std::string prettyPrint() {
+    return "NV[" + block.prettyPrint() + "," + store.prettyPrint() + "," + cert.prettyPrint() + "]";
+  }
+  std::string toString() {
+    return (block.toString() + store.toString() + cert.toString());
+  }
+  void serialize(salticidae::DataStream &s) const { s << block << store << cert; }
+  void unserialize(salticidae::DataStream &data) { data >> block >> store >> cert; }
+  bool operator<(const OPnvblock& s) const { return store < s.store; }
+};
+
+
+/*
+salticidae::DataStream& operator>>(salticidae::DataStream &&data, const OPnvblock& s) {
+  data >> s.block >> s.store >> s.cert;
+  return data;
+};
+salticidae::DataStream& operator<<(salticidae::DataStream &&data, const OPnvblock& s) {
+  data << s.block << s.store << s.cert;
+  return data;
+};
+*/
+
+
+struct OPnv {
+  OPNVtag tag;
+  union{ OPprepare prep; OPnvblock nv; };
+  // Constructors
+  OPnv() : tag(OPNVa),prep(OPprepare()) {}
+  OPnv(OPprepare prep) : tag(OPNVa),prep(prep) {}
+  OPnv(OPnvblock nv) : tag(OPNVb),nv(nv) {}
+  // Printing
+  std::string toString() {
+    if (tag == OPNVa) { return prep.toString(); }
+    return nv.toString();
+  }
+  std::string prettyPrint() {
+    if (tag == OPNVa) { return prep.prettyPrint(); }
+    return nv.prettyPrint();
+  }
+  // Getters
+  Hash getHash() {
+    if (tag == OPNVa) { return prep.getHash(); }
+    return nv.store.getHash();
+  }
+  View getView() {
+    if (tag == OPCprep) { return prep.getView(); }
+    return nv.store.getView();
+  }
+  // Setters
+  void setPrep(OPprepare p) {
+    tag = OPNVa;
+    prep = p;
+  }
+  void setVote(OPnvblock n) {
+    tag = OPNVb;
+    nv = n;
+  }
+  bool operator<(const OPnv& s) const {
+    if (tag == s.tag) {
+      if (tag == OPNVa) { return prep < s.prep; }
+      else { return nv < s.nv; }
+    } else { return tag < s.tag; }
+  }
+/*  salticidae::DataStream& operator>>(salticidae::DataStream &data, const OPnv& s) {
+    data >> s.tag;
+    if (tag == OPNVa) { data >> s.prep; }
+    else { data >> s.nv; }
+    return data;
+  }
+  salticidae::DataStream& operator<<(salticidae::DataStream &data, const OPnv& s) {
+    data << s.tag;
+    if (tag == OPNVa) { data << s.prep; }
+    else { data << s.nv; }
+    return data;
+  }*/
+  // Serialization
+  void serialize(salticidae::DataStream &data) const {
+    data << tag;
+    if (tag == OPNVa) { data << prep; }
+    else { data << nv; }
+  }
+  void unserialize(salticidae::DataStream &data) {
+    data >> tag;
+    if (tag == OPNVa) { data >> prep; }
+    else { data >> nv; }
+  }
+};
+
+
+struct OPprp {
+  Block block;
+  OPproposal prop;
+  OPcert cert;
+  // Constructors
+  OPprp() : block(Block()),prop(OPproposal()),cert(OPcert()) {}
+  OPprp(Block block, OPproposal prop, OPcert cert) : block(block),prop(prop),cert(cert) {}
+  std::string prettyPrint() {
+    return "PRP[" + block.prettyPrint() + "," + prop.prettyPrint() + "," + cert.prettyPrint() + "]";
+  }
+  std::string toString() {
+    return (block.toString() + prop.toString() + cert.toString());
+  }
+  void serialize(salticidae::DataStream &s) const { s << block << prop << cert; }
+  void unserialize(salticidae::DataStream &data) { data >> block >> prop >> cert; }
+  bool operator<(const OPprp& s) const { return (prop < s.prop); }
+};
+
+
+struct MsgNewViewOPA {
+  static const uint8_t opcode = HDR_NEWVIEW_OPA;
+  salticidae::DataStream serialized;
+  OPprepare prep;
+  MsgNewViewOPA(const OPprepare &prep) : prep(prep) { serialized << prep; }
+  MsgNewViewOPA(salticidae::DataStream &&s) { s >> prep; }
+  bool operator<(const MsgNewViewOPA& s) const { return (prep < s.prep); }
+  std::string prettyPrint() { return "NEWVIEW-OPA[" + prep.prettyPrint() + "]"; }
+  unsigned int sizeMsg() { return (sizeof(OPprepare)); }
+  void serialize(salticidae::DataStream &s) const { s << prep; }
+};
+
+
+struct MsgNewViewOPB {
+  static const uint8_t opcode = HDR_NEWVIEW_OPB;
+  salticidae::DataStream serialized;
+  OPnvblock nv;
+  MsgNewViewOPB(const OPnvblock &nv) : nv(nv) { serialized << nv; }
+  MsgNewViewOPB(salticidae::DataStream &&s) { s >> nv; }
+  bool operator<(const MsgNewViewOPB& s) const { return (nv < s.nv); }
+  std::string prettyPrint() { return "NEWVIEW-OPB[" + nv.prettyPrint() + "]"; }
+  unsigned int sizeMsg() { return (sizeof(OPnvblock)); }
+  void serialize(salticidae::DataStream &s) const { s << nv; }
+};
+
+
+struct MsgLdrPrepareOPA {
+  static const uint8_t opcode = HDR_PREPARE_LDR_OPA;
+  salticidae::DataStream serialized;
+  Block block;
+  OPproposal prop;
+  OPprepare prep;
+  MsgLdrPrepareOPA() : block(Block()),prop(OPproposal()),prep(OPprepare()) { serialized << block << prop << prep; }
+  MsgLdrPrepareOPA(const MsgLdrPrepareOPA& m) : block(m.block),prop(m.prop),prep(m.prep) { serialized << block << prop << prep; }
+  MsgLdrPrepareOPA(const Block &block, const OPproposal &prop, const OPprepare &prep) : block(block),prop(prop),prep(prep) { serialized << block << prop << prep; }
+  MsgLdrPrepareOPA(salticidae::DataStream &&s) { s >> block >> prop >> prep; }
+  bool operator<(const MsgLdrPrepareOPA& s) const { return (prop < s.prop); }
+  std::string prettyPrint() {
+    return "PREPARE-LDR-OP[" + block.prettyPrint() + "," + prop.prettyPrint() + "," + prep.prettyPrint() + "]";
+  }
+  std::string toString() { return block.toString() + prop.toString() + prep.toString(); }
+  unsigned int sizeMsg() { return (sizeof(Block) + sizeof(OPproposal) + sizeof(OPprepare)); }
+  void serialize(salticidae::DataStream &s) const { s << block << prop << prep; }
+};
+
+
+struct MsgLdrPrepareOPB {
+  static const uint8_t opcode = HDR_PREPARE_LDR_OPB;
+  salticidae::DataStream serialized;
+  Block block;
+  OPproposal prop;
+  OPaccum acc;
+  OPprepare prep;
+  MsgLdrPrepareOPB() : block(Block()),prop(OPproposal()),acc(OPaccum()),prep(OPprepare()) { serialized << block << prop << acc << prep; }
+  MsgLdrPrepareOPB(const MsgLdrPrepareOPB& m) : block(m.block),prop(m.prop),acc(m.acc),prep(m.prep) { serialized << block << prop << acc << prep; }
+  MsgLdrPrepareOPB(const Block &block, const OPproposal &prop, const OPaccum &acc, const OPprepare &prep) : block(block),prop(prop),acc(acc),prep(prep) { serialized << block << prop << acc << prep; }
+  MsgLdrPrepareOPB(salticidae::DataStream &&s) { s >> block >> prop >> acc >> prep; }
+  bool operator<(const MsgLdrPrepareOPB& s) const { return (prop < s.prop); }
+  std::string prettyPrint() {
+    return "PREPARE-LDR-OPB[" + block.prettyPrint() + "," + prop.prettyPrint() + "," + acc.prettyPrint() + "," + prep.prettyPrint() + "]";
+  }
+  std::string toString() { return block.toString() + prop.toString() + acc.toString() + prep.toString(); }
+  unsigned int sizeMsg() { return (sizeof(Block) + sizeof(OPproposal) + sizeof(OPaccum) + sizeof(OPprepare)); }
+  void serialize(salticidae::DataStream &s) const { s << block << prop << acc << prep; }
+};
+
+
+struct MsgLdrPrepareOPC {
+  static const uint8_t opcode = HDR_PREPARE_LDR_OPC;
+  salticidae::DataStream serialized;
+  Block block;
+  OPproposal prop;
+  OPvote vote;
+  MsgLdrPrepareOPC() : block(Block()),prop(OPproposal()),vote(OPvote()) { serialized << block << prop << vote; }
+  MsgLdrPrepareOPC(const MsgLdrPrepareOPC& m) : block(m.block),prop(m.prop),vote(m.vote) { serialized << block << prop << vote; }
+  MsgLdrPrepareOPC(const Block &block, const OPproposal &prop, const OPvote &vote) : block(block),prop(prop),vote(vote) { serialized << block << prop << vote; }
+  MsgLdrPrepareOPC(salticidae::DataStream &&s) { s >> block >> prop >> vote; }
+  bool operator<(const MsgLdrPrepareOPC& s) const { return (prop < s.prop); }
+  std::string prettyPrint() {
+    return "PREPARE-LDR-OP[" + block.prettyPrint() + "," + prop.prettyPrint() + "," + vote.prettyPrint() + "]";
+  }
+  std::string toString() { return block.toString() + prop.toString() + vote.toString(); }
+  unsigned int sizeMsg() { return (sizeof(Block) + sizeof(OPproposal) + sizeof(OPvote)); }
+  void serialize(salticidae::DataStream &s) const { s << block << prop << vote; }
+};
+
+
+struct LdrPrepareOP {
+  Block block;
+  OPproposal prop;
+  OPCtag tag;
+  OPaccum acc;
+  OPprepare prep;
+  OPvote vote;
+  // Constructors
+  LdrPrepareOP() : block(Block()),prop(OPproposal()),tag(OPCprep),acc(OPaccum()),prep(OPprepare()),vote(OPvote()) {}
+  LdrPrepareOP(const MsgLdrPrepareOPA &p) : block(p.block),prop(p.prop),tag(OPCprep),acc(OPaccum()),prep(p.prep),vote(OPvote()) {}
+  LdrPrepareOP(const MsgLdrPrepareOPB &p) : block(p.block),prop(p.prop),tag(OPCacc),acc(p.acc),prep(p.prep),vote(OPvote()) {}
+  LdrPrepareOP(const MsgLdrPrepareOPC &p) : block(p.block),prop(p.prop),tag(OPCvote),acc(OPaccum()),prep(OPprepare()),vote(p.vote) {}
+  // Printing
+  std::string prettyPrint() {
+    return "LDRPREPARE[" + block.prettyPrint() + "," + prop.prettyPrint() + "," + std::to_string(tag) + "," + acc.prettyPrint() + "," + prep.prettyPrint() + "," + vote.prettyPrint() + "]";
+  }
+  std::string toString() { return block.toString() + prop.toString() + std::to_string(tag) + acc.toString() + prep.toString() + vote.toString(); }
+};
+
+
+struct MsgBckPrepareOP {
+  static const uint8_t opcode = HDR_PREPARE_BCK_OP;
+  salticidae::DataStream serialized;
+  OPstore store;
+  MsgBckPrepareOP() : store(OPstore()) { serialized << store; }
+  MsgBckPrepareOP(const MsgBckPrepareOP& m) : store(m.store) { serialized << store; }
+  MsgBckPrepareOP(const OPstore &store) : store(store) { serialized << store; }
+  MsgBckPrepareOP(salticidae::DataStream &&s) { s >> store; }
+  bool operator<(const MsgBckPrepareOP& s) const { return (store < s.store); }
+  std::string prettyPrint() {
+    return "PREPARE-BCK-OP[" + store.prettyPrint() + "]";
+  }
+  unsigned int sizeMsg() { return (sizeof(OPstore)); }
+  void serialize(salticidae::DataStream &s) const { s << store; }
+};
+
+
+struct MsgPreCommitOP {
+  static const uint8_t opcode = HDR_PRECOMMIT_OP;
+  salticidae::DataStream serialized;
+  OPprepare cert;
+  MsgPreCommitOP(const OPprepare &cert) : cert(cert) { serialized << cert; }
+  MsgPreCommitOP(salticidae::DataStream &&s) { s >> cert; }
+  bool operator<(const MsgPreCommitOP& s) const { return (cert < s.cert); }
+  std::string prettyPrint() { return "PRECOMMIT-OP[" + cert.prettyPrint() + "]"; }
+  unsigned int sizeMsg() { return (sizeof(OPprepare)); }
+  void serialize(salticidae::DataStream &s) const { s << cert; }
+};
+
+
+struct MsgLdrAddOP {
+  static const uint8_t opcode = HDR_ADD_LDR_OP;
+  salticidae::DataStream serialized;
+  OPaccum acc;
+  OPnvblock nv;
+  MsgLdrAddOP() : acc(OPaccum()),nv(OPnvblock()) { serialized << acc << nv; }
+  MsgLdrAddOP(const MsgLdrAddOP& m) : acc(m.acc),nv(m.nv) { serialized << acc << nv; }
+  MsgLdrAddOP(const OPaccum &acc, const OPnvblock &nv) : acc(acc),nv(nv) { serialized << acc << nv; }
+  MsgLdrAddOP(salticidae::DataStream &&s) { s >> acc >> nv; }
+  bool operator<(const MsgLdrAddOP& s) const { return (acc < s.acc); }
+  std::string prettyPrint() { return "ADD-LDR-OP[" + acc.prettyPrint() + "," + nv.prettyPrint() + "]"; }
+  std::string toString() { return acc.toString() + nv.toString(); }
+  unsigned int sizeMsg() { return (sizeof(OPaccum) + sizeof(OPnvblock)); }
+  void serialize(salticidae::DataStream &s) const { s << acc << nv; }
+};
+
+
+struct MsgBckAddOP {
+  static const uint8_t opcode = HDR_ADD_BCK_OP;
+  salticidae::DataStream serialized;
+  OPvote vote;
+  MsgBckAddOP() : vote(OPvote()) { serialized << vote; }
+  MsgBckAddOP(const MsgBckAddOP& m) : vote(m.vote) { serialized << vote; }
+  MsgBckAddOP(const OPvote &vote) : vote(vote) { serialized << vote; }
+  MsgBckAddOP(salticidae::DataStream &&s) { s >> vote; }
+  bool operator<(const MsgBckAddOP& s) const { return (vote < s.vote); }
+  std::string prettyPrint() { return "ADD-BCK-OP[" + vote.prettyPrint() + "]"; }
+  std::string toString() { return vote.toString(); }
+  unsigned int sizeMsg() { return (sizeof(OPvote)); }
+  void serialize(salticidae::DataStream &s) const { s << vote; }
+};
 
 
 /////////////////////////////////////////////////////

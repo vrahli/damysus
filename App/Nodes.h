@@ -17,7 +17,7 @@ class Nodes {
 
  public:
   Nodes();
-  Nodes(std::string filename);
+  Nodes(std::string filename, unsigned int numNodes);
 
   void addNode(PID id, KEY pub, HOST host, PORT rport, PORT cport);
   void addNode(PID id, HOST host, PORT rport, PORT cport);

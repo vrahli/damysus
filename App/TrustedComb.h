@@ -27,10 +27,10 @@ class TrustedComb {
   TrustedComb(unsigned int id, KEY priv, unsigned int q);
 
   Just TEEsign();
-  Just TEEprepare(Nodes nodes, Hash hash, Accum acc);
-  Just TEEstore(Nodes nodes, Just just);
-  Accum TEEaccum(Nodes nodes, Just justs[MAX_NUM_SIGNATURES]);
-  Accum TEEaccumSp(Nodes nodes, just_t just);
+  Just TEEprepare(Stats &stats, Nodes nodes, Hash hash, Accum acc);
+  Just TEEstore(Stats &stats, Nodes nodes, Just just);
+  Accum TEEaccum(Stats &stats, Nodes nodes, Just justs[MAX_NUM_SIGNATURES]);
+  Accum TEEaccumSp(Stats &stats, Nodes nodes, just_t just);
 };
 
 

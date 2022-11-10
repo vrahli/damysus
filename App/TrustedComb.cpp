@@ -55,15 +55,15 @@ Just TrustedComb::TEEsign() {
 }
 
 
-Just TrustedComb::TEEprepare(Nodes nodes, Hash hash, Accum acc) {
+Just TrustedComb::TEEprepare(Stats &stats, Nodes nodes, Hash hash, Accum acc) {
   Signs signs(acc.getSign());
-  if (signs.verify(this->id,nodes,acc.data2string())
+  if (signs.verify(stats,this->id,nodes,acc.data2string())
       && this->view == acc.getView()
       && acc.getSize() == this->qsize) {
     return sign(hash,acc.getPreph(),acc.getPrepv());
   } else {
     if (DEBUG1) std::cout << KMAG << "[" << this->id << "]" << "TEEprepare failed because:"
-                          << "verif=" << (signs.verify(this->id,nodes,acc.data2string()))
+                          << "verif=" << (signs.verify(stats,this->id,nodes,acc.data2string()))
                           << ";view=" << (this->view == acc.getView())
                           << ";acc="  << (acc.getSize() == this->qsize) << "(" << acc.getSize() << "," << this->qsize << ")"
                           << KNRM << std::endl;
@@ -72,14 +72,14 @@ Just TrustedComb::TEEprepare(Nodes nodes, Hash hash, Accum acc) {
 }
 
 
-Just TrustedComb::TEEstore(Nodes nodes, Just just) {
+Just TrustedComb::TEEstore(Stats &stats, Nodes nodes, Just just) {
   RData  data  = just.getRData();
   Signs  signs = just.getSigns();
   Hash   h     = data.getProph();
   View   v     = data.getPropv();
   Phase1 ph    = data.getPhase();
   if (signs.getSize() == this->qsize
-      && signs.verify(this->id,nodes,data.toString())
+      && signs.verify(stats,this->id,nodes,data.toString())
       && this->view == v
       && ph == PH1_PREPARE) {
     this->preph=h; this->prepv=v;
@@ -87,7 +87,7 @@ Just TrustedComb::TEEstore(Nodes nodes, Just just) {
   } else {
     if (DEBUG1) std::cout << KMAG << "[" << this->id << "]" << "TEEstore failed because:"
                           << "size="   << (signs.getSize() == this->qsize)
-                          << ";verif=" << (signs.verify(this->id,nodes,data.toString()))
+                          << ";verif=" << (signs.verify(stats,this->id,nodes,data.toString()))
                           << ";vierw=" << (this->view == v)
                           << ";phase=" << (ph == PH1_PREPARE)
                           << KNRM << std::endl;
@@ -96,7 +96,7 @@ Just TrustedComb::TEEstore(Nodes nodes, Just just) {
 }
 
 
-Accum TrustedComb::TEEaccum(Nodes nodes, Just justs[MAX_NUM_SIGNATURES]) {
+Accum TrustedComb::TEEaccum(Stats &stats, Nodes nodes, Just justs[MAX_NUM_SIGNATURES]) {
   View v = justs[0].getRData().getPropv();
   View highest = 0;
   Hash hash = Hash();
@@ -112,7 +112,7 @@ Accum TrustedComb::TEEaccum(Nodes nodes, Just justs[MAX_NUM_SIGNATURES]) {
       if (data.getPhase() == PH1_NEWVIEW
           && data.getPropv() == v
           && signers.find(signer) == signers.end()
-          && signs.verify(this->id,nodes,data.toString())) {
+          && signs.verify(stats,this->id,nodes,data.toString())) {
         if (DEBUG1) std::cout << KMAG << "[" << this->id << "]" << "inserting signer" << KNRM << std::endl;
         signers.insert(signer);
         if (data.getJustv() >= highest) {
@@ -131,7 +131,7 @@ Accum TrustedComb::TEEaccum(Nodes nodes, Just justs[MAX_NUM_SIGNATURES]) {
 }
 
 
-Accum TrustedComb::TEEaccumSp(Nodes nodes, just_t just) {
+Accum TrustedComb::TEEaccumSp(Stats &stats, Nodes nodes, just_t just) {
   std::set<PID> signers;
 
   rdata_t rdata = just.rdata;
@@ -147,7 +147,7 @@ Accum TrustedComb::TEEaccumSp(Nodes nodes, just_t just) {
     for (int i = 0; i < MAX_NUM_SIGNATURES && i < this->qsize && i < signs.size; i++) {
       PID signer = signs.signs[i].signer;
       Signs sign = Sign(signs.signs[i].set,signer,signs.signs[i].sign);
-      bool vd = Signs(sign).verify(this->id,nodes,data);
+      bool vd = Signs(sign).verify(stats,this->id,nodes,data);
       if (signers.find(signer) == signers.end() && vd) { signers.insert(signer); }
     }
   }

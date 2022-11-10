@@ -28,6 +28,24 @@ enclave {
         public sgx_status_t COMB_TEEaccum([in] onejusts_t *js, [out] accum_t *res);
         public sgx_status_t COMB_TEEaccumSp([in] just_t *just, [out] accum_t *res);
 
+        /* Free */
+        public sgx_status_t FREE_TEEauth([in]payload_t *text, [out] auth_t *res);
+        public sgx_status_t FREE_TEEverify([in]payload_t *text, [in]auths_t *a, [out] bool *res);
+        public sgx_status_t FREE_TEEverify2([in]payload_t *text1, [in]auths_t *a1, [in]payload_t *text2, [in]auths_t *a2, [out] bool *res);
+        //public sgx_status_t FREE_TEEprepare([in] hash_t *hash, [out] hjust_t *res);
+        public sgx_status_t FREE_TEEstore([in] pjust_t *just, [out] fvjust_t *res);
+        public sgx_status_t FREE_TEEaccum([in] fjust_t *j, [in] fjusts_t *js, [in]hash_t *prp, [out] haccum_t *res);
+        public sgx_status_t FREE_TEEaccumSp([in] ofjust_t *just, [in]hash_t *prp, [out] haccum_t *res);
+
+        public sgx_status_t FREE_initialize_variables([in] PID *me, [in] unsigned int *q);
+
+        /* OP */
+        public sgx_status_t OP_TEEverify([in] payload_t *text, [in] auths_t *a, [out] bool *res);
+        public sgx_status_t OP_TEEprepare([in] hash_t *hash, [out] opproposal_t *res);
+        public sgx_status_t OP_TEEvote([in] hash_t *hash, [out] opvote_t *res);
+        public sgx_status_t OP_TEEstore([in] opproposal_t *just, [out] opstore_t *res);
+        public sgx_status_t OP_initialize_variables([in] PID *me, [in] unsigned int *q);
+
         /* Chained-Cheap */
         public sgx_status_t CH_TEEsign([out] just_t *just);
         public sgx_status_t CH_TEEprepare([in] jblock_t *block, [in] jblock_t *block0, [in] jblock_t *block1, [out] just_t *res);
@@ -45,5 +63,8 @@ enclave {
         //void ocall_load_private_key([in] PID *id, [out] KEY *priv);
         //void ocall_load_public_key([in] PID *id, [out] KEY *pub);
         void ocall_test([in] KEY *key);
+        void ocall_setCtime();
+        void ocall_recCStime();
+        void ocall_recCVtime();
     };
 };

@@ -6,6 +6,7 @@
 #include "Sign.h"
 #include "Nodes.h"
 #include "RData.h"
+#include "Stats.h"
 
 #include "salticidae/stream.h"
 
@@ -27,7 +28,7 @@ class Signs {
     void add(Sign sign);
     void addUpto(Signs others, unsigned int n);
 
-    bool verify(PID id, Nodes nodes, std::string s);
+    bool verify(Stats &stats, PID id, Nodes nodes, std::string s);
 
     std::set<PID> getSigners();
     std::string printSigners();
