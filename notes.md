@@ -29,6 +29,12 @@
 
 Create a robust blockchain relying on n=2f+1. This is done by prohibiting equivocation, allowing us to remove a phase out of the Hotstuff protocol and using less replicas than the traditional n=3f+1 configuration, where f is the number of faulty replicas. This protocol prevents equivocation by certifying each message using a trusted component. The replica is described in the APP directory, whereas the trusted component is defined in the Enclave directory.
 
+Terms/abbreviations to consider:
+Ch: chained
+OP: OnePhase
+R: round
+V: view
+
 ## Blockchain Application
 
 ### 1. Introduction
@@ -59,36 +65,36 @@ All of the cpp files have a corresponding .h file, except for App.cpp and Client
     - JBlock.cpp: Justified Block class,  for genesis block
     - Keys.cpp: generate different keys
     - KeysFun.cpp: keys functionality
-    - Log.cpp:
-    - Message.h:
-    - NodeInfo.cpp:
-    - OPaccum.cpp:
-    - OPprepare.cpp:
-    - OPproposal.cpp:
-    - OPstore.cpp:
-    - OPstoreCert.hcpp:
-    - OPvote.cpp:
-    - params.h:
-    - PJust.cpp:
-    - Proposal.cpp:
-    - RData.cpp:
-    - Server.cpp:
-    - Sign.cpp:
-    - Start.cpp:
-    - test.cpp
-    - Transaction.h:
-    - TrustedAccum.cpp:
-    - Trusted.cpp:
-    - TrustedChComb.cpp:
-    - TrustedComb.cpp:
+    - Log.cpp: Log class for debug functionality
+    - Message.h: defines struct for message passing
+    - NodeInfo.cpp: Defines client port and replica port
+    - OPaccum.cpp: Onephase accumulate certificate
+    - OPprepare.cpp: Onephase prepare certificate
+    - OPproposal.cpp: Onephase proposal 
+    - OPstore.cpp: Onephase store
+    - OPstoreCert.hcpp: Onephase store certificate 
+    - OPvote.cpp: Onephase vote certificate
+    - params.h: configures nodes, signature, transactions and payload numbers
+    - PJust.cpp: prepare certificate
+    - Proposal.cpp: proposal containing Block and Just
+    - RData.cpp: class with info on a Round
+    - Server.cpp: Defines size of messages based on params.h
+    - Sign.cpp: Allows basis signing for a replica
+    - Start.cpp: Allows for start of a round
+    - test.cpp: test for new type of RSA and EC signatures
+    - Transaction.h: class to symbolize transaction in the protocol
+    - TrustedAccum.cpp: accumulator access to trusted component
+    - TrustedCh.cpp: Trusted component for chained damysus
+    - TrustedChComb.cpp: Trusted compontent for chained damysus combined
+    - TrustedComb.cpp: Trusted component combined (non-chained)
     - TrustedFun.cpp:
     - TrustedFunC.c:
-    - types_backup.h:
-    - types.h:
+    - types_backup.h: stores enums for MODE and HEADER
+    - types.h: create required defines
     - Value.h:
-    - Vjust.cpp:
-    - Void.cpp:
-    - Vote.cpp:
+    - Vjust.cpp: Create vote justification
+    - Void.cpp: Create empty justification
+    - Vote.cpp: Create vote on some data
 
 ### 3. Components
 
