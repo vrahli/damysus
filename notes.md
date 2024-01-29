@@ -27,13 +27,17 @@
 
 ## Overview
 
-Create a robust blockchain relying on n=2f+1. This is done by prohibiting equivocation, allowing us to remove a phase out of the Hotstuff protocol and using less replicas than the traditional n=3f+1 configuration, where f is the number of faulty replicas. This protocol prevents equivocation by certifying each message using a trusted component. The replica is described in the APP directory, whereas the trusted component is defined in the Enclave directory.
+Create a robust blockchain relying on n=2f+1. This is done by prohibiting equivocation, allowing us to remove a phase out of the Hotstuff protocol and using less replicas than the traditional n=3f+1 configuration, where f is the number of faulty replicas. This protocol prevents equivocation by certifying each message using a trusted component. The replica is described in the APP directory, whereas the trusted component is defined in the Enclave directory. Additionally, there is an experiments.py file that configures the proper replicas and trusted components.
 
 Terms/abbreviations to consider:
 Ch: chained
 OP: OnePhase
 R: round
 V: view
+Cheap: CHECKER
+Quick: ACCUMULATOR
+Free: Light-Damysus (no hash and signatures)
+
 
 ## Blockchain Application
 
@@ -128,11 +132,11 @@ Include common issues and their solutions.
 
 ### 1. Introduction
 
-Introduce the SGX trusted component and its purpose.
+The SGX trusted component prohibits the equivocation, by only allowing one signature to be applied per view/phase combination. Asking for extra signatures will be ignored. It can also keep track of the latest prepared and locked block. Additionally, it can act as an accumulator, which allows a replica to independently verify the latest block out of several collected new-view messages. 
 
 ### 2. Directory Structure
 
-Briefly describe the structure of the Enclave directory.
+Within the Enclave structure, an Enclave private RSA key is stored in Enclave_private.pem. EnclaveShare.h provides the methods, that are in different configurations implemented in all cpp files. 
 
 
 ### 3. Components
