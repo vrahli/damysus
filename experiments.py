@@ -1117,7 +1117,7 @@ def executeClusterInstances(instanceRepIds,instanceClIds,protocol,constFactor,nu
         s2.communicate()
         #
         subprocess.run(["scp","-i",node["key"],"-o",sshOpt1,sshAdr+":"+node["dir"]+"/stats/*","stats/"])
-        #
+        #TODO: cannot find this directory?
         rcmd = "rm /app/" + statsdir + "/*"
         docker_rm_cmd = docker + " exec -t " + dockerI + " bash -c \"" + rcmd + "\""
         rm_cmd = "cd " + node["dir"] + "; rm -Rf " + statsdir + "; " + docker_rm_cmd
