@@ -3751,6 +3751,7 @@ if args.pall:
     runOnep   = True
     runChBase = True
     runChComb = True
+    #TODO: add succesfully implemented rollback protocols
     print("SUCCESSFULLY PARSED ARGUMENT - testing all protocols")
 
 
@@ -3811,6 +3812,7 @@ elif args.containers:
     elif args.p8:
         prop = Protocol.ONEP
         fact = 2
+    #TODO: add Protocol.RBF
     else:
         prop = Protocol.ONEP
         fact = 2
