@@ -37,6 +37,7 @@ V: view
 Cheap: CHECKER
 Quick: ACCUMULATOR
 Free: Light-Damysus (no hash and signatures)
+TVL: throughput versus latency
 
 
 ## Blockchain Application

@@ -71,6 +71,8 @@ runFree      = False #True
 runOnep      = False #True
 runChBase    = False #True
 runChComb    = False #True
+runRBF       = False #True
+
 # Debug versions
 runQuickDbg  = False #True
 runChCombDbg = False #True
@@ -144,6 +146,7 @@ freeHS   = "Light-Damysus"
 onepHS   = "OneP-Damysus"
 baseChHS = "Chained HotStuff"
 combChHS = "Chained-Damysus"
+rollBF   = "Rollback Faulty"
 
 # Markers
 baseMRK   = "P"
@@ -333,6 +336,8 @@ class Protocol(Enum):
     ONEP      = "BASIC_ONEP"               # 1+1/2 phase Damysus
     CHBASE    = "CHAINED_BASELINE"         # chained baseline
     CHCOMB    = "CHAINED_CHEAP_AND_QUICK"  # chained Damysus
+    RBF       = "ROLLBACK_FAULTY_PROTECTED"# only faulty replicas are assumed to attempt rollbacks
+
     ## Debug versions
     QUICKDBG  = "BASIC_QUICK_DEBUG"
     CHCOMBDBG = "CHAINED_CHEAP_AND_QUICK_DEBUG" # chained Damysus - debug version
@@ -821,6 +826,9 @@ def runAWS():
             if runChCombDbg:
                 executeAWS(instanceRepIds=instanceRepIds,instanceClIds=instanceClIds,protocol=Protocol.CHCOMBDBG,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
             # ------
+            if runRBF:
+                print("linked to --p9 correctly")
+            # ------
             # We now terminate all instances just in case
             #terminateAllInstances()
 
@@ -1247,6 +1255,9 @@ def runCluster():
         # Chained Cheap&Quick - debug version
         if runChCombDbg:
             executeCluster(info=info,protocol=Protocol.CHCOMBDBG,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults)
+        if runRBF:
+            print("correctly initiated cluster execution")
+            #TODO: create proper executeCluster command
 
     # cleanup
     for node in nodes:
@@ -1963,6 +1974,8 @@ def createPlot(pFile):
     dictCVChBase = {}
     dictCVChComb = {}
 
+    #TODO: create dicts for RBF
+
     global dockerCpu, dockerMem, networkLat, payloadSize, repeats, repeatsL2, numViews
 
     # We accumulate all the points in dictionaries
@@ -2676,6 +2689,12 @@ def runExperiments():
             computeAvgStats(recompile,protocol=Protocol.CHCOMBDBG,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults,numRepeats=repeats)
         else:
             (0.0,0.0,0.0,0.0)
+        # -----
+        # Rollback Faulty
+        if runRBF:
+            print("compute avg stats for RBF")
+        else:
+            (0.0,0.0,0.0,0.0)
 
     print("num complete runs=", completeRuns)
     print("num aborted runs=", abortedRuns)
@@ -2834,6 +2853,9 @@ def createTVLplot(cFile,instances):
                 TChComb.append(throughput)
                 LChComb.append(latency)
                 aChComb.append(sleep)
+            if protVal == "ROLLBACK_FAULTY_PROTECTED":
+                continue
+                #TODO: append values for TVL plot
 
     LW = 1 # linewidth
     MS = 5 # markersize
@@ -2853,6 +2875,7 @@ def createTVLplot(cFile,instances):
 
     plt.xlabel("throughput (Kops/sec)", fontsize=12)
     plt.ylabel("latency (ms)", fontsize=12)
+    #TODO: add plotting for RBF here, if values are appended
     if plotBasic:
         if len(TBase) > 0:
             plt.plot(TBase,   LBase,   color=baseCOL,   linewidth=LW, marker=baseMRK,   markersize=MS, linestyle=baseLS,   label=baseHS)
@@ -3531,6 +3554,7 @@ parser.add_argument("--p5",         action="store_true",   help="sets runChBase 
 parser.add_argument("--p6",         action="store_true",   help="sets runChComb to True (chained Damysus)")
 parser.add_argument("--p7",         action="store_true",   help="sets runFree to True (hash&signature-free Damysus)")
 parser.add_argument("--p8",         action="store_true",   help="sets runOnep to True (1+1/2 phase Damysus)")
+#TODO: add argument --p9
 parser.add_argument("--pall",       action="store_true",   help="sets all runXXX to True, i.e., all protocols will be executed")
 parser.add_argument("--netlat",     type=int, default=0,   help="network latency in ms")
 parser.add_argument("--netvar",     type=int, default=0,   help="variation of the network latency in ms")
