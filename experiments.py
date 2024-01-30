@@ -3738,8 +3738,9 @@ if args.p8:
     runOnep = True
     print("SUCCESSFULLY PARSED ARGUMENT - testing 1+1/2 phase Damysus")
 
-if args.p9:
-    print("SUCCESFULLY PARSED ARGUMENT - testing rollback protected Damysus")
+#TODO: fix parsing
+# if args.p9:
+#     print("SUCCESFULLY PARSED ARGUMENT - testing rollback protected Damysus")
 
 if args.pall:
     runBase   = True
