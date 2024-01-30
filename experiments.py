@@ -1937,6 +1937,7 @@ def createPlot(pFile):
     dictTVOnep   = {}
     dictTVChBase = {}
     dictTVChComb = {}
+    dictTVRBF    = {}
     # latency-view
     dictLVBase   = {}
     dictLVCheap  = {}
@@ -1946,6 +1947,7 @@ def createPlot(pFile):
     dictLVOnep   = {}
     dictLVChBase = {}
     dictLVChComb = {}
+    dictLVRBF    = {}
     # handle
     dictHBase   = {}
     dictHCheap  = {}
@@ -1955,6 +1957,7 @@ def createPlot(pFile):
     dictHOnep   = {}
     dictHChBase = {}
     dictHChComb = {}
+    dictHRBF    = {}
     # crypto-sign
     dictCSBase   = {}
     dictCSCheap  = {}
@@ -1964,6 +1967,7 @@ def createPlot(pFile):
     dictCSOnep   = {}
     dictCSChBase = {}
     dictCSChComb = {}
+    dictCSRBF    = {}
     # crypto-verif
     dictCVBase   = {}
     dictCVCheap  = {}
@@ -1973,6 +1977,7 @@ def createPlot(pFile):
     dictCVOnep   = {}
     dictCVChBase = {}
     dictCVChComb = {}
+    dictCVRBF    = {}
 
     #TODO: create dicts for RBF
 
@@ -2049,6 +2054,10 @@ def createPlot(pFile):
                     (val,num) = dictTVChComb.get(numFaults,([],0))
                     val.append(float(pointVal))
                     dictTVChComb.update({numFaults:(val,num+1)})
+                if pointTag == "throughput-view" and protVal == "ROLLBACK_FAULTY_PROTECTED":
+                    (val,num) = dictTVRBF.get(numFaults, ([],0))
+                    val.append(float(pointVal))
+                    dictTVRBF.update({numFaults:(val,num+1)})
                 # Latencies-view
                 if pointTag == "latency-view" and protVal == "BASIC_BASELINE":
                     (val,num) = dictLVBase.get(numFaults,([],0))
@@ -2090,6 +2099,10 @@ def createPlot(pFile):
                     (val,num) = dictLVChComb.get(numFaults,([],0))
                     val.append(float(pointVal))
                     dictLVChComb.update({numFaults:(val,num+1)})
+                if pointTag == "latency-view" and protVal == "ROLLBACK_FAULTY_PROTECTED":
+                    (val,num) = dictLVRBF.get(numFaults, ([],0))
+                    val.append(float(pointVal))
+                    dictLVRBF.update({numFaults:(val,num+1)})
                 # handle
                 if (pointTag == "handle" or pointTag == "latency-handle") and protVal == "BASIC_BASELINE":
                     (val,num) = dictHBase.get(numFaults,([],0))
@@ -2131,6 +2144,10 @@ def createPlot(pFile):
                     (val,num) = dictHChComb.get(numFaults,([],0))
                     val.append(float(pointVal) / numViews)
                     dictHChComb.update({numFaults:(val,num+1)})
+                if pointTag == "handle" and protVal == "ROLLBACK_FAULTY_PROTECTED":
+                    (val,num) = dictHRBF.get(numFaults, ([],0))
+                    val.append(float(pointVal))
+                    dictHRBF.update({numFaults:(val,num+1)})   
                 # crypto-sign
                 if pointTag == "crypto-sign" and protVal == "BASIC_BASELINE":
                     (val,num) = dictCSBase.get(numFaults,([],0))
@@ -2172,6 +2189,10 @@ def createPlot(pFile):
                     (val,num) = dictCSChComb.get(numFaults,([],0))
                     val.append(float(pointVal) / numViews)
                     dictCSChComb.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-sign" and protVal == "ROLLBACK_FAULTY_PROTECTED":
+                    (val,num) = dictCSRBF.get(numFaults, ([],0))
+                    val.append(float(pointVal))
+                    dictCSRBF.update({numFaults:(val,num+1)})   
                 # crypto-verif
                 if pointTag == "crypto-verif" and protVal == "BASIC_BASELINE":
                     (val,num) = dictCVBase.get(numFaults,([],0))
@@ -2213,6 +2234,10 @@ def createPlot(pFile):
                     (val,num) = dictCVChComb.get(numFaults,([],0))
                     val.append(float(pointVal) / numViews)
                     dictCVChComb.update({numFaults:(val,num+1)})
+                if pointTag == "crypto-verif" and protVal == "ROLLBACK_FAULTY_PROTECTED":
+                    (val,num) = dictCVRBF.get(numFaults, ([],0))
+                    val.append(float(pointVal))
+                    dictCVRBF.update({numFaults:(val,num+1)}) 
     f.close()
 
     quantileSize = 20
@@ -2229,6 +2254,8 @@ def createPlot(pFile):
     (faultsTVOnep,   valsTVOnep,   numsTVOnep)   = dict2lists(dictTVOnep,quantileSize,False)
     (faultsTVChBase, valsTVChBase, numsTVChBase) = dict2lists(dictTVChBase,quantileSize,False)
     (faultsTVChComb, valsTVChComb, numsTVChComb) = dict2lists(dictTVChComb,quantileSize,False)
+    #TODO: add throughput-view for RBF
+
     # latency-view
     (faultsLVBase,   valsLVBase,   numsLVBase)   = dict2lists(dictLVBase,quantileSize,False)
     (faultsLVCheap,  valsLVCheap,  numsLVCheap)  = dict2lists(dictLVCheap,quantileSize,False)
@@ -2238,6 +2265,8 @@ def createPlot(pFile):
     (faultsLVOnep,   valsLVOnep,   numsLVOnep)   = dict2lists(dictLVOnep,quantileSize,False)
     (faultsLVChBase, valsLVChBase, numsLVChBase) = dict2lists(dictLVChBase,quantileSize,False)
     (faultsLVChComb, valsLVChComb, numsLVChComb) = dict2lists(dictLVChComb,quantileSize,False)
+    #TODO: add latency-view for RBF
+
     # handle
     (faultsHBase,   valsHBase,   numsHBase)   = dict2lists(dictHBase,quantileSize1,False)
     (faultsHCheap,  valsHCheap,  numsHCheap)  = dict2lists(dictHCheap,quantileSize1,False)
@@ -2247,6 +2276,8 @@ def createPlot(pFile):
     (faultsHOnep,   valsHOnep,   numsHOnep)   = dict2lists(dictHOnep,quantileSize1,False)
     (faultsHChBase, valsHChBase, numsHChBase) = dict2lists(dictHChBase,quantileSize1,False)
     (faultsHChComb, valsHChComb, numsHChComb) = dict2lists(dictHChComb,quantileSize1,False)
+    #TODO: add handle for RBF
+
     # crypto-sign
     (faultsCSBase,   valsCSBase,   numsCSBase)   = dict2lists(dictCSBase,quantileSize2,False)
     (faultsCSCheap,  valsCSCheap,  numsCSCheap)  = dict2lists(dictCSCheap,quantileSize2,False)
@@ -2256,6 +2287,8 @@ def createPlot(pFile):
     (faultsCSOnep,   valsCSOnep,   numsCSOnep)   = dict2lists(dictCSOnep,quantileSize2,False)
     (faultsCSChBase, valsCSChBase, numsCSChBase) = dict2lists(dictCSChBase,quantileSize2,False)
     (faultsCSChComb, valsCSChComb, numsCSChComb) = dict2lists(dictCSChComb,quantileSize2,False)
+    #TODO: add crypto-sign for RBF
+
     # crypto-verif
     (faultsCVBase,   valsCVBase,   numsCVBase)   = dict2lists(dictCVBase,quantileSize2,False)
     (faultsCVCheap,  valsCVCheap,  numsCVCheap)  = dict2lists(dictCVCheap,quantileSize2,False)
@@ -2265,6 +2298,7 @@ def createPlot(pFile):
     (faultsCVOnep,   valsCVOnep,   numsCVOnep)   = dict2lists(dictCVOnep,quantileSize2,False)
     (faultsCVChBase, valsCVChBase, numsCVChBase) = dict2lists(dictCVChBase,quantileSize2,False)
     (faultsCVChComb, valsCVChComb, numsCVChComb) = dict2lists(dictCVChComb,quantileSize2,False)
+    #TODO: add crypto-verif for RBF
 
     print("faults/throughputs(val+num)/latencies(val+num)/cypto-verif(val+num)/cypto-sign(val+num) for (baseline/cheap/quick/combined/free/onep/chained-baseline/chained-combined)")
     print((faultsTVBase,   (valsTVBase,   numsTVBase),   (valsLVBase,   numsLVBase),   (valsCVBase,   numsCVBase),   (valsCSBase,   numsCSBase)))
@@ -2275,6 +2309,7 @@ def createPlot(pFile):
     print((faultsTVOnep,   (valsTVOnep,   numsTVOnep),   (valsLVOnep,   numsLVOnep),   (valsCVOnep,   numsCVOnep),   (valsCSOnep,   numsCSOnep)))
     print((faultsTVChBase, (valsTVChBase, numsTVChBase), (valsLVChBase, numsLVChBase), (valsCVChBase, numsCVChBase), (valsCSChBase, numsCSChBase)))
     print((faultsTVChComb, (valsTVChComb, numsTVChComb), (valsLVChComb, numsLVChComb), (valsCVChComb, numsCVChComb), (valsCSChComb, numsCSChComb)))
+    #TODO: add print for RBF
 
     print("Throughput gain (basic versions):")
     # non-chained
@@ -2555,7 +2590,7 @@ def createPlot(pFile):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                     for x,y,z in zip(faultsCSQuick, valsCSQuick, numsCSQuick):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-                    for x,y,z in zip(faultsCCSomb, valsCSComb, numsCSComb):
+                    for x,y,z in zip(faultsCSComb, valsCSComb, numsCSComb):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                     for x,y,z in zip(faultsCSFree, valsCSFree, numsCSFree):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
@@ -2617,6 +2652,7 @@ def createPlot(pFile):
             subprocess.call([displayApp, plotFile])
         except:
             print("couldn't display the plot using '" + displayApp + "'. Consider changing the 'displayApp' variable.")
+    #TODO: add required RBF dicts throughout method
     return (dictTVBase, dictTVCheap, dictTVQuick, dictTVComb, dictTVFree, dictTVOnep, dictTVChBase, dictTVChComb,
             dictLVBase, dictLVCheap, dictLVQuick, dictLVComb, dictLVFree, dictLVOnep, dictLVChBase, dictLVChComb)
 # End of createPlot
@@ -3554,7 +3590,7 @@ parser.add_argument("--p5",         action="store_true",   help="sets runChBase 
 parser.add_argument("--p6",         action="store_true",   help="sets runChComb to True (chained Damysus)")
 parser.add_argument("--p7",         action="store_true",   help="sets runFree to True (hash&signature-free Damysus)")
 parser.add_argument("--p8",         action="store_true",   help="sets runOnep to True (1+1/2 phase Damysus)")
-#TODO: add argument --p9
+parser.add_argument("--p9",         action="store_true",   help="sets runRBF to True (rollback protection within faulty replicas)")
 parser.add_argument("--pall",       action="store_true",   help="sets all runXXX to True, i.e., all protocols will be executed")
 parser.add_argument("--netlat",     type=int, default=0,   help="network latency in ms")
 parser.add_argument("--netvar",     type=int, default=0,   help="variation of the network latency in ms")
@@ -3738,9 +3774,9 @@ if args.p8:
     runOnep = True
     print("SUCCESSFULLY PARSED ARGUMENT - testing 1+1/2 phase Damysus")
 
-#TODO: fix parsing
-# if args.p9:
-#     print("SUCCESFULLY PARSED ARGUMENT - testing rollback protected Damysus")
+if args.p9:
+    runRBF = True
+    print("SUCCESFULLY PARSED ARGUMENT - testing rollback protected Damysus")
 
 if args.pall:
     runBase   = True
@@ -3812,7 +3848,9 @@ elif args.containers:
     elif args.p8:
         prop = Protocol.ONEP
         fact = 2
-    #TODO: add Protocol.RBF
+    elif args.p9:
+        prop = Protocol.RBF
+        fact = 2
     else:
         prop = Protocol.ONEP
         fact = 2
