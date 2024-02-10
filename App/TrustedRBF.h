@@ -27,8 +27,8 @@ class TrustedRBF {
   void increment();
 
  public:
-  TrustedComb();
-  TrustedComb(unsigned int id, KEY priv, unsigned int q);
+  TrustedRBF();
+  TrustedRBF(unsigned int id, KEY priv, unsigned int q);
 
   Just TEEsign();
   Just TEEprepare(Stats &stats, Nodes nodes, Hash hash, Accum acc);

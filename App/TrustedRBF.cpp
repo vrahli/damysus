@@ -4,10 +4,10 @@
 #include <string>
 #include <cstring>
 
-#include "TrustedComb.h"
+#include "TrustedRBF.h"
 
 
-TrustedComb::TrustedComb() {
+TrustedRBF::TrustedRBF() {
   this->preph  = Hash(true); // the genesis block
   this->prepv  = 0;
   this->view   = 0;
@@ -15,7 +15,7 @@ TrustedComb::TrustedComb() {
   this->qsize  = 0;
 }
 
-TrustedComb::TrustedComb(PID id, KEY priv, unsigned int q) {
+TrustedRBF::TrustedRBF(PID id, KEY priv, unsigned int q) {
   this->preph  = Hash(true); // the genesis block
   this->prepv  = 0;
   this->view   = 0;
@@ -27,7 +27,7 @@ TrustedComb::TrustedComb(PID id, KEY priv, unsigned int q) {
 
 
 // increments the (view,phase) pair
-void TrustedComb::increment() {
+void TrustedRBF::increment() {
   if (this->phase == PH1_NEWVIEW) {
     this->phase = PH1_PREPARE;
   } else if (this->phase == PH1_PREPARE) {
@@ -39,7 +39,7 @@ void TrustedComb::increment() {
 }
 
 
-Just TrustedComb::sign(Hash h1, Hash h2, View v2) {
+Just TrustedRBF::sign(Hash h1, Hash h2, View v2) {
   RData rdata(h1,this->view,h2,v2,this->phase);
   Sign sign(this->priv,this->id,rdata.toString());
   Just just(rdata,sign);
@@ -50,12 +50,12 @@ Just TrustedComb::sign(Hash h1, Hash h2, View v2) {
 }
 
 
-Just TrustedComb::TEEsign() {
+Just TrustedRBF::TEEsign() {
   return sign(Hash(false),this->preph,this->prepv);
 }
 
 
-Just TrustedComb::TEEprepare(Stats &stats, Nodes nodes, Hash hash, Accum acc) {
+Just TrustedRBF::TEEprepare(Stats &stats, Nodes nodes, Hash hash, Accum acc) {
   Signs signs(acc.getSign());
   if (signs.verify(stats,this->id,nodes,acc.data2string())
       && this->view == acc.getView()
@@ -72,7 +72,7 @@ Just TrustedComb::TEEprepare(Stats &stats, Nodes nodes, Hash hash, Accum acc) {
 }
 
 
-Just TrustedComb::TEEstore(Stats &stats, Nodes nodes, Just just) {
+Just TrustedRBF::TEEstore(Stats &stats, Nodes nodes, Just just) {
   RData  data  = just.getRData();
   Signs  signs = just.getSigns();
   Hash   h     = data.getProph();
@@ -96,7 +96,7 @@ Just TrustedComb::TEEstore(Stats &stats, Nodes nodes, Just just) {
 }
 
 
-Accum TrustedComb::TEEaccum(Stats &stats, Nodes nodes, Just justs[MAX_NUM_SIGNATURES]) {
+Accum TrustedRBF::TEEaccum(Stats &stats, Nodes nodes, Just justs[MAX_NUM_SIGNATURES]) {
   View v = justs[0].getRData().getPropv();
   View highest = 0;
   Hash hash = Hash();
@@ -131,7 +131,7 @@ Accum TrustedComb::TEEaccum(Stats &stats, Nodes nodes, Just justs[MAX_NUM_SIGNAT
 }
 
 
-Accum TrustedComb::TEEaccumSp(Stats &stats, Nodes nodes, just_t just) {
+Accum TrustedRBF::TEEaccumSp(Stats &stats, Nodes nodes, just_t just) {
   std::set<PID> signers;
 
   rdata_t rdata = just.rdata;
