@@ -39,7 +39,7 @@ sgx_status_t RBF_TEEsign(just_t *just) {
   sgx_status_t status = SGX_SUCCESS;
   hash_t hash = noHash();
 
-  *just = RBF_sign(hash,COMBpreph,COMBprepv);
+  *just = RBF_sign(hash,RBFpreph,RBFprepv);
 
   return status;
 }
