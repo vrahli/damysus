@@ -18,6 +18,10 @@ class TrustedRBF {
   PID    id;             // unique identifier
   KEY    priv;           // private key
   unsigned int qsize;    // quorum size
+  // TODO: create store for all seen counters
+  // TODO: create method for updating counter
+  // TODO: create onStart method
+  // TODO: add stable predicate
 
   Just sign(Hash h1, Hash h2, View v2);
   void increment();
