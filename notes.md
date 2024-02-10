@@ -40,6 +40,7 @@ Free: Light-Damysus (no hash and signatures)
 TVL: throughput versus latency
 
 Trouble: containers do seem to be created, but in the logging there seems to be no container found when they search for them. 
+Solution: jq command for finding IP addresses subprocess.run does not come preinstalled 
 
 Trouble: experiments.py tries to perform a rm on app/stats, which is not an existing directory. 
 
