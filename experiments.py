@@ -2729,6 +2729,7 @@ def runExperiments():
         # Rollback Faulty
         if runRBF:
             print("compute avg stats for RBF")
+            computeAvgStats(recompile,protocol=Protocol.RBF,constFactor=2,numClTrans=numClTrans,sleepTime=sleepTime,numViews=numViews,cutOffBound=cutOffBound,numFaults=numFaults,numRepeats=repeats)
         else:
             (0.0,0.0,0.0,0.0)
 
