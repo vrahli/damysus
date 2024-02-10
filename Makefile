@@ -156,7 +156,7 @@ else
 endif
 Crypto_Library_Name := sgx_tcrypto
 
-Enclave_Cpp_Files := Enclave/EnclaveShare.cpp Enclave/Enclave.cpp Enclave/EnclaveAccum.cpp Enclave/EnclaveComb.cpp Enclave/EnclaveFree.cpp Enclave/EnclaveOP.cpp Enclave/EnclaveCh.cpp Enclave/EnclaveChComb.cpp
+Enclave_Cpp_Files := Enclave/EnclaveShare.cpp Enclave/Enclave.cpp Enclave/EnclaveAccum.cpp Enclave/EnclaveComb.cpp Enclave/EnclaveFree.cpp Enclave/EnclaveOP.cpp Enclave/EnclaveCh.cpp Enclave/EnclaveChComb.cpp Enclave/EnclaveRBF.cpp
 #Enclave_C_Files := Enclave/ecdsatest.c
 Enclave_Include_Paths := -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/libcxx -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport -I$(SGXSSL_INCLUDE_PATH)
 
