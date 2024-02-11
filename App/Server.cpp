@@ -134,6 +134,12 @@ int main(int argc, char const *argv[]) {
                    sizeof(MsgLdrPrepareComb),
                    sizeof(MsgPrepareComb),
                    sizeof(MsgPreCommitComb)});
+  #elif defined(ROLLBACK_FAULTY_PROTECTED)
+  size = std::max({size,
+                   sizeof(MsgNewViewComb),
+                   sizeof(MsgLdrPrepareComb),
+                   sizeof(MsgPrepareComb),
+                   sizeof(MsgPreCommitComb)});
   #elif defined(BASIC_FREE)
   size = std::max({size,
                    sizeof(MsgNewViewFree),
