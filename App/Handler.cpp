@@ -2990,7 +2990,7 @@ void Handler::handle_precommitacc(MsgPreCommitAcc msg, const PeerNet::conn_t &co
   handlePreCommitAcc(msg);
 }
 
-
+// TODO: recreate for RBF to alter to deal with rollbacks
 // ----------------------------------------------
 // -- Combined version
 // --
