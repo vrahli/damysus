@@ -50,6 +50,7 @@ TrustedAccum ta;
 TrustedComb tc;
 TrustedCh tp; // 'p' for pipelined
 TrustedChComb tq;
+TrustedRBF tr;
 #endif
 
 

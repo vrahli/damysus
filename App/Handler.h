@@ -21,7 +21,7 @@
 
 // ------------------------------------
 // SGX related stuff
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK) 
 //
 #include "Enclave_u.h"
 #include "sgx_urts.h"
@@ -34,6 +34,7 @@
 #include "TrustedComb.h"
 #include "TrustedCh.h"
 #include "TrustedChComb.h"
+#include "TrustedRBF.h"
 //
 #endif
 // ------------------------------------
