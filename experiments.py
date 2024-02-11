@@ -2254,7 +2254,7 @@ def createPlot(pFile):
     (faultsTVOnep,   valsTVOnep,   numsTVOnep)   = dict2lists(dictTVOnep,quantileSize,False)
     (faultsTVChBase, valsTVChBase, numsTVChBase) = dict2lists(dictTVChBase,quantileSize,False)
     (faultsTVChComb, valsTVChComb, numsTVChComb) = dict2lists(dictTVChComb,quantileSize,False)
-    #TODO: add throughput-view for RBF
+    (faultsTVRBF, valsTVRBF, numsTVRBF)          = dict2lists(dictTVRBF,quantileSize,False)
 
     # latency-view
     (faultsLVBase,   valsLVBase,   numsLVBase)   = dict2lists(dictLVBase,quantileSize,False)
@@ -2265,7 +2265,7 @@ def createPlot(pFile):
     (faultsLVOnep,   valsLVOnep,   numsLVOnep)   = dict2lists(dictLVOnep,quantileSize,False)
     (faultsLVChBase, valsLVChBase, numsLVChBase) = dict2lists(dictLVChBase,quantileSize,False)
     (faultsLVChComb, valsLVChComb, numsLVChComb) = dict2lists(dictLVChComb,quantileSize,False)
-    #TODO: add latency-view for RBF
+    (faultsLVRBF,    valsLVRBF,    numsLVRBF)    = dict2lists(dictLVRBF,quantileSize,False)
 
     # handle
     (faultsHBase,   valsHBase,   numsHBase)   = dict2lists(dictHBase,quantileSize1,False)
@@ -2276,7 +2276,7 @@ def createPlot(pFile):
     (faultsHOnep,   valsHOnep,   numsHOnep)   = dict2lists(dictHOnep,quantileSize1,False)
     (faultsHChBase, valsHChBase, numsHChBase) = dict2lists(dictHChBase,quantileSize1,False)
     (faultsHChComb, valsHChComb, numsHChComb) = dict2lists(dictHChComb,quantileSize1,False)
-    #TODO: add handle for RBF
+    (faultsHRBF,    valsHRBF,    numsHRBF)    = dict2lists(dictHRBF,quantileSize1,False)
 
     # crypto-sign
     (faultsCSBase,   valsCSBase,   numsCSBase)   = dict2lists(dictCSBase,quantileSize2,False)
@@ -2287,7 +2287,7 @@ def createPlot(pFile):
     (faultsCSOnep,   valsCSOnep,   numsCSOnep)   = dict2lists(dictCSOnep,quantileSize2,False)
     (faultsCSChBase, valsCSChBase, numsCSChBase) = dict2lists(dictCSChBase,quantileSize2,False)
     (faultsCSChComb, valsCSChComb, numsCSChComb) = dict2lists(dictCSChComb,quantileSize2,False)
-    #TODO: add crypto-sign for RBF
+    (faultsCSRBF,    valsCSRBF,    numsCSRBF)    = dict2lists(dictCSRBF,quantileSize2,False)
 
     # crypto-verif
     (faultsCVBase,   valsCVBase,   numsCVBase)   = dict2lists(dictCVBase,quantileSize2,False)
@@ -2298,7 +2298,7 @@ def createPlot(pFile):
     (faultsCVOnep,   valsCVOnep,   numsCVOnep)   = dict2lists(dictCVOnep,quantileSize2,False)
     (faultsCVChBase, valsCVChBase, numsCVChBase) = dict2lists(dictCVChBase,quantileSize2,False)
     (faultsCVChComb, valsCVChComb, numsCVChComb) = dict2lists(dictCVChComb,quantileSize2,False)
-    #TODO: add crypto-verif for RBF
+    (faultsCVRBF,    valsCVRBF,    numsCVRBF)    = dict2lists(dictCVRBF,quantileSize2,False)
 
     print("faults/throughputs(val+num)/latencies(val+num)/cypto-verif(val+num)/cypto-sign(val+num) for (baseline/cheap/quick/combined/free/onep/chained-baseline/chained-combined)")
     print((faultsTVBase,   (valsTVBase,   numsTVBase),   (valsLVBase,   numsLVBase),   (valsCVBase,   numsCVBase),   (valsCSBase,   numsCSBase)))
@@ -2309,6 +2309,8 @@ def createPlot(pFile):
     print((faultsTVOnep,   (valsTVOnep,   numsTVOnep),   (valsLVOnep,   numsLVOnep),   (valsCVOnep,   numsCVOnep),   (valsCSOnep,   numsCSOnep)))
     print((faultsTVChBase, (valsTVChBase, numsTVChBase), (valsLVChBase, numsLVChBase), (valsCVChBase, numsCVChBase), (valsCSChBase, numsCSChBase)))
     print((faultsTVChComb, (valsTVChComb, numsTVChComb), (valsLVChComb, numsLVChComb), (valsCVChComb, numsCVChComb), (valsCSChComb, numsCSChComb)))
+    print("RBf")
+    print((faultsTVRBF, (valsTVRBF,   numsTVRBF),   (valsLVRBF,   numsLVRBF),   (valsCVRBF,   numsCVRBF),   (valsCSRBF,   numsCSRBF)))
     #TODO: add print for RBF
 
     print("Throughput gain (basic versions):")
