@@ -2309,9 +2309,7 @@ def createPlot(pFile):
     print((faultsTVOnep,   (valsTVOnep,   numsTVOnep),   (valsLVOnep,   numsLVOnep),   (valsCVOnep,   numsCVOnep),   (valsCSOnep,   numsCSOnep)))
     print((faultsTVChBase, (valsTVChBase, numsTVChBase), (valsLVChBase, numsLVChBase), (valsCVChBase, numsCVChBase), (valsCSChBase, numsCSChBase)))
     print((faultsTVChComb, (valsTVChComb, numsTVChComb), (valsLVChComb, numsLVChComb), (valsCVChComb, numsCVChComb), (valsCSChComb, numsCSChComb)))
-    print("RBf")
     print((faultsTVRBF, (valsTVRBF,   numsTVRBF),   (valsLVRBF,   numsLVRBF),   (valsCVRBF,   numsCVRBF),   (valsCSRBF,   numsCSRBF)))
-    #TODO: add print for RBF
 
     print("Throughput gain (basic versions):")
     # non-chained
@@ -2655,8 +2653,8 @@ def createPlot(pFile):
         except:
             print("couldn't display the plot using '" + displayApp + "'. Consider changing the 'displayApp' variable.")
     #TODO: add required RBF dicts throughout method
-    return (dictTVBase, dictTVCheap, dictTVQuick, dictTVComb, dictTVFree, dictTVOnep, dictTVChBase, dictTVChComb,
-            dictLVBase, dictLVCheap, dictLVQuick, dictLVComb, dictLVFree, dictLVOnep, dictLVChBase, dictLVChComb)
+    return (dictTVBase, dictTVCheap, dictTVQuick, dictTVComb, dictTVFree, dictTVOnep, dictTVChBase, dictTVChComb, dictTVRBF,
+            dictLVBase, dictLVCheap, dictLVQuick, dictLVComb, dictLVFree, dictLVOnep, dictLVChBase, dictLVChComb, dichtLVRBF)
 # End of createPlot
 
 
