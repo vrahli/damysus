@@ -28,6 +28,13 @@ enclave {
         public sgx_status_t COMB_TEEaccum([in] onejusts_t *js, [out] accum_t *res);
         public sgx_status_t COMB_TEEaccumSp([in] just_t *just, [out] accum_t *res);
 
+        /* RollbackFaulty */
+        public sgx_status_t RBF_TEEsign([out] just_t *just);
+        public sgx_status_t RBF_TEEprepare([in] hash_t *hash, [in] accum_t *acc, [out] just_t *res);
+        public sgx_status_t RBF_TEEstore([in] just_t *just, [out] just_t *res);
+        public sgx_status_t RBF_TEEaccum([in] onejusts_t *js, [out] accum_t *res);
+        public sgx_status_t RBF_TEEaccumSp([in] just_t *just, [out] accum_t *res);
+
         /* Free */
         public sgx_status_t FREE_TEEauth([in]payload_t *text, [out] auth_t *res);
         public sgx_status_t FREE_TEEverify([in]payload_t *text, [in]auths_t *a, [out] bool *res);
