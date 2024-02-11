@@ -33,6 +33,11 @@ const uint8_t MsgNewViewAcc::opcode;
 const uint8_t MsgLdrPrepareAcc::opcode;
 const uint8_t MsgPrepareAcc::opcode;
 const uint8_t MsgPreCommitAcc::opcode;
+#elif defined(ROLLBACK_FAULTY_PROTECTED)
+const uint8_t MsgNewViewComb::opcode;
+const uint8_t MsgLdrPrepareComb::opcode;
+const uint8_t MsgPrepareComb::opcode;
+const uint8_t MsgPreCommitComb::opcode;
 #else
 const uint8_t MsgNewView::opcode;
 const uint8_t MsgPrepare::opcode;
@@ -378,6 +383,12 @@ int main(int argc, char const *argv[]) {
                    sizeof(MsgNewViewChComb),
                    sizeof(MsgLdrPrepareChComb),
                    sizeof(MsgPrepareChComb)});
+  #elif defined(ROLLBACK_FAULTY_PROTECTED) //TODO: change if messages change
+  size = std::max({size,
+                   sizeof(MsgNewViewComb),
+                   sizeof(MsgLdrPrepareComb),
+                   sizeof(MsgPrepareComb),
+                   sizeof(MsgPreCommitComb)});
   #endif
 
   MsgNet::Config config;
