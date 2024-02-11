@@ -1298,7 +1298,7 @@ def prepareCluster():
 
 ## Returns True if the protocol requires SGX
 def needsSGX(protocol):
-    if (protocol == Protocol.BASE or protocol == Protocol.CHBASE or protocol == Protocol.QUICKDBG or protocol == Protocol.CHCOMBDBG or protocol == Protocol.RBF):
+    if (protocol == Protocol.BASE or protocol == Protocol.CHBASE or protocol == Protocol.QUICKDBG or protocol == Protocol.CHCOMBDBG):
         return False
     else:
         return True
