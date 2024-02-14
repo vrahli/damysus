@@ -146,7 +146,7 @@ freeHS   = "Light-Damysus"
 onepHS   = "OneP-Damysus"
 baseChHS = "Chained HotStuff"
 combChHS = "Chained-Damysus"
-rollBF   = "Rollback Faulty"
+RoBFHS   = "Rollback Faulty"
 
 # Markers
 baseMRK   = "P"
@@ -2434,6 +2434,8 @@ def createPlot(pFile):
                     axs[0].plot(faultsTVFree,   valsTVFree,   color=freeCOL,   linewidth=LW, marker=freeMRK,   markersize=MS, linestyle=freeLS,   label=freeHS)
                 if len(faultsTVOnep) > 0:
                     axs[0].plot(faultsTVOnep,   valsTVOnep,   color=onepCOL,   linewidth=LW, marker=onepMRK,   markersize=MS, linestyle=onepLS,   label=onepHS)
+                if len(faultsTVRBF) > 0:
+                    axs[0].plot(faultsTVRBF,    valsTVRBF,    color=RoBFCOL,   linewidth=LW, marker=RoBFMRK,   markersize=MS, linestyle=RoBFLS,   label=RoBFHS)
             if plotChained:
                 if len(faultsTVChBase) > 0:
                     axs[0].plot(faultsTVChBase, valsTVChBase, color=baseChCOL, linewidth=LW, marker=baseChMRK, markersize=MS, linestyle=baseChLS, label=baseChHS)
