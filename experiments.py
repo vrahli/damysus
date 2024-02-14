@@ -2322,6 +2322,7 @@ def createPlot(pFile):
     getPercentage(False,combHS,faultsTVComb,valsTVComb,freeHS, faultsTVFree, valsTVFree)
     getPercentage(False,baseHS,faultsTVBase,valsTVBase,onepHS, faultsTVOnep, valsTVOnep)
     getPercentage(False,combHS,faultsTVComb,valsTVComb,onepHS, faultsTVOnep, valsTVOnep)
+    #getPercentage(RBF)
     # chained
     getPercentage(False,baseChHS,faultsTVChBase,valsTVChBase,combChHS,faultsTVChComb,valsTVChComb)
 
@@ -2334,6 +2335,7 @@ def createPlot(pFile):
     getPercentage(True,combHS,faultsLVComb,valsLVComb,freeHS, faultsLVFree, valsLVFree)
     getPercentage(True,baseHS,faultsLVBase,valsLVBase,onepHS, faultsLVOnep, valsLVOnep)
     getPercentage(True,combHS,faultsLVComb,valsLVComb,onepHS, faultsLVOnep, valsLVOnep)
+    #getPercentage(RBF)
     # chained
     getPercentage(True,baseChHS,faultsLVChBase,valsLVChBase,combChHS,faultsLVChComb,valsLVChComb)
 
@@ -2346,6 +2348,7 @@ def createPlot(pFile):
     getPercentage(True,combHS,faultsHComb,valsHComb,freeHS, faultsHFree, valsHFree)
     getPercentage(True,baseHS,faultsHBase,valsHBase,onepHS, faultsHOnep, valsHOnep)
     getPercentage(True,combHS,faultsHComb,valsHComb,onepHS, faultsHOnep, valsHOnep)
+    #getPercentage(RBF)
     # chained
     getPercentage(True,baseChHS,faultsHChBase,valsHChBase,combChHS,faultsHChComb,valsHChComb)
 
@@ -2952,6 +2955,8 @@ def createTVLplot(cFile,instances):
             plt.plot(TFree,   LFree,   color=freeCOL,   linewidth=LW, marker=freeMRK,   markersize=MS, linestyle=freeLS,   label=freeHS)
         if len(TOnep) > 0:
             plt.plot(TOnep,   LOnep,   color=onepCOL,   linewidth=LW, marker=onepMRK,   markersize=MS, linestyle=onepLS,   label=onepHS)
+        if len(TRoBF) > 0:
+            plt.plot(TRoBF,   LRoBF,   color=RoBFCOL,   linewidth=LW, marker=RoBFMRK,   markersize=MS, linesytel=RoBFLS,   label=RoBFHS)
     if plotChained:
         if len(TChBase) > 0:
             plt.plot(TChBase, LChBase, color=baseChCOL, linewidth=LW, marker=baseChMRK, markersize=MS, linestyle=baseChLS, label=baseChHS)
@@ -2970,6 +2975,8 @@ def createTVLplot(cFile,instances):
             for x,y,z in zip(TFree, LFree, aFree):
                 plt.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
             for x,y,z in zip(TOnep, LOnep, aOnep):
+                plt.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+            for x,y,z in zip(TRoBF, LRoBF, aRoBF):
                 plt.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
         if plotChained:
             for x,y,z in zip(TChBase, LChBase, aChBase):
@@ -3399,7 +3406,6 @@ def TVLaws():
                   sleepTimes=sleepTimes,
                   repeats=repeats)
 
-
     ## Chained Versions
 
     if runChBase or runChComb:
@@ -3443,7 +3449,7 @@ def TVLaws():
 # End of TVLaws
 
 
-def copyLatestExperiments():
+def copyLatestExperiments(): #TODO: add RBF to methods
     global plotFile
     global tvlFile
     global plotBasic
