@@ -1951,6 +1951,7 @@ def createPlot(pFile):
     dictLVChBase = {}
     dictLVChComb = {}
     dictLVRBF    = {}
+    
     # handle
     dictHBase   = {}
     dictHCheap  = {}
@@ -2455,6 +2456,8 @@ def createPlot(pFile):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                     for x,y,z in zip(faultsTVOnep, valsTVOnep, numsTVOnep):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsTVRBF, valsTVRBF, numsTVRBF):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                 if plotChained:
                     for x,y,z in zip(faultsTVChBase, valsTVChBase, numsTVChBase):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
@@ -2504,6 +2507,8 @@ def createPlot(pFile):
                     ax.plot(faultsLVFree,   valsLVFree,   color=freeCOL,   linewidth=LW, marker=freeMRK,   markersize=MS, linestyle=freeLS,   label=freeHS)
                 if len(faultsLVOnep) > 0:
                     ax.plot(faultsLVOnep,   valsLVOnep,   color=onepCOL,   linewidth=LW, marker=onepMRK,   markersize=MS, linestyle=onepLS,   label=onepHS)
+                if len(faultsLVRBF) > 0:
+                    ax.plot(faultsLVRBF,    valsLVRBF,    color=RoBFCOL,   linewidth=LW, marker=RoBFMRK,   markersize=MS, linestyle=RoBFLS,   label=RoBFHS)
             if plotChained:
                 if len(faultsLVChBase) > 0:
                     ax.plot(faultsLVChBase, valsLVChBase, color=baseChCOL, linewidth=LW, marker=baseChMRK, markersize=MS, linestyle=baseChLS, label=baseChHS)
@@ -2522,6 +2527,8 @@ def createPlot(pFile):
                     for x,y,z in zip(faultsLVFree, valsLVFree, numsLVFree):
                         ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                     for x,y,z in zip(faultsLVOnep, valsLVOnep, numsLVOnep):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsLVRBF, valsLVRBF, numsLVRBF):
                         ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                 if plotChained:
                     for x,y,z in zip(faultsLVChBase, valsLVChBase, numsLVChBase):
@@ -2542,6 +2549,8 @@ def createPlot(pFile):
                     ax.plot(faultsHFree,   valsHFree,   color=freeCOL,   linewidth=LW, marker="+", markersize=MS, linestyle=freeLS,   label=freeHS+"")
                 if len(faultsHOnep) > 0:
                     ax.plot(faultsHOnep,   valsHOnep,   color=onepCOL,   linewidth=LW, marker="+", markersize=MS, linestyle=onepLS,   label=onepHS+"")
+                if len(faultsHRBF) > 0:
+                    ax.plot(faultsHRBF,    valsHRBF,    color=RoBFCOL,   linewidth=LW, marker="+", markersize=MS, linestyle=RoBFLS,   label=RoBFHS+"")
             if plotChained:
                 if len(faultsHChBase) > 0:
                     ax.plot(faultsHChBase, valsHChBase, color=baseChCOL, linewidth=LW, marker="+", markersize=MS, linestyle=baseChLS, label=baseChHS+"")
@@ -2561,6 +2570,8 @@ def createPlot(pFile):
                         ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                     for x,y,z in zip(faultsHOnep, valsHOnep, numsHOnep):
                         ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsHRBF, valsHRBF, numsHRBF):
+                        ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')    
                 if plotChained:
                     for x,y,z in zip(faultsHChBase, valsHChBase, numsHChBase):
                         ax.annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
@@ -2580,6 +2591,8 @@ def createPlot(pFile):
                     axs[0].plot(faultsCSFree,   valsCSFree,   color=freeCOL,   linewidth=LW, marker="1", markersize=MS, linestyle=freeLS,   label=freeHS+" (crypto-sign)")
                 if len(faultsCSOnep) > 0:
                     axs[0].plot(faultsCSOnep,   valsCSOnep,   color=onepCOL,   linewidth=LW, marker="1", markersize=MS, linestyle=onepLS,   label=onepHS+" (crypto-sign)")
+                if len(faultsCSOnep) > 0:
+                    axs[0].plot(faultsCSRBF,   valsCSRBF,   color=RoBFCOL,   linewidth=LW, marker="1", markersize=MS, linestyle=RoBFLS,   label=RoBFHS+" (crypto-sign)")
             if plotChained:
                 if len(faultsCSChBase) > 0:
                     axs[0].plot(faultsCSChBase, valsCSChBase, color=baseChCOL, linewidth=LW, marker="1", markersize=MS, linestyle=baseChLS, label=baseChHS+" (crypto-sign)")
@@ -2598,6 +2611,8 @@ def createPlot(pFile):
                     for x,y,z in zip(faultsCSFree, valsCSFree, numsCSFree):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                     for x,y,z in zip(faultsCSOnep, valsCSOnep, numsCSOnep):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCSRBF, valsCSRBF, numsCSRBF):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                 if plotChained:
                     for x,y,z in zip(faultsCSChBase, valsCSChBase, numsCSChBase):
@@ -2618,6 +2633,8 @@ def createPlot(pFile):
                     axs[0].plot(faultsCVFree,   valsCVFree,   color=freeCOL,   linewidth=LW, marker="2", markersize=MS, linestyle=freeLS,   label=freeHS+" (crypto-verif)")
                 if len(faultsCVOnep) > 0:
                     axs[0].plot(faultsCVOnep,   valsCVOnep,   color=onepCOL,   linewidth=LW, marker="2", markersize=MS, linestyle=onepLS,   label=onepHS+" (crypto-verif)")
+                if len(faultsCVRBF) > 0:
+                    axs[0].plot(faultsCVRBF,    valsCVRBF,    color=RoBFCOL,   linewidth=LW, marker="2", markersize=MS, linestyle=RoBFLS,   label=RoBFHS+" (crypto-verif)")
             if plotChained:
                 if len(faultsCVChBase) > 0:
                     axs[0].plot(faultsCVChBase, valsCVChBase, color=baseChCOL, linewidth=LW, marker="2", markersize=MS, linestyle=baseChLS, label=baseChHS+" (crypto-verif)")
@@ -2637,6 +2654,8 @@ def createPlot(pFile):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                     for x,y,z in zip(faultsCVOnep, valsCVOnep, numsCVOnep):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
+                    for x,y,z in zip(faultsCVRBF, valsCVRBF, numsCVRBF):
+                        axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                 if plotChained:
                     for x,y,z in zip(faultsCVChBase, valsCVChBase, numsCVChBase):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
@@ -2655,9 +2674,8 @@ def createPlot(pFile):
             subprocess.call([displayApp, plotFile])
         except:
             print("couldn't display the plot using '" + displayApp + "'. Consider changing the 'displayApp' variable.")
-    #TODO: add required RBF dicts throughout method
     return (dictTVBase, dictTVCheap, dictTVQuick, dictTVComb, dictTVFree, dictTVOnep, dictTVChBase, dictTVChComb, dictTVRBF,
-            dictLVBase, dictLVCheap, dictLVQuick, dictLVComb, dictLVFree, dictLVOnep, dictLVChBase, dictLVChComb, dichtLVRBF)
+            dictLVBase, dictLVCheap, dictLVQuick, dictLVComb, dictLVFree, dictLVOnep, dictLVChBase, dictLVChComb, dictLVRBF)
 # End of createPlot
 
 
