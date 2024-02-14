@@ -157,6 +157,7 @@ freeMRK   = "s"
 onepMRK   = "+"
 baseChMRK = "d"
 combChMRK = ">"
+RBFMRK    = "^"
 
 # Line styles
 baseLS   = ":"
@@ -167,6 +168,7 @@ freeLS   = "-"
 onepLS   = "-"
 baseChLS = ":"
 combChLS = "-"
+RBFLS    = "-"
 
 # Markers
 baseCOL   = "black"
@@ -177,6 +179,7 @@ freeCOL   = "purple"
 onepCOL   = "brown"
 baseChCOL = "darkorange"
 combChCOL = "magenta"
+RBFCOL    = "cyan"
 
 
 ## AWS parameters
@@ -1979,8 +1982,6 @@ def createPlot(pFile):
     dictCVChComb = {}
     dictCVRBF    = {}
 
-    #TODO: create dicts for RBF
-
     global dockerCpu, dockerMem, networkLat, payloadSize, repeats, repeatsL2, numViews
 
     # We accumulate all the points in dictionaries
@@ -2628,7 +2629,7 @@ def createPlot(pFile):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                     for x,y,z in zip(faultsCVQuick, valsCVQuick, numsCVQuick):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
-                    for x,y,z in zip(faultsCCVomb, valsCVComb, numsCVComb):
+                    for x,y,z in zip(faultsCVComb, valsCVComb, numsCVComb):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
                     for x,y,z in zip(faultsCVFree, valsCVFree, numsCVFree):
                         axs[0].annotate(z,(x,y),textcoords="offset points",xytext=XYT,ha='center')
@@ -2836,6 +2837,10 @@ def createTVLplot(cFile,instances):
     TChComb = []
     aChComb = []
 
+    LRoBF = [] #inconsistent due to keyword LRBF
+    TRoBF = []
+    aRoBF = []
+
     print("reading points from:", cFile)
     f = open(cFile,'r')
     for line in f.readlines():
@@ -2891,8 +2896,9 @@ def createTVLplot(cFile,instances):
                 LChComb.append(latency)
                 aChComb.append(sleep)
             if protVal == "ROLLBACK_FAULTY_PROTECTED":
-                continue
-                #TODO: append values for TVL plot
+                TRoBF.append(throughput)
+                LRoBF.append(latency)
+                aRoBF.append(sleep)
 
     LW = 1 # linewidth
     MS = 5 # markersize
