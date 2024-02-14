@@ -157,7 +157,7 @@ freeMRK   = "s"
 onepMRK   = "+"
 baseChMRK = "d"
 combChMRK = ">"
-RBFMRK    = "^"
+RoBFMRK    = "^"
 
 # Line styles
 baseLS   = ":"
@@ -168,7 +168,7 @@ freeLS   = "-"
 onepLS   = "-"
 baseChLS = ":"
 combChLS = "-"
-RBFLS    = "-"
+RoBFLS    = "-"
 
 # Markers
 baseCOL   = "black"
@@ -179,7 +179,7 @@ freeCOL   = "purple"
 onepCOL   = "brown"
 baseChCOL = "darkorange"
 combChCOL = "magenta"
-RBFCOL    = "cyan"
+RoBFCOL    = "cyan"
 
 
 ## AWS parameters
@@ -3794,7 +3794,7 @@ if args.pall:
     runOnep   = True
     runChBase = True
     runChComb = True
-    #TODO: add succesfully implemented rollback protocols
+    runRBF    = True
     print("SUCCESSFULLY PARSED ARGUMENT - testing all protocols")
 
 
