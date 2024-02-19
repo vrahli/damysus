@@ -6,7 +6,7 @@ hash_t RBFpreph = newHash(); // hash of the last prepared block
 View   RBFprepv = 0;             // preph's view
 View   RBFview  = 0;             // current view
 Phase1 RBFphase = PH1_NEWVIEW;   // current phase
-std::map<PID,int> MCs; // Logged monotonic counters
+std::map<PID, sign_t> MCs; // Logged monotonic counters
 
 
 
@@ -71,6 +71,11 @@ sgx_status_t RBF_TEEstore(just_t *just, just_t *res) {
       && verifyJust(just)
       && RBFview == v
       && ph == PH1_PREPARE) {
+    for (int i = 0; i < just->signs.size; i++) {
+      sign_t sign = just->signs.signs[i];
+      PID signer = sign.signer;
+      MCs.at(signer) = sign;
+    }
     RBFpreph=h; RBFprepv=v;
     *res = RBF_sign(h,newHash(),0);
   } else { res->set=false; }
@@ -163,12 +168,12 @@ sgx_status_t RBF_TEErecovery(just_t *just, just_t *res) {
   hash_t  h  = rd.proph;
   View    v  = rd.propv;
   Phase1  ph = rd.phase;
-  if (just->signs.size == getQsize()
+  if (just->signs.size == getQsize() //TODO: change condition
       && verifyJust(just)
       && RBFview == v
       && ph == PH1_PREPARE) {
-      RBFview = 0;
-      RBFphase = 0;
+      RBFview = 0; //TODO: change to max found value
+      RBFphase = 0; //TODO: change to max found value
     RBFpreph=h; RBFprepv=v;
     *res = RBF_sign(h,newHash(),0);
   } else { res->set=false; }
