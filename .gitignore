@@ -1,3 +1,4 @@
 config
 stats/
 /App/params.h
+.vscode
