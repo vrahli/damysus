@@ -6,6 +6,7 @@ hash_t RBFpreph = newHash(); // hash of the last prepared block
 View   RBFprepv = 0;             // preph's view
 View   RBFview  = 0;             // current view
 Phase1 RBFphase = PH1_NEWVIEW;   // current phase
+std::map<PID,int> MCs; // Logged monotonic counters
 
 
 
@@ -21,7 +22,6 @@ void RBF_increment() {
   }
 }
 
-
 just_t RBF_sign(hash_t h1, hash_t h2, View v2) {
   rdata_t rdata;
   rdata.proph = h1; rdata.propv = RBFview; rdata.justh = h2; rdata.justv = v2; rdata.phase = RBFphase;
@@ -34,7 +34,7 @@ just_t RBF_sign(hash_t h1, hash_t h2, View v2) {
   return j;
 }
 
-
+//TODO: log the MC values, and the message in runtime memory
 sgx_status_t RBF_TEEsign(just_t *just) {
   sgx_status_t status = SGX_SUCCESS;
   hash_t hash = noHash();
@@ -44,6 +44,7 @@ sgx_status_t RBF_TEEsign(just_t *just) {
   return status;
 }
 
+//TODO: log the MC values, and the message in runtime memory
 sgx_status_t RBF_TEEprepare(hash_t *hash, accum_t *acc, just_t *res) {
   //ocall_print("TEEprepare...");
   sgx_status_t status = SGX_SUCCESS;
@@ -58,7 +59,7 @@ sgx_status_t RBF_TEEprepare(hash_t *hash, accum_t *acc, just_t *res) {
   return status;
 }
 
-
+//TODO: log the MC values, and the message in runtime memory
 sgx_status_t RBF_TEEstore(just_t *just, just_t *res) {
   //ocall_print("TEEstore...");
   sgx_status_t status = SGX_SUCCESS;
@@ -76,7 +77,7 @@ sgx_status_t RBF_TEEstore(just_t *just, just_t *res) {
   return status;
 }
 
-
+//TODO: log the MC values, and the message in runtime memory
 sgx_status_t RBF_TEEaccum(onejusts_t *js, accum_t *res) {
   sgx_status_t status = SGX_SUCCESS;
 
@@ -117,7 +118,7 @@ sgx_status_t RBF_TEEaccum(onejusts_t *js, accum_t *res) {
   return status;
 }
 
-
+//TODO: log the MC values, and the message in runtime memory
 sgx_status_t RBF_TEEaccumSp(just_t *just, accum_t *res) {
   sgx_status_t status = SGX_SUCCESS;
 
@@ -150,4 +151,31 @@ sgx_status_t RBF_TEEaccumSp(just_t *just, accum_t *res) {
   res->sign = sign;
 
   return status;
+}
+
+//Allow for a recovery of the SGX enclave, iff a quorum of non-zero values is supplied
+sgx_status_t RBF_TEErecovery(just_t *just, just_t *res) {
+  //set values to maximum value, if a quorum is reached.
+  
+  //ocall_print("TEEstore...");
+  sgx_status_t status = SGX_SUCCESS;
+  rdata_t rd = just->rdata;
+  hash_t  h  = rd.proph;
+  View    v  = rd.propv;
+  Phase1  ph = rd.phase;
+  if (just->signs.size == getQsize()
+      && verifyJust(just)
+      && RBFview == v
+      && ph == PH1_PREPARE) {
+      RBFview = 0;
+      RBFphase = 0;
+    RBFpreph=h; RBFprepv=v;
+    *res = RBF_sign(h,newHash(),0);
+  } else { res->set=false; }
+  return status;
+}
+
+//supply a requested monotonic counter with a proof of a message
+sgx_status_t RBF_TEEsupplyMC(){
+
 }
