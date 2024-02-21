@@ -74,7 +74,7 @@ sgx_status_t RBF_TEEstore(just_t *just, just_t *res) {
     for (int i = 0; i < just->signs.size; i++) {
       sign_t sign = just->signs.signs[i];
       PID signer = sign.signer;
-      MCs.at(signer) = sign;
+      // MCs.at(signer) = sign;
     }
     RBFpreph=h; RBFprepv=v;
     *res = RBF_sign(h,newHash(),0);
