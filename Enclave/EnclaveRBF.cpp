@@ -44,7 +44,7 @@ sgx_status_t RBF_TEEsign(just_t *just) {
   return status;
 }
 
-//TODO: log the MC values, and the message in runtime memory
+//Prepare only updates the view of the leader, so should only update map for acc->sign->
 sgx_status_t RBF_TEEprepare(hash_t *hash, accum_t *acc, just_t *res) {
   //ocall_print("TEEprepare...");
   sgx_status_t status = SGX_SUCCESS;
@@ -54,6 +54,8 @@ sgx_status_t RBF_TEEprepare(hash_t *hash, accum_t *acc, just_t *res) {
   if (verifyAccum(acc)
       && RBFview == acc->view
       && acc->size == getQsize()) {
+    //log value of leader
+    MCs[acc->sign.signer] = acc->sign;
     *res = RBF_sign(*hash,acc->hash,acc->prepv);
   } else { res->set = false; }
   return status;
@@ -172,8 +174,8 @@ sgx_status_t RBF_TEErecovery(just_t *just, just_t *res) {
       && verifyJust(just)
       && RBFview == v
       && ph == PH1_PREPARE) {
-      RBFview = 0; //TODO: change to max found value
-      RBFphase = 0; //TODO: change to max found value
+      RBFview = rd.propv; //TODO: change to max found value
+      RBFphase = rd.phase; //TODO: change to max found value
     RBFpreph=h; RBFprepv=v;
     *res = RBF_sign(h,newHash(),0);
   } else { res->set=false; }
@@ -181,6 +183,9 @@ sgx_status_t RBF_TEErecovery(just_t *just, just_t *res) {
 }
 
 //supply a requested monotonic counter with a proof of a message
-sgx_status_t RBF_TEEsupplyMC(){
-
+sgx_status_t RBF_TEEsupplyMC(PID *requestee, sign_t *res){
+  sgx_status_t status = SGX_SUCCESS;
+  sign_t MCsign = MCs[*requestee];
+  *res = MCsign;
+  return status;
 }
