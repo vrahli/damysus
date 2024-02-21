@@ -7,40 +7,52 @@ View   RBFprepv = 0;             // preph's view
 View   RBFview  = 0;             // current view
 Phase1 RBFphase = PH1_NEWVIEW;   // current phase
 std::map<PID, sign_t> MCs; // Logged monotonic counters
+int online = 0;
 
 
 
 // increments the (view,phase) pair
 void RBF_increment() {
-  if (RBFphase == PH1_NEWVIEW) {
-    RBFphase = PH1_PREPARE;
-  } else if (RBFphase == PH1_PREPARE) {
-    RBFphase = PH1_PRECOMMIT;
-  } else if (RBFphase == PH1_PRECOMMIT) {
-    RBFphase = PH1_NEWVIEW;
-    RBFview++;
+  if (!online) {
+
+  }
+  else {
+    if (RBFphase == PH1_NEWVIEW) {
+      RBFphase = PH1_PREPARE;
+    } else if (RBFphase == PH1_PREPARE) {
+      RBFphase = PH1_PRECOMMIT;
+    } else if (RBFphase == PH1_PRECOMMIT) {
+      RBFphase = PH1_NEWVIEW;
+      RBFview++;
+    }
   }
 }
 
 just_t RBF_sign(hash_t h1, hash_t h2, View v2) {
-  rdata_t rdata;
-  rdata.proph = h1; rdata.propv = RBFview; rdata.justh = h2; rdata.justv = v2; rdata.phase = RBFphase;
-  sign_t sign = signString(rdata2string(rdata));
-  signs_t signs; signs.size = 1; signs.signs[0] = sign;
-  just_t j; j.set = 1; j.rdata = rdata; j.signs = signs;
+  just_t j;
+  if (online) {
+    rdata_t rdata;
+    rdata.proph = h1; rdata.propv = RBFview; rdata.justh = h2; rdata.justv = v2; rdata.phase = RBFphase;
+    sign_t sign = signString(rdata2string(rdata));
+    signs_t signs; signs.size = 1; signs.signs[0] = sign;
+     j.set = 1; j.rdata = rdata; j.signs = signs;
 
-  RBF_increment();
-
+    RBF_increment();
+  }
+  else {
+    j.set = 0;
+  }
   return j;
 }
 
 //TODO: log the MC values, and the message in runtime memory
 sgx_status_t RBF_TEEsign(just_t *just) {
   sgx_status_t status = SGX_SUCCESS;
-  hash_t hash = noHash();
+  if (online) {
+    hash_t hash = noHash();
 
-  *just = RBF_sign(hash,RBFpreph,RBFprepv);
-
+    *just = RBF_sign(hash,RBFpreph,RBFprepv);
+  }
   return status;
 }
 
@@ -53,7 +65,8 @@ sgx_status_t RBF_TEEprepare(hash_t *hash, accum_t *acc, just_t *res) {
 
   if (verifyAccum(acc)
       && RBFview == acc->view
-      && acc->size == getQsize()) {
+      && acc->size == getQsize()
+      && online) {
     //log value of leader
     MCs[acc->sign.signer] = acc->sign;
     *res = RBF_sign(*hash,acc->hash,acc->prepv);
@@ -72,7 +85,8 @@ sgx_status_t RBF_TEEstore(just_t *just, just_t *res) {
   if (just->signs.size == getQsize()
       && verifyJust(just)
       && RBFview == v
-      && ph == PH1_PREPARE) {
+      && ph == PH1_PREPARE
+      && online) {
     for (int i = 0; i < just->signs.size; i++) {
       sign_t sign = just->signs.signs[i];
       PID signer = sign.signer;
@@ -122,6 +136,9 @@ sgx_status_t RBF_TEEaccum(onejusts_t *js, accum_t *res) {
   res->size = size;
   res->sign = sign;
 
+  if (!online) {
+    res->set = 0;
+  }
   return status;
 }
 
@@ -157,28 +174,37 @@ sgx_status_t RBF_TEEaccumSp(just_t *just, accum_t *res) {
   res->size = size;
   res->sign = sign;
 
+  if (!online) {
+    res->set = 0;
+  }
   return status;
 }
 
-//Allow for a recovery of the SGX enclave, iff a quorum of non-zero values is supplied
-sgx_status_t RBF_TEErecovery(just_t *just, just_t *res) {
+//Allow for a recovery of the SGX enclave, iff a quorum of non-zero values is supplied by means of an accumulator created by a leader (saves bandwidth)
+//Sealing simulated by the replica supplying two values to the system, denoting the view and phase that are the MC for the state
+sgx_status_t RBF_TEErecovery(accum_t *acc, just_t *res) {
   //set values to maximum value, if a quorum is reached.
-  
   //ocall_print("TEEstore...");
   sgx_status_t status = SGX_SUCCESS;
-  rdata_t rd = just->rdata;
-  hash_t  h  = rd.proph;
-  View    v  = rd.propv;
-  Phase1  ph = rd.phase;
-  if (just->signs.size == getQsize() //TODO: change condition
-      && verifyJust(just)
-      && RBFview == v
-      && ph == PH1_PREPARE) {
-      RBFview = rd.propv; //TODO: change to max found value
-      RBFphase = rd.phase; //TODO: change to max found value
-    RBFpreph=h; RBFprepv=v;
-    *res = RBF_sign(h,newHash(),0);
+  if (acc->size == getQsize() 
+      && acc->set == 1
+      ) {
+    RBFview = acc->view;
+    RBFphase = PH1_PRECOMMIT;
+    res->set = true;
   } else { res->set=false; }
+  return status;
+}
+
+//create method to reset counter, simulating a rollback
+sgx_status_t RBF_TEEattemptrollback(View *v) {
+  sgx_status_t status = SGX_SUCCESS;
+  if (*v < RBFview) {
+    RBFview = *v;
+    for (int i = 0; i < MCs.size(); i++) {
+      MCs[i] = signString(""); //simulate all lost signs
+    }
+  }
   return status;
 }
 
@@ -186,6 +212,6 @@ sgx_status_t RBF_TEErecovery(just_t *just, just_t *res) {
 sgx_status_t RBF_TEEsupplyMC(PID *requestee, sign_t *res){
   sgx_status_t status = SGX_SUCCESS;
   sign_t MCsign = MCs[*requestee];
-  *res = MCsign;
+  *res = MCsign; //TODO: sign the result
   return status;
 }
