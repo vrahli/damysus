@@ -61,7 +61,7 @@ sgx_status_t RBF_TEEprepare(hash_t *hash, accum_t *acc, just_t *res) {
 
 //TODO: log the MC values, and the message in runtime memory
 sgx_status_t RBF_TEEstore(just_t *just, just_t *res) {
-  //ocall_print("TEEstore...");
+  // ocall_print("TEEstore...");
   sgx_status_t status = SGX_SUCCESS;
   rdata_t rd = just->rdata;
   hash_t  h  = rd.proph;
@@ -74,7 +74,7 @@ sgx_status_t RBF_TEEstore(just_t *just, just_t *res) {
     for (int i = 0; i < just->signs.size; i++) {
       sign_t sign = just->signs.signs[i];
       PID signer = sign.signer;
-      // MCs.at(signer) = sign;
+      MCs[signer] = sign;
     }
     RBFpreph=h; RBFprepv=v;
     *res = RBF_sign(h,newHash(),0);
