@@ -1,0 +1,19 @@
+List of things:
+
+Call heartbeat after epoch of f+u+1
+Create RECOVER and WISH messages 
+    Recover: type + nonce to all leaders within an epoch 
+    Wish: type + previous_epoch to all leaders within an epoch
+
+Create TC message that leaders can send after a Wish treshold
+    TC: type + Recovers + view of start of epoch
+
+Create vote for TC message
+    sign TC message (used for forking prevention) after checks to all leaders
+
+After threshold of TC votes:
+    send QC to all (including self)
+
+After QC:
+    adopt view of epoch if not replaced by new TEE
+
