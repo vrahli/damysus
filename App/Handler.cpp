@@ -3393,6 +3393,107 @@ void Handler::handle_precommitcomb(MsgPreCommitComb msg, const PeerNet::conn_t &
   handlePreCommitComb(msg);
 }
 
+// ----------------------------------------------
+// -- Rollback faulty RBF version
+// --
+
+void Handler::executeRBF(RData rdata) {
+
+}
+
+void Handler::handleEarlierMessagesRBF(){
+
+}
+
+void Handler::startNewViewRBF() {
+
+}
+
+// For leaders to start preparing
+void Handler::prepareRBF(){
+
+}
+
+// For leaders to start pre-committing
+void Handler::preCommitRBF(RData data) {
+
+}
+
+// For leaders to start deciding
+void Handler::decideRBF(RData data) {
+
+}
+
+// For backups to respond to correct MsgLdrPrepareComb messages received from leaders
+void Handler::respondToLdrPrepareRBF(Block block, Accum acc){
+
+}
+
+// For backups to respond to MsgPrepareComb messages receveid from leaders
+void Handler::respondToPrepareRBF(MsgPrepareComb msg) {
+
+}
+
+// For backups to respond to MsgPreCommitComb messages receveid from leaders
+void Handler::respondToPreCommitRBF(MsgPreCommitComb msg){
+
+}
+
+Accum Handler::newviews2accRBF(std::set<MsgNewViewComb> newviews){
+
+}
+
+Accum Handler::callTEEaccumRBF(Just justs[MAX_NUM_SIGNATURES]){
+
+}
+
+Accum Handler::callTEEaccumRBFSp(just_t just){
+
+}
+
+Just Handler::callTEEsignRBF(){
+
+}
+
+Just Handler::callTEEprepareRBF(Hash h, Accum acc){
+
+}
+
+Just Handler::callTEEstoreRBF(Just j){
+
+}
+
+void Handler::handleNewviewRBF(MsgNewViewComb msg){
+
+}
+
+void Handler::handlePrepareRBF(MsgPrepareComb msg){
+
+}
+
+void Handler::handleLdrPrepareRBF(MsgLdrPrepareComb msg) {
+  
+}
+
+void Handler::handlePreCommitRBF(MsgPreCommitComb msg){
+
+}
+
+void Handler::handle_newviewrbf(MsgNewViewComb msg, const PeerNet::conn_t &conn) {
+
+}
+
+void Handler::handle_preparerbf(MsgPrepareComb msg, const PeerNet::conn_t &conn) {
+
+}
+
+void Handler::handle_ldrpreparerbf(MsgLdrPrepareComb msg, const PeerNet::conn_t &conn) {
+  
+}
+
+void Handler::handle_precommitrbf(MsgPreCommitComb msg, const PeerNet::conn_t &conn) {
+
+}
 
 
 
