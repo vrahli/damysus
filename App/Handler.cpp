@@ -3409,9 +3409,50 @@ void Handler::startNewViewRBF() {
 
 }
 
+//TODO: check if MsgNewViewComb needs replacement
 // For leaders to start preparing
 void Handler::prepareRBF(){
+  std::set<MsgNewViewComb> newviews = this->log.getNewViewComb(this->view,this->qsize);
+  if (newviews.size() == this->qsize) {
+    Accum acc = newviews2accRBF(newviews);
 
+    if (acc.isSet()) {
+      // New block
+      Block block = createNewBlock(acc.getPreph());
+
+      // This one we'll store, and wait until we have this->qsize of them
+      Just justPrep = callTEEprepareRBF(block.hash(),acc);
+      if (justPrep.isSet()) {
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.hash().toString() << KNRM << std::endl;
+        this->blocks[this->view]=block;
+
+        MsgPrepareComb msgPrep(justPrep.getRData(),justPrep.getSigns());
+
+        if (DEBUG1) std::cout << KBLU << nfo() << "ldr-prepare:" << msgPrep.signs.getSize() << KNRM << std::endl;
+        if (msgPrep.signs.getSize() == 1) {
+          Sign sig = msgPrep.signs.get(0);
+
+          auto start = std::chrono::steady_clock::now();
+
+          // This one goes to the backups
+          MsgLdrPrepareComb msgLdrPrep(acc,block,sig);
+          Peers recipients = remove_from_peers(this->myid);
+          sendMsgLdrPrepareRBF(msgLdrPrep,recipients);
+
+          auto end = std::chrono::steady_clock::now();
+          double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+          stats.addTotalPrepTime(time);
+
+          if (this->log.storePrepRBF(msgPrep) == this->qsize) {
+            preCommitRBF(msgPrep.data);
+          }
+        }
+      }
+    } else {
+      if (DEBUG2) std::cout << KBLU << nfo() << "bad accumulator" << acc.prettyPrint() << KNRM << std::endl;
+    }
+  }
 }
 
 // For leaders to start pre-committing
@@ -3439,8 +3480,38 @@ void Handler::respondToPreCommitRBF(MsgPreCommitComb msg){
 
 }
 
+//TODO: check if MsgNewViewComb is still valid for RBF
 Accum Handler::newviews2accRBF(std::set<MsgNewViewComb> newviews){
+  // TODO: We don't quite need Justs here because we need only 1 signature
+  Just justs[MAX_NUM_SIGNATURES]; // MAX_NUM_SIGNATURES is supposed to be == this->qsize
 
+  RData rdata;
+  Signs ss;
+
+  unsigned int i = 0;
+  for (std::set<MsgNewViewComb>::iterator it=newviews.begin(); it!=newviews.end() && i < MAX_NUM_SIGNATURES; ++it, i++) {
+    MsgNewViewComb msg = (MsgNewViewComb)*it;
+    if (i == 0) { rdata = msg.data; ss.add(msg.sign); } else { if (msg.data == rdata) { ss.add(msg.sign); } }
+    justs[i] = Just(msg.data,msg.sign);
+    if (DEBUG1) std::cout << KBLU << nfo() << "newview:" << msg.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KBLU << nfo() << "just:" << justs[i].prettyPrint() << KNRM << std::endl;
+  }
+
+  Accum acc;
+  if (ss.getSize() >= this->qsize) {
+    // Then all the payloads are the same, in which case, we can use the simpler version of the accumulator
+    if (DEBUG1) std::cout << KLGRN << nfo() << "newviews same(" << ss.getSize() << ")" << KNRM << std::endl;
+    just_t just;
+    just.set = 1;
+    setRData(rdata,&just.rdata);
+    setSigns(ss,&just.signs);
+    acc = callTEEaccumRBFSp(just);
+  } else{
+    if (DEBUG1) std::cout << KLRED << nfo() << "{comb} newviews diff (" << ss.getSize() << ")" << KNRM << std::endl;
+    acc = callTEEaccumRBF(justs);
+  }
+
+  return acc;
 }
 
 Accum Handler::callTEEaccumRBF(Just justs[MAX_NUM_SIGNATURES]){
