@@ -34,7 +34,7 @@ just_t RBF_sign(hash_t h1, hash_t h2, View v2) {
   return j;
 }
 
-//TODO: log the MC values, and the message in runtime memory
+
 sgx_status_t RBF_TEEsign(just_t *just) {
   sgx_status_t status = SGX_SUCCESS;
   hash_t hash = noHash();
@@ -152,19 +152,69 @@ sgx_status_t RBF_TEEaccumSp(just_t *just, accum_t *res) {
   return status;
 }
 
+// Every node functions
+
 //Allow for a recovery of the SGX enclave
 sgx_status_t RBF_TEErecovery(accum_t *acc, just_t *res) {
   //set values to maximum value, if a quorum is reached.
   //ocall_print("TEEstore...");
   sgx_status_t status = SGX_SUCCESS;
-  
+  //send message recovery(nonce, sign) to all leaders view, ..., view+f+u+1 of suspected view
+
   return status;
 }
 
-//create method to reset counter, simulating a rollback
+//Create Wish function to craft message for all leader within an epoch
+sgx_status_t RBF_TEEwish() {
+  sgx_status_t status = SGX_SUCCESS;
+  //send message wish(view[self], sign) to all leaders view, ..., view+f+u+1
+
+  return status;
+}
+
+//Simulate receiving messages (similar to upon functions)
+
+sgx_status_t RBF_TEEreceiveTC() {
+  sgx_status_t status = SGX_SUCCESS;
+  //send vote to a leader that sends a valid proposed TC
+
+  return status;
+}
+
+sgx_status_t RBF_TEEreceiveQC() {
+  sgx_status_t status = SGX_SUCCESS;
+  //send vote to a leader that sends a valid proposed QC
+
+  return status;
+}
+
+
+// LEADER FUNCTIONS
+
+//Collect wish and recover messages and create a TC
+sgx_status_t RBF_TEEleaderWish() {
+  sgx_status_t status = SGX_SUCCESS;
+  //receive bunch of wish and recover messages, combine into TC and send to all TEEs
+
+  return status;
+}
+
+//Collect TC votes and create a quorum for next epoch
+sgx_status_t RBF_TEEleaderCreateQuorum() {
+  sgx_status_t status = SGX_SUCCESS;
+  //receive TC votes and send QC for next epoch to all TEEs
+
+  return status;
+}
+
+
+//Rollback functionality 
+
+//create method to reset view and phase to earlier version or 0, 
+//simulating a rollback
 sgx_status_t RBF_TEEattemptrollback(View *v) {
   sgx_status_t status = SGX_SUCCESS;
-  // reset values 
+  // reset values and create new nonce to simulate new TEE
   return status;
 }
 
