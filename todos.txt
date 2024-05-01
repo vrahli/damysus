@@ -22,4 +22,10 @@ change opcodes if required
 copy functions that do not change for RBF compared to Comb
 add functions for Heartbeat protocol to send/receive messages
     - handle message collection at replica, supply list of messages to TEE
+        -check Comb variant for message collection
+
+add callTEE functions for newly defined TEE methods
+    - think about required parameters
+
+think of some way to allow faulty and unresponsive TEEs to occasionally trigger restarts 
 
