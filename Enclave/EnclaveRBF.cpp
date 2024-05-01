@@ -6,25 +6,18 @@ hash_t RBFpreph = newHash(); // hash of the last prepared block
 View   RBFprepv = 0;             // preph's view
 View   RBFview  = 0;             // current view
 Phase1 RBFphase = PH1_NEWVIEW;   // current phase
-std::map<PID, sign_t> MCs; // Logged monotonic counters
-int online = 0;
 
 
 
 // increments the (view,phase) pair
 void RBF_increment() {
-  if (!online) {
-
-  }
-  else {
-    if (RBFphase == PH1_NEWVIEW) {
-      RBFphase = PH1_PREPARE;
-    } else if (RBFphase == PH1_PREPARE) {
-      RBFphase = PH1_PRECOMMIT;
-    } else if (RBFphase == PH1_PRECOMMIT) {
-      RBFphase = PH1_NEWVIEW;
-      RBFview++;
-    }
+  if (RBFphase == PH1_NEWVIEW) {
+    RBFphase = PH1_PREPARE;
+  } else if (RBFphase == PH1_PREPARE) {
+    RBFphase = PH1_PRECOMMIT;
+  } else if (RBFphase == PH1_PRECOMMIT) {
+    RBFphase = PH1_NEWVIEW;
+    RBFview++;
   }
 }
 
