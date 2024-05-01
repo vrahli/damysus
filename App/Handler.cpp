@@ -711,10 +711,10 @@ pnet(pec,pconf), cnet(cec,cconf) {
   this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_prepare_ch_comb,    this, _1, _2));
   this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrprepare_ch_comb, this, _1, _2));
 #elif defined(ROLLBACK_FAULTY_PROTECTED)
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newviewcomb,    this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrpreparecomb, this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_preparecomb,    this, _1, _2));
-  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_precommitcomb,  this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_newviewrbf,    this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_ldrpreparerbf, this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_preparerbf,    this, _1, _2));
+  this->pnet.reg_handler(salticidae::generic_bind(&Handler::handle_precommitrbf,  this, _1, _2));
 #else
   std::cout << KRED << nfo() << "TODO" << KNRM << std::endl;
 #endif
