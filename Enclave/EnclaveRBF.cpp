@@ -152,38 +152,19 @@ sgx_status_t RBF_TEEaccumSp(just_t *just, accum_t *res) {
   return status;
 }
 
-//Allow for a recovery of the SGX enclave, iff a quorum of non-zero values is supplied by means of an accumulator created by a leader (saves bandwidth)
-//Sealing simulated by the replica supplying two values to the system, denoting the view and phase that are the MC for the state
+//Allow for a recovery of the SGX enclave
 sgx_status_t RBF_TEErecovery(accum_t *acc, just_t *res) {
   //set values to maximum value, if a quorum is reached.
   //ocall_print("TEEstore...");
   sgx_status_t status = SGX_SUCCESS;
-  if (acc->size == getQsize() 
-      && acc->set == 1
-      ) {
-    RBFview = acc->view;
-    RBFphase = PH1_PRECOMMIT;
-    res->set = true;
-  } else { res->set=false; }
+  
   return status;
 }
 
 //create method to reset counter, simulating a rollback
 sgx_status_t RBF_TEEattemptrollback(View *v) {
   sgx_status_t status = SGX_SUCCESS;
-  if (*v < RBFview) {
-    RBFview = *v;
-    for (int i = 0; i < MCs.size(); i++) {
-      MCs[i] = signString(""); //simulate all lost signs
-    }
-  }
+  // reset values and 
   return status;
 }
 
-//supply a requested monotonic counter with a proof of a message
-sgx_status_t RBF_TEEsupplyMC(PID *requestee, sign_t *res){
-  sgx_status_t status = SGX_SUCCESS;
-  sign_t MCsign = MCs[*requestee];
-  *res = MCsign; //TODO: sign the result
-  return status;
-}
