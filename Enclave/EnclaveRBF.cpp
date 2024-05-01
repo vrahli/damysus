@@ -22,30 +22,25 @@ void RBF_increment() {
 }
 
 just_t RBF_sign(hash_t h1, hash_t h2, View v2) {
-  just_t j;
-  if (online) {
-    rdata_t rdata;
-    rdata.proph = h1; rdata.propv = RBFview; rdata.justh = h2; rdata.justv = v2; rdata.phase = RBFphase;
-    sign_t sign = signString(rdata2string(rdata));
-    signs_t signs; signs.size = 1; signs.signs[0] = sign;
-     j.set = 1; j.rdata = rdata; j.signs = signs;
+  
+  rdata_t rdata;
+  rdata.proph = h1; rdata.propv = RBFview; rdata.justh = h2; rdata.justv = v2; rdata.phase = RBFphase;
+  sign_t sign = signString(rdata2string(rdata));
+  signs_t signs; signs.size = 1; signs.signs[0] = sign;
+  just_t j; j.set = 1; j.rdata = rdata; j.signs = signs;
 
-    RBF_increment();
-  }
-  else {
-    j.set = 0;
-  }
+  RBF_increment();
+  
   return j;
 }
 
 //TODO: log the MC values, and the message in runtime memory
 sgx_status_t RBF_TEEsign(just_t *just) {
   sgx_status_t status = SGX_SUCCESS;
-  if (online) {
-    hash_t hash = noHash();
+  hash_t hash = noHash();
 
-    *just = RBF_sign(hash,RBFpreph,RBFprepv);
-  }
+  *just = RBF_sign(hash,RBFpreph,RBFprepv);
+  
   return status;
 }
 
@@ -58,16 +53,12 @@ sgx_status_t RBF_TEEprepare(hash_t *hash, accum_t *acc, just_t *res) {
 
   if (verifyAccum(acc)
       && RBFview == acc->view
-      && acc->size == getQsize()
-      && online) {
-    //log value of leader
-    MCs[acc->sign.signer] = acc->sign;
+      && acc->size == getQsize()) {
     *res = RBF_sign(*hash,acc->hash,acc->prepv);
   } else { res->set = false; }
   return status;
 }
 
-//TODO: log the MC values, and the message in runtime memory
 sgx_status_t RBF_TEEstore(just_t *just, just_t *res) {
   // ocall_print("TEEstore...");
   sgx_status_t status = SGX_SUCCESS;
@@ -78,13 +69,7 @@ sgx_status_t RBF_TEEstore(just_t *just, just_t *res) {
   if (just->signs.size == getQsize()
       && verifyJust(just)
       && RBFview == v
-      && ph == PH1_PREPARE
-      && online) {
-    for (int i = 0; i < just->signs.size; i++) {
-      sign_t sign = just->signs.signs[i];
-      PID signer = sign.signer;
-      MCs[signer] = sign;
-    }
+      && ph == PH1_PREPARE) {
     RBFpreph=h; RBFprepv=v;
     *res = RBF_sign(h,newHash(),0);
   } else { res->set=false; }
@@ -129,9 +114,6 @@ sgx_status_t RBF_TEEaccum(onejusts_t *js, accum_t *res) {
   res->size = size;
   res->sign = sign;
 
-  if (!online) {
-    res->set = 0;
-  }
   return status;
 }
 
@@ -167,9 +149,6 @@ sgx_status_t RBF_TEEaccumSp(just_t *just, accum_t *res) {
   res->size = size;
   res->sign = sign;
 
-  if (!online) {
-    res->set = 0;
-  }
   return status;
 }
 
