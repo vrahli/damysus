@@ -3634,23 +3634,96 @@ Accum Handler::newviews2accRBF(std::set<MsgNewViewComb> newviews){
 }
 
 Accum Handler::callTEEaccumRBF(Just justs[MAX_NUM_SIGNATURES]){
-
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK) || defined(ROLLBACK_FAULTY_PROTECTED)
+  accum_t aout;
+  onejusts_t jin;
+  setOneJusts(justs,&jin);
+  sgx_status_t ret;
+  sgx_status_t status = RBF_TEEaccum(global_eid, &ret, &jin, &aout);
+  Accum acc = getAccum(&aout);
+#else
+  Accum acc = tr.TEEaccum(stats,this->nodes,justs);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEaccum(time);
+  stats.addTEEtime(time);
+  return acc;
 }
 
 Accum Handler::callTEEaccumRBFSp(just_t just){
-
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK) || defined(ROLLBACK_FAULTY_PROTECTED)
+  accum_t aout;
+  sgx_status_t ret;
+  sgx_status_t status = RBF_TEEaccumSp(global_eid, &ret, &just, &aout);
+  Accum acc = getAccum(&aout);
+#else
+  Accum acc = tr.TEEaccumSp(stats,this->nodes,just);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEaccum(time);
+  stats.addTEEtime(time);
+  return acc;
 }
 
 Just Handler::callTEEsignRBF(){
-
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK) || defined(ROLLBACK_FAULTY_PROTECTED)
+  just_t jout;
+  sgx_status_t ret;
+  sgx_status_t status = RBF_TEEsign(global_eid, &ret, &jout);
+  Just just = getJust(&jout);
+#else
+  Just just = tr.TEEsign();
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEsign(time);
+  stats.addTEEtime(time);
+  return just;
 }
 
 Just Handler::callTEEprepareRBF(Hash h, Accum acc){
-
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK) || defined(ROLLBACK_FAULTY_PROTECTED)
+  just_t jout;
+  accum_t ain;
+  setAccum(acc,&ain);
+  hash_t hin;
+  setHash(h,&hin);
+  sgx_status_t ret;
+  sgx_status_t status = RBF_TEEprepare(global_eid, &ret, &hin, &ain, &jout);
+  Just just = getJust(&jout);
+#else
+  Just just = tr.TEEprepare(stats,this->nodes,h,acc);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEprepare(time);
+  stats.addTEEtime(time);
+  return just;
 }
 
 Just Handler::callTEEstoreRBF(Just j){
-
+  auto start = std::chrono::steady_clock::now();
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK) || defined(ROLLBACK_FAULTY_PROTECTED)
+  just_t jout;
+  just_t jin;
+  setJust(j,&jin);
+  sgx_status_t ret;
+  sgx_status_t status = RBF_TEEstore(global_eid, &ret, &jin, &jout);
+  Just just = getJust(&jout);
+#else
+  Just just = tr.TEEstore(stats,this->nodes,j);
+#endif
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTEEstore(time);
+  stats.addTEEtime(time);
+  return just;
 }
 
 //TODO: check MsgNewViewComb still valid under RBF
