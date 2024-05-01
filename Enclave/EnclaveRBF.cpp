@@ -164,7 +164,7 @@ sgx_status_t RBF_TEErecovery(accum_t *acc, just_t *res) {
 //create method to reset counter, simulating a rollback
 sgx_status_t RBF_TEEattemptrollback(View *v) {
   sgx_status_t status = SGX_SUCCESS;
-  // reset values and 
+  // reset values 
   return status;
 }
 
