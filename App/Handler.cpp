@@ -3534,8 +3534,22 @@ Just Handler::callTEEstoreRBF(Just j){
 
 }
 
+//TODO: check MsgNewViewComb still valid under RBF
 void Handler::handleNewviewRBF(MsgNewViewComb msg){
-
+  auto start = std::chrono::steady_clock::now();
+  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  View v = msg.data.getPropv();
+  if (v >= this->view && amLeaderOf(v)) {
+    if (this->log.storeNvRBF(msg) == this->qsize && v == this->view) {
+      prepareRBF();
+    }
+  } else {
+    if (DEBUG1) std::cout << KMAG << nfo() << "discarded:" << msg.prettyPrint() << KNRM << std::endl;
+  }
+  auto end = std::chrono::steady_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  stats.addTotalHandleTime(time);
+  stats.addTotalNvTime(time);
 }
 
 void Handler::handlePrepareRBF(MsgPrepareComb msg){
@@ -3551,7 +3565,7 @@ void Handler::handlePreCommitRBF(MsgPreCommitComb msg){
 }
 
 void Handler::handle_newviewrbf(MsgNewViewComb msg, const PeerNet::conn_t &conn) {
-
+  handleNewviewRBF(msg);
 }
 
 void Handler::handle_preparerbf(MsgPrepareComb msg, const PeerNet::conn_t &conn) {
