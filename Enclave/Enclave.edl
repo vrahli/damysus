@@ -34,8 +34,18 @@ enclave {
         public sgx_status_t RBF_TEEstore([in] just_t *just, [out] just_t *res);
         public sgx_status_t RBF_TEEaccum([in] onejusts_t *js, [out] accum_t *res);
         public sgx_status_t RBF_TEEaccumSp([in] just_t *just, [out] accum_t *res);
+        
+        public sgx_status_t RBF_TEEwish();
         public sgx_status_t RBF_TEErecovery([in] accum_t *acc, [out] just_t *res);
+        
+        public sgx_status_t RBF_TEEreceiveTC();
+        public sgx_status_t RBF_TEEreceiveQC();
+
+        public sgx_status_t RBF_TEEleaderWish();
+        public sgx_status_t RBF_TEEleaderCreateQuorum();
+        
         public sgx_status_t RBF_TEEattemptrollback([in] View *v);
+
 
         /* Free */
         public sgx_status_t FREE_TEEauth([in]payload_t *text, [out] auth_t *res);

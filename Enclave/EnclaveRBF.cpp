@@ -6,6 +6,7 @@ hash_t RBFpreph = newHash(); // hash of the last prepared block
 View   RBFprepv = 0;             // preph's view
 View   RBFview  = 0;             // current view
 Phase1 RBFphase = PH1_NEWVIEW;   // current phase
+float nonce = 0;                 // nonce to uniquely identify TEEs with the same keypair
 
 
 
