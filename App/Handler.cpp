@@ -3421,7 +3421,7 @@ void Handler::handle_precommitcomb(MsgPreCommitComb msg, const PeerNet::conn_t &
 // -- Rollback faulty RBF version
 // --
 
-void Handler::executeRBF(RData rdata) {
+void Handler::executeRBF(RData data) {
   //std::lock_guard<std::mutex> guard(mu_trans);
   auto endView = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(endView - startView).count();
@@ -3862,7 +3862,7 @@ void Handler::handle_newviewrbf(MsgNewViewRBF msg, const PeerNet::conn_t &conn) 
 
 void Handler::handle_preparerbf(MsgPrepareRBF msg, const PeerNet::conn_t &conn) {
   if (DEBUGT) printNowTime("handling MsgPrepareRBF");
-  handlePrepareComb(msg);
+  handlePrepareRBF(msg);
 }
 
 void Handler::handle_ldrpreparerbf(MsgLdrPrepareRBF msg, const PeerNet::conn_t &conn) {

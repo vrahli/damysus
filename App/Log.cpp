@@ -1940,3 +1940,46 @@ MsgPreCommitFree Log::firstPrecommitFree(View view) {
 }
 
 //RBF TODO: create first 
+
+
+MsgPrepareRBF Log::firstPrepareRBF(View view) {
+  std::map<View,std::set<MsgPrepareRBF>>::iterator it = this->preparesRBF.find(view);
+  if (it != this->preparesRBF.end()) { // there is already an entry for this view
+    std::set<MsgPrepareRBF> msgs = it->second;
+    if (0 < msgs.size()) { // We return the first element
+      return (MsgPrepareRBF)*(msgs.begin());
+    }
+  }
+  RData data;
+  MsgPrepareRBF msg(data,{});
+  return msg;
+}
+
+
+MsgPreCommitRBF Log::firstPrecommitRBF(View view) {
+  std::map<View,std::set<MsgPreCommitRBF>>::iterator it = this->precommitsRBF.find(view);
+  if (it != this->precommitsRBF.end()) { // there is already an entry for this view
+    std::set<MsgPreCommitRBF> msgs = it->second;
+    if (0 < msgs.size()) { // We return the first element
+      return (MsgPreCommitRBF)*(msgs.begin());
+    }
+  }
+  RData data;
+  MsgPreCommitRBF msg(data,{});
+  return msg;
+}
+
+MsgLdrPrepareRBF Log::firstLdrPrepareRBF(View view) {
+  std::map<View,std::set<MsgLdrPrepareRBF>>::iterator it = this->ldrpreparesRBF.find(view);
+  if (it != this->ldrpreparesRBF.end()) { // there is already an entry for this view
+    std::set<MsgLdrPrepareRBF> msgs = it->second;
+    if (0 < msgs.size()) { // We return the first element
+      return (MsgLdrPrepareRBF)*(msgs.begin());
+    }
+  }
+  Accum acc;
+  Block block;
+  Sign sign;
+  MsgLdrPrepareRBF msg(acc,block,sign);
+  return msg;
+}
