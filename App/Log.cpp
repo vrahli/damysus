@@ -655,6 +655,154 @@ Signs Log::getPrecommitComb(View view, unsigned int n) {
   return signs;
 }
 
+//RBF
+unsigned int Log::storeNvRBF(MsgNewViewRBF msg) {
+  RData data = msg.data;
+  View v = data.getPropv();
+  PID signer = msg.sign.getSigner();
+
+  std::map<View,std::set<MsgNewViewRBF>>::iterator it1 = this->newviewsRBF.find(v);
+  if (it1 != this->newviewsRBF.end()) { // there is already an entry for this view
+    std::set<MsgNewViewRBF> msgs = it1->second;
+
+    // We only add 'msg' to the log if the sender hasn't already sent a new-view message for this view
+    if (!msgNewViewRBFFrom(msgs,signer)) {
+      msgs.insert(msg);
+      this->newviewsRBF[v]=msgs;
+      //if (DEBUG) { std::cout << KGRN << "updated entry; #=" << msgs.size() << KNRM << std::endl; }
+      return msgs.size();
+      //k[hdr]=msgs;
+      //log[v]=k;
+    }
+  } else { // there is no entry for this view
+    this->newviewsRBF[v]={msg};
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+std::set<MsgNewViewRBF> Log::getNewViewRBF(View view, unsigned int n) {
+  std::set<MsgNewViewRBF> ret;
+  std::map<View,std::set<MsgNewViewRBF>>::iterator it1 = this->newviewsRBF.find(view);
+  if (it1 != this->newviewsRBF.end()) { // there is already an entry for this view
+    std::set<MsgNewViewRBF> msgs = it1->second;
+    for (std::set<MsgNewViewRBF>::iterator it=msgs.begin(); ret.size() < n && it!=msgs.end(); ++it) {
+      MsgNewViewRBF msg = (MsgNewViewRBF)*it;
+      ret.insert(msg);
+    }
+  }
+  return ret;
+}
+
+
+unsigned int Log::storePrepRBF(MsgPrepareRBF msg) {
+  RData data = msg.data;
+  View v = data.getPropv();
+  std::set<PID> signers = msg.signs.getSigners();
+
+  std::map<View,std::set<MsgPrepareRBF>>::iterator it1 = this->preparesRBF.find(v);
+  if (it1 != this->preparesRBF.end()) { // there is already an entry for this view
+    std::set<MsgPrepareRBF> msgs = it1->second;
+
+    // We only add 'msg' to the log if the sender hasn't already sent a new-view message for this view
+    if (!msgPrepareRBFFrom(msgs,signers)) {
+      msgs.insert(msg);
+      this->preparesRBF[v]=msgs;
+      //if (DEBUG) { std::cout << KGRN << "updated entry; #=" << msgs.size() << KNRM << std::endl; }
+      return msgs.size();
+    }
+  } else { // there is no entry for this view
+    this->preparesRBF[v]={msg};
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+unsigned int Log::storeLdrPrepRBF(MsgLdrPrepareRBF msg) {
+  Accum acc = msg.acc;
+  View v = acc.getView();
+  PID signer = msg.sign.getSigner();
+
+  std::map<View,std::set<MsgLdrPrepareRBF>>::iterator it1 = this->ldrpreparesRBF.find(v);
+  if (it1 != this->ldrpreparesRBF.end()) { // there is already an entry for this view
+    std::set<MsgLdrPrepareRBF> msgs = it1->second;
+
+    // We only add 'msg' to the log if the sender hasn't already sent a new-view message for this view
+    if (!msgLdrPrepareRBFFrom(msgs,signer)) {
+      msgs.insert(msg);
+      this->ldrpreparesRBF[v]=msgs;
+      //if (DEBUG) { std::cout << KGRN << "updated entry; #=" << msgs.size() << KNRM << std::endl; }
+      return msgs.size();
+    }
+  } else { // there is no entry for this view
+    this->ldrpreparesRBF[v]={msg};
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+Signs Log::getPrepareRBF(View view, unsigned int n) {
+  Signs signs;
+  std::map<View,std::set<MsgPrepareRBF>>::iterator it1 = this->preparesRBF.find(view);
+  if (it1 != this->preparesRBF.end()) { // there is already an entry for this view
+    std::set<MsgPrepareRBF> msgs = it1->second;
+    for (std::set<MsgPrepareRBF>::iterator it=msgs.begin(); signs.getSize() < n && it!=msgs.end(); ++it) {
+      MsgPrepareRBF msg = (MsgPrepareRBF)*it;
+      Signs others = msg.signs;
+      signs.addUpto(others,n);
+    }
+  }
+  return signs;
+}
+
+
+unsigned int Log::storePcRBF(MsgPreCommitRBF msg) {
+  RData data = msg.data;
+  View v = data.getPropv();
+  std::set<PID> signers = msg.signs.getSigners();
+
+  std::map<View,std::set<MsgPreCommitRBF>>::iterator it1 = this->precommitsRBF.find(v);
+  if (it1 != this->precommitsRBF.end()) { // there is already an entry for this view
+    std::set<MsgPreCommitRBF> msgs = it1->second;
+
+    if (!msgPreCommitRBFFrom(msgs,signers)) {
+      msgs.insert(msg);
+      this->precommitsRBF[v]=msgs;
+      return msgs.size();
+    }
+  } else { // there is no entry for this view
+    this->precommitsRBF[v]={msg};
+    if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    return 1;
+  }
+
+  return 0;
+}
+
+
+Signs Log::getPrecommitRBF(View view, unsigned int n) {
+  Signs signs;
+  std::map<View,std::set<MsgPreCommitRBF>>::iterator it1 = this->precommitsRBF.find(view);
+  if (it1 != this->precommitsRBF.end()) { // there is already an entry for this view
+    std::set<MsgPreCommitRBF> msgs = it1->second;
+    for (std::set<MsgPreCommitRBF>::iterator it=msgs.begin(); signs.getSize() < n && it!=msgs.end(); ++it) {
+      MsgPreCommitRBF msg = (MsgPreCommitRBF)*it;
+      Signs others = msg.signs;
+      signs.addUpto(others,n);
+    }
+  }
+  return signs;
+}
+
 unsigned int Log::storeNvFree(MsgNewViewFree msg) {
   FData data = msg.data;
   View v = data.getView();
@@ -1488,6 +1636,7 @@ std::string Log::prettyPrint() {
     std::set<MsgPreCommitComb> msgs = it1->second;
     text += "precommits-comb;view=" + std::to_string(v) + ";#=" + std::to_string(msgs.size()) + "\n";
   }
+  //RBF TODO: prettyprint
 
   //newviewsCh
   for (std::map<View,std::set<MsgNewViewCh>>::iterator it1=this->newviewsCh.begin(); it1!=this->newviewsCh.end();++it1) {
@@ -1789,3 +1938,5 @@ MsgPreCommitFree Log::firstPrecommitFree(View view) {
   MsgPreCommitFree msg(view,{});
   return msg;
 }
+
+//RBF TODO: create first 
