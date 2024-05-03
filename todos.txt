@@ -31,3 +31,5 @@ think of some way to allow faulty and unresponsive TEEs to occasionally trigger 
 Damysus uses logs to store messages up to quorum size (this->log in Handler.cpp)
     - handle logs for RBF messages
     - TODO: add storage functionality and other methods related to Comb for RBF
+
+TODO: before adding new functionality, tag commit where RBF is the same as Comb, but has duplicate functionality

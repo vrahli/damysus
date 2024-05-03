@@ -31,6 +31,12 @@ class Log {
   std::map<View,std::set<MsgPreCommitComb>> precommitsComb;
   std::map<View,std::set<MsgLdrPrepareComb>> ldrpreparesComb;
 
+  //RBF
+  std::map<View,std::set<MsgNewViewRBF>> newviewsRBF;
+  std::map<View,std::set<MsgPrepareRBF>> preparesRBF;
+  std::map<View,std::set<MsgPreCommitRBF>> precommitsRBF;
+  std::map<View,std::set<MsgLdrPrepareRBF>> ldrpreparesRBF;
+
   std::map<View,std::set<MsgNewViewFree>> newviewsFree;
   std::map<View,std::tuple<PJust>> preparesFree;
   std::map<View,std::set<MsgPreCommitFree>> precommitsFree;
@@ -73,6 +79,13 @@ class Log {
   unsigned int storePrepComb(MsgPrepareComb msg);
   unsigned int storePcComb(MsgPreCommitComb msg);
   unsigned int storeLdrPrepComb(MsgLdrPrepareComb msg);
+
+  //RBF
+  unsigned int storeNvRBF(MsgNewViewRBF msg);
+  unsigned int storePrepRBF(MsgPrepareRBF msg);
+  unsigned int storePcRBF(MsgPreCommitRBF msg);
+  unsigned int storeLdrPrepRBF(MsgLdrPrepareRBF msg);
+
 
   unsigned int storeNvFree(MsgNewViewFree msg);
   unsigned int storePrepFree(PJust msg);
@@ -131,6 +144,15 @@ class Log {
   MsgLdrPrepareComb firstLdrPrepareComb(View view);
   MsgPrepareComb firstPrepareComb(View view);
   MsgPreCommitComb firstPrecommitComb(View view);
+
+  //RBF
+  std::set<MsgNewViewRBF> getNewViewRBF(View view, unsigned int n);
+  Signs getPrepareRBF(View view, unsigned int n);
+  Signs getPrecommitRBF(View view, unsigned int n);
+
+  MsgLdrPrepareRBF firstLdrPrepareRBF(View view);
+  MsgPrepareRBF firstPrepareRBF(View view);
+  MsgPreCommitRBF firstPrecommitRBF(View view);
 
   std::set<MsgNewViewFree> getNewViewFree(View view, unsigned int n);
   PJust getPrepareFree(View view);
