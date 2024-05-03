@@ -18,7 +18,6 @@ After QC:
     adopt view of epoch if not replaced by new TEE
 
 TODOs Handler:
-change opcodes if required
 copy functions that do not change for RBF compared to Comb
 add functions for Heartbeat protocol to send/receive messages
     - handle message collection at replica, supply list of messages to TEE
@@ -30,4 +29,5 @@ add callTEE functions for newly defined TEE methods
 think of some way to allow faulty and unresponsive TEEs to occasionally trigger restarts 
 
 Damysus uses logs to store messages up to quorum size (this->log in Handler.cpp)
-
+    - handle logs for RBF messages
+    - TODO: add storage functionality and other methods related to Comb for RBF
