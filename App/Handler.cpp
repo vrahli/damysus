@@ -3460,9 +3460,9 @@ void Handler::handleEarlierMessagesRBF(){
     Signs signsPc = (this->log).getPrecommitRBF(this->view,this->qsize);
     if (signsPc.getSize() == this->qsize) {
       if (DEBUG1) std::cout << KMAG << nfo() << "catching up using pre-commit certificate" << KNRM << std::endl;
-      // We skip the prepare phase (this is otherwise a TEEprepareComb):
+      // We skip the prepare phase (this is otherwise a TEEprepareRBF):
       callTEEsignRBF();
-      // We skip the pre-commit phase (this is otherwise a TEEstoreComb):
+      // We skip the pre-commit phase (this is otherwise a TEEstoreRBF):
       callTEEsignRBF();
       // We execute
       MsgPreCommitRBF msgPc = this->log.firstPrecommitRBF(this->view);
@@ -3479,7 +3479,7 @@ void Handler::handleEarlierMessagesRBF(){
         // We store the prepare certificate
         respondToPrepareRBF(msgPrep);
       } else {
-        MsgLdrPrepareComb msgProp = this->log.firstLdrPrepareRBF(this->view);
+        MsgLdrPrepareRBF msgProp = this->log.firstLdrPrepareRBF(this->view);
         if (msgProp.sign.isSet()) { // If we've stored the leader's proposal
           if (DEBUG1) std::cout << KMAG << nfo() << "catching up using leader proposal" << KNRM << std::endl;
           respondToLdrPrepareRBF(msgProp.block,msgProp.acc);
@@ -3521,10 +3521,10 @@ void Handler::startNewViewRBF() {
   }
 }
 
-//TODO: check if MsgNewViewComb needs replacement
+
 // For leaders to start preparing
 void Handler::prepareRBF(){
-  std::set<MsgNewViewRBF> newviews = this->log.getNewViewComb(this->view,this->qsize);
+  std::set<MsgNewViewRBF> newviews = this->log.getNewViewRBF(this->view,this->qsize);
   if (newviews.size() == this->qsize) {
     Accum acc = newviews2accRBF(newviews);
 
@@ -3597,34 +3597,34 @@ void Handler::decideRBF(RData data) {
     sendMsgPreCommitRBF(msgPc,recipients);
 
     if (verifyPreCommitRBFCert(msgPc)) {
-      executeComb(data);
+      executeRBF(data);
     }
   }
 }
 
-// For backups to respond to correct MsgLdrPrepareComb messages received from leaders
+// For backups to respond to correct MsgLdrPrepareRBF messages received from leaders
 void Handler::respondToLdrPrepareRBF(Block block, Accum acc){
 
 }
 
-// For backups to respond to MsgPrepareComb messages receveid from leaders
-void Handler::respondToPrepareRBF(MsgPrepareComb msg) {
+// For backups to respond to MsgPrepareRBF messages receveid from leaders
+void Handler::respondToPrepareRBF(MsgPrepareRBF msg) {
   Just justPc = callTEEstoreRBF(Just(msg.data,msg.signs));
   if (DEBUG1) { std::cout << KMAG << nfo() << "TEEstoreRBF just:" << justPc.prettyPrint() << KNRM << std::endl; }
   MsgPreCommitRBF msgPc(justPc.getRData(),justPc.getSigns());
   Peers recipients = keep_from_peers(getCurrentLeader());
-  sendMsgPreCommitComb(msgPc,recipients);
+  sendMsgPreCommitRBF(msgPc,recipients);
 }
 
-// For backups to respond to MsgPreCommitComb messages received from leaders
-void Handler::respondToPreCommitRBF(MsgPreCommitComb msg){
+
+void Handler::respondToPreCommitRBF(MsgPreCommitRBF msg){
   if (verifyPreCommitRBFCert(msg)) {
     executeRBF(msg.data);
   }
 }
 
-//TODO: check if MsgNewViewComb is still valid for RBF
-Accum Handler::newviews2accRBF(std::set<MsgNewViewComb> newviews){
+
+Accum Handler::newviews2accRBF(std::set<MsgNewViewRBF> newviews){
   // TODO: We don't quite need Justs here because we need only 1 signature
   Just justs[MAX_NUM_SIGNATURES]; // MAX_NUM_SIGNATURES is supposed to be == this->qsize
 
@@ -3650,7 +3650,7 @@ Accum Handler::newviews2accRBF(std::set<MsgNewViewComb> newviews){
     setSigns(ss,&just.signs);
     acc = callTEEaccumRBFSp(just);
   } else{
-    if (DEBUG1) std::cout << KLRED << nfo() << "{comb} newviews diff (" << ss.getSize() << ")" << KNRM << std::endl;
+    if (DEBUG1) std::cout << KLRED << nfo() << "{rbf} newviews diff (" << ss.getSize() << ")" << KNRM << std::endl;
     acc = callTEEaccumRBF(justs);
   }
 
@@ -3827,7 +3827,7 @@ void Handler::handleLdrPrepareRBF(MsgLdrPrepareRBF msg) {
   auto end = std::chrono::steady_clock::now();
   double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   stats.addTotalHandleTime(time);
-  if (DEBUGT) std::cout << KMAG << nfo() << "MsgLdrPrepareComb3:" << time << KNRM << std::endl;
+  if (DEBUGT) std::cout << KMAG << nfo() << "MsgLdrPrepareRBF3:" << time << KNRM << std::endl;
 
 }
 

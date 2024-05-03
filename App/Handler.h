@@ -229,6 +229,7 @@ class Handler {
   bool verifyLdrPrepareComb(MsgLdrPrepareComb msg);
   bool verifyPreCommitCombCert(MsgPreCommitComb msg);
 
+  //RBF
   bool verifyLdrPrepareRBF(MsgLdrPrepareRBF msg);
   bool verifyPreCommitRBFCert(MsgPreCommitRBF msg);
 
@@ -390,11 +391,11 @@ class Handler {
   // For leaders to start deciding
   void decideRBF(RData data);
 
-  // For backups to respond to correct MsgLdrPrepareComb messages received from leaders
+  // For backups to respond to correct MsgLdrPrepareRBF messages received from leaders
   void respondToLdrPrepareRBF(Block block, Accum acc);
-  // For backups to respond to MsgPrepareComb messages receveid from leaders
+  // For backups to respond to MsgPrepareRBF messages receveid from leaders
   void respondToPrepareRBF(MsgPrepareRBF msg);
-  // For backups to respond to MsgPreCommitComb messages receveid from leaders
+  // For backups to respond to MsgPreCommitRBF messages receveid from leaders
   void respondToPreCommitRBF(MsgPreCommitRBF msg);
 
   Accum newviews2accRBF(std::set<MsgNewViewRBF> newviews);
