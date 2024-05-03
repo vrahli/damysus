@@ -1939,9 +1939,7 @@ MsgPreCommitFree Log::firstPrecommitFree(View view) {
   return msg;
 }
 
-//RBF TODO: create first 
-
-
+//RBF
 MsgPrepareRBF Log::firstPrepareRBF(View view) {
   std::map<View,std::set<MsgPrepareRBF>>::iterator it = this->preparesRBF.find(view);
   if (it != this->preparesRBF.end()) { // there is already an entry for this view

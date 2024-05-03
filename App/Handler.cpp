@@ -499,7 +499,7 @@ void Handler::startNewViewOnTimeout() {
 #elif defined (CHAINED_CHEAP_AND_QUICK)
   startNewViewChComb();
 #elif defined (ROLLBACK_FAULTY_PROTECTED)
-  startNewViewComb();
+  startNewViewRBF();
 #else
   recordStats();
 #endif
@@ -1897,12 +1897,12 @@ void Handler::getStarted() {
   }
   if (DEBUG) std::cout << KBLU << nfo() << "sent new-view to leader(" << nextLeader << ")" << KNRM << std::endl;
 #elif defined(ROLLBACK_FAULTY_PROTECTED)
-  Just j = callTEEsignComb();
+  Just j = callTEEsignRBF();
   if (j.getSigns().getSize() == 1) {
-    MsgNewViewComb msg(j.getRData(),j.getSigns().get(0));
+    MsgNewViewRBF msg(j.getRData(),j.getSigns().get(0));
     if (DEBUG1) std::cout << KBLU << nfo() << "starting with:" << msg.prettyPrint() << KNRM << std::endl;
-    if (amCurrentLeader()) { handleNewviewComb(msg); }
-    else { sendMsgNewViewComb(msg,recipients); }
+    if (amCurrentLeader()) { handleNewviewRBF(msg); }
+    else { sendMsgNewViewRBF(msg,recipients); }
   }
   if (DEBUG) std::cout << KBLU << nfo() << "sent new-view to leader(" << leader << ")" << KNRM << std::endl;
 #endif
@@ -3066,8 +3066,8 @@ void Handler::prepareComb() {
       // This one we'll store, and wait until we have this->qsize of them
       Just justPrep = callTEEprepareComb(block.hash(),acc);
       if (justPrep.isSet()) {
-        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
-        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.hash().toString() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "Comb1 storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "Comb2 storing block for view=" << this->view << ":" << block.hash().toString() << KNRM << std::endl;
         this->blocks[this->view]=block;
 
         MsgPrepareComb msgPrep(justPrep.getRData(),justPrep.getSigns());
@@ -3136,7 +3136,7 @@ bool Handler::verifyLdrPrepareComb(MsgLdrPrepareComb msg) {
 void Handler::respondToLdrPrepareComb(Block block, Accum acc) {
   Just justPrep = callTEEprepareComb(block.hash(),acc);
   if (justPrep.isSet()) {
-    if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KBLU << nfo() << "LdrComb storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
     this->blocks[this->view]=block;
 
     MsgPrepareComb msgPrep(justPrep.getRData(),justPrep.getSigns());
@@ -3535,8 +3535,8 @@ void Handler::prepareRBF(){
       // This one we'll store, and wait until we have this->qsize of them
       Just justPrep = callTEEprepareRBF(block.hash(),acc);
       if (justPrep.isSet()) {
-        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
-        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.hash().toString() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "prepRBF storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "prepRBF1 storing block for view=" << this->view << ":" << block.hash().toString() << KNRM << std::endl;
         this->blocks[this->view]=block;
 
         MsgPrepareRBF msgPrep(justPrep.getRData(),justPrep.getSigns());
@@ -3604,7 +3604,16 @@ void Handler::decideRBF(RData data) {
 
 // For backups to respond to correct MsgLdrPrepareRBF messages received from leaders
 void Handler::respondToLdrPrepareRBF(Block block, Accum acc){
+  Just justPrep = callTEEprepareRBF(block.hash(),acc);
+  if (justPrep.isSet()) {
+    if (DEBUG1) std::cout << KBLU << nfo() << "LdrRBF storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+    this->blocks[this->view]=block;
 
+    MsgPrepareRBF msgPrep(justPrep.getRData(),justPrep.getSigns());
+    PID leader = getCurrentLeader();
+    Peers recipients = keep_from_peers(leader);
+    sendMsgPrepareRBF(msgPrep,recipients);
+  }
 }
 
 // For backups to respond to MsgPrepareRBF messages receveid from leaders
@@ -3795,7 +3804,7 @@ void Handler::handlePrepareRBF(MsgPrepareRBF msg){
 //TODO: check MsgLdrPrepareComb message type valid for RBF
 void Handler::handleLdrPrepareRBF(MsgLdrPrepareRBF msg) {
   auto start = std::chrono::steady_clock::now();
-  if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
+  if (DEBUG1) std::cout << KBLU << nfo() << "RBF handling:" << msg.prettyPrint() << KNRM << std::endl;
   Accum acc   = msg.acc;
   Block block = msg.block;
   View v      = acc.getView();
@@ -3875,7 +3884,7 @@ void Handler::handle_precommitrbf(MsgPreCommitRBF msg, const PeerNet::conn_t &co
   handlePreCommitRBF(msg);
 }
 
-//TODO: check MsgLdrPrepareComb type still valid
+
 bool Handler::verifyLdrPrepareRBF(MsgLdrPrepareRBF msg) {
   Accum acc   = msg.acc;
   Block block = msg.block;
@@ -3969,8 +3978,8 @@ void Handler::prepareFree() {
       // This one we'll store, and wait until we have this->qsize of them
       //HJust justPrep = callTEEprepareFree(hash);
 //      if (justPrep.isSet()) {
-        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
-        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << hash.toString() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "FREE storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "FREE1 storing block for view=" << this->view << ":" << hash.toString() << KNRM << std::endl;
         this->blocks[this->view]=block;
 
         //if (DEBUG1) std::cout << KBLU << nfo() << "ldr-prepare:" << msgPrep.signs.getSize() << KNRM << std::endl;
