@@ -364,6 +364,81 @@ struct MsgPreCommitComb {
 };
 
 
+/////////////////////////////////////////////////////
+// RBF version
+
+struct MsgNewViewRBF {
+  static const uint8_t opcode = HDR_NEWVIEW_RBF;
+  salticidae::DataStream serialized;
+  RData data;
+  Sign sign;
+  MsgNewViewRBF(const RData &data, const Sign &sign) : data(data),sign(sign) { serialized << data << sign; }
+  MsgNewViewRBF(salticidae::DataStream &&s) { s >> data >> sign; }
+  bool operator<(const MsgNewViewRBF& s) const {
+    if (sign < s.sign) { return true; }
+    return false;
+  }
+  std::string prettyPrint() {
+    return "NEWVIEW-RBF[" + data.prettyPrint() + "," + sign.prettyPrint() + "]";
+  }
+  unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Sign)); }
+  void serialize(salticidae::DataStream &s) const { s << data << sign; }
+};
+
+struct MsgLdrPrepareRBF {
+  static const uint8_t opcode = HDR_PREPARE_LDR_RBF;
+  salticidae::DataStream serialized;
+  Accum acc;
+  Block block;
+  Sign sign;
+  MsgLdrPrepareRBF(const Accum &acc, const Block &block, const Sign &sign) : acc(acc),block(block),sign(sign) { serialized << acc << block << sign; }
+  MsgLdrPrepareRBF(salticidae::DataStream &&s) { s >> acc >> block >> sign; }
+  bool operator<(const MsgLdrPrepareRBF& s) const {
+    if (sign < s.sign) { return true; }
+    return false;
+  }
+  std::string prettyPrint() {
+    return "PREPARE-LDR-RBF[" + acc.prettyPrint() + "," + block.prettyPrint() + "," + sign.prettyPrint() + "]";
+  }
+  unsigned int sizeMsg() { return (sizeof(Accum) + sizeof(Block) + sizeof(Sign)); }
+  void serialize(salticidae::DataStream &s) const { s << acc << block << sign; }
+};
+
+struct MsgPrepareRBF {
+  static const uint8_t opcode = HDR_PREPARE_RBF;
+  salticidae::DataStream serialized;
+  RData data;
+  Signs signs;
+  MsgPrepareRBF(const RData &data, const Signs &signs) : data(data),signs(signs) { serialized << data << signs; }
+  MsgPrepareRBF(salticidae::DataStream &&s) { s >> data >> signs; }
+  bool operator<(const MsgPrepareRBF& s) const {
+    if (signs < s.signs) { return true; }
+    return false;
+  }
+  std::string prettyPrint() {
+    return "PREPARE-RBF[" + data.prettyPrint() + "," + signs.prettyPrint() + "]";
+  }
+  unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Signs)); }
+  void serialize(salticidae::DataStream &s) const { s << data << signs; }
+};
+
+struct MsgPreCommitRBF {
+  static const uint8_t opcode = HDR_PRECOMMIT_RBF;
+  salticidae::DataStream serialized;
+  RData data;
+  Signs signs;
+  MsgPreCommitRBF(const RData &data, const Signs &signs) : data(data),signs(signs) { serialized << data << signs; }
+  MsgPreCommitRBF(salticidae::DataStream &&s) { s >> data >> signs; }
+  bool operator<(const MsgPreCommitRBF& s) const {
+    if (signs < s.signs) { return true; }
+    return false;
+  }
+  std::string prettyPrint() {
+    return "PRECOMMIT-RBF[" + data.prettyPrint() + "," + signs.prettyPrint() + "]";
+  }
+  unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Signs)); }
+  void serialize(salticidae::DataStream &s) const { s << data << signs; }
+};
 
 
 /////////////////////////////////////////////////////
