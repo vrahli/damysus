@@ -149,6 +149,50 @@ bool msgPreCommitCombFrom(std::set<MsgPreCommitComb> msgs, std::set<PID> signers
   return false;
 }
 
+//RBF
+bool msgNewViewRBFFrom(std::set<MsgNewViewRBF> msgs, PID signer) {
+  for (std::set<MsgNewViewRBF>::iterator it=msgs.begin(); it!=msgs.end(); ++it) {
+    MsgNewViewRBF msg = (MsgNewViewRBF)*it;
+    PID k = msg.sign.getSigner();
+    if (signer == k) { return true; }
+  }
+  return false;
+}
+
+bool msgPrepareRBFFrom(std::set<MsgPrepareRBF> msgs, std::set<PID> signers) {
+  for (std::set<MsgPrepareRBF>::iterator it=msgs.begin(); it!=msgs.end(); ++it) {
+    MsgPrepareRBF msg = (MsgPrepareRBF)*it;
+    std::set<PID> k = msg.signs.getSigners();
+    for (std::set<PID>::iterator it2=k.begin(); it2!=k.end(); ++it2) {
+      signers.erase((PID)*it2);
+      if (signers.empty()) { return true; }
+    }
+  }
+  return false;
+}
+
+bool msgLdrPrepareRBFFrom(std::set<MsgLdrPrepareRBF> msgs, PID signer) {
+  for (std::set<MsgLdrPrepareRBF>::iterator it=msgs.begin(); it!=msgs.end(); ++it) {
+    MsgLdrPrepareRBF msg = (MsgLdrPrepareRBF)*it;
+    PID k = msg.sign.getSigner();
+    if (signer == k) { return true; }
+  }
+  return false;
+}
+
+bool msgPreCommitRBFFrom(std::set<MsgPreCommitRBF> msgs, std::set<PID> signers) {
+  for (std::set<MsgPreCommitRBF>::iterator it=msgs.begin(); it!=msgs.end(); ++it) {
+    MsgPreCommitRBF msg = (MsgPreCommitRBF)*it;
+    std::set<PID> k = msg.signs.getSigners();
+    for (std::set<PID>::iterator it2=k.begin(); it2!=k.end(); ++it2) {
+      signers.erase((PID)*it2);
+      if (signers.empty()) { return true; }
+    }
+  }
+  return false;
+}
+
+
 bool msgNewViewFreeFrom(std::set<MsgNewViewFree> msgs, PID signer) {
   for (std::set<MsgNewViewFree>::iterator it=msgs.begin(); it!=msgs.end(); ++it) {
     MsgNewViewFree msg = (MsgNewViewFree)*it;
