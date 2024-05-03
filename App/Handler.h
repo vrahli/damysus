@@ -393,11 +393,11 @@ class Handler {
   // For backups to respond to correct MsgLdrPrepareComb messages received from leaders
   void respondToLdrPrepareRBF(Block block, Accum acc);
   // For backups to respond to MsgPrepareComb messages receveid from leaders
-  void respondToPrepareRBF(MsgPrepareComb msg);
+  void respondToPrepareRBF(MsgPrepareRBF msg);
   // For backups to respond to MsgPreCommitComb messages receveid from leaders
-  void respondToPreCommitRBF(MsgPreCommitComb msg);
+  void respondToPreCommitRBF(MsgPreCommitRBF msg);
 
-  Accum newviews2accRBF(std::set<MsgNewViewComb> newviews);
+  Accum newviews2accRBF(std::set<MsgNewViewRBF> newviews);
 
   Accum callTEEaccumRBF(Just justs[MAX_NUM_SIGNATURES]);
   Accum callTEEaccumRBFSp(just_t just);
@@ -405,15 +405,15 @@ class Handler {
   Just callTEEprepareRBF(Hash h, Accum acc);
   Just callTEEstoreRBF(Just j);
 
-  void handleNewviewRBF(MsgNewViewComb msg);
-  void handlePrepareRBF(MsgPrepareComb msg);
-  void handleLdrPrepareRBF(MsgLdrPrepareComb msg);
-  void handlePreCommitRBF(MsgPreCommitComb msg);
+  void handleNewviewRBF(MsgNewViewRBF msg);
+  void handlePrepareRBF(MsgPrepareRBF msg);
+  void handleLdrPrepareRBF(MsgLdrPrepareRBF msg);
+  void handlePreCommitRBF(MsgPreCommitRBF msg);
 
-  void handle_newviewrbf(MsgNewViewComb msg, const PeerNet::conn_t &conn);
-  void handle_preparerbf(MsgPrepareComb msg, const PeerNet::conn_t &conn);
-  void handle_ldrpreparerbf(MsgLdrPrepareComb msg, const PeerNet::conn_t &conn);
-  void handle_precommitrbf(MsgPreCommitComb msg, const PeerNet::conn_t &conn);
+  void handle_newviewrbf(MsgNewViewRBF msg, const PeerNet::conn_t &conn);
+  void handle_preparerbf(MsgPrepareRBF msg, const PeerNet::conn_t &conn);
+  void handle_ldrpreparerbf(MsgLdrPrepareRBF msg, const PeerNet::conn_t &conn);
+  void handle_precommitrbf(MsgPreCommitRBF msg, const PeerNet::conn_t &conn);
 
 
   // ------------------------------------------------------------

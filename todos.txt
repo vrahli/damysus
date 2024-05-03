@@ -29,3 +29,5 @@ add callTEE functions for newly defined TEE methods
 
 think of some way to allow faulty and unresponsive TEEs to occasionally trigger restarts 
 
+Damysus uses logs to store messages up to quorum size (this->log in Handler.cpp)
+

@@ -549,10 +549,10 @@ const uint8_t MsgNewViewChComb::opcode;
 const uint8_t MsgLdrPrepareChComb::opcode;
 const uint8_t MsgPrepareChComb::opcode;
 #elif defined(ROLLBACK_FAULTY_PROTECTED)
-const uint8_t MsgNewViewComb::opcode;
-const uint8_t MsgLdrPrepareComb::opcode;
-const uint8_t MsgPrepareComb::opcode;
-const uint8_t MsgPreCommitComb::opcode;
+const uint8_t MsgNewViewRBF::opcode;
+const uint8_t MsgLdrPrepareRBF::opcode;
+const uint8_t MsgPrepareRBF::opcode;
+const uint8_t MsgPreCommitRBF::opcode;
 #endif
 
 const uint8_t MsgTransaction::opcode;
@@ -2990,7 +2990,6 @@ void Handler::handle_precommitacc(MsgPreCommitAcc msg, const PeerNet::conn_t &co
   handlePreCommitAcc(msg);
 }
 
-// TODO: recreate for RBF to alter to deal with rollbacks
 // ----------------------------------------------
 // -- Combined version
 // --
@@ -3424,7 +3423,7 @@ void Handler::handleEarlierMessagesRBF(){
   // *** THIS IS FOR LATE NODES TO PRO-ACTIVELY PROCESS MESSAGES THEY HAVE ALREADY RECEIVED FOR THE NEW VIEW ***
   // We now check whether we already have enough information to start the next view if we're the leader
   if (amCurrentLeader()) {
-    std::set<MsgNewViewComb> newviews = this->log.getNewViewRBF(this->view,this->qsize);
+    std::set<MsgNewViewRBF> newviews = this->log.getNewViewRBF(this->view,this->qsize);
     if (newviews.size() == this->qsize) {
       // we have enough new view messages to start the new view
       prepareRBF();
@@ -3441,7 +3440,7 @@ void Handler::handleEarlierMessagesRBF(){
       // We skip the pre-commit phase (this is otherwise a TEEstoreComb):
       callTEEsignRBF();
       // We execute
-      MsgPreCommitComb msgPc = this->log.firstPrecommitRBF(this->view);
+      MsgPreCommitRBF msgPc = this->log.firstPrecommitRBF(this->view);
       respondToPreCommitRBF(msgPc);
     } else { // We don't have enough pre-commit signatures
       Signs signsPrep = (this->log).getPrepareRBF(this->view,this->qsize);
@@ -3449,7 +3448,7 @@ void Handler::handleEarlierMessagesRBF(){
         if (DEBUG1) std::cout << KMAG << nfo() << "catching up using prepare certificate" << KNRM << std::endl;
         // TODO: If we're late, we currently store two prepare messages (in the prepare phase,
         // the one from the leader with 1 sig; and in the pre-commit phase, the one with f+1 sigs.
-        MsgPrepareComb msgPrep = this->log.firstPrepareRBF(this->view);
+        MsgPrepareRBF msgPrep = this->log.firstPrepareRBF(this->view);
         // We skip the prepare phase (this is otherwise a TEEprepare):
         callTEEsign();
         // We store the prepare certificate
@@ -3481,7 +3480,7 @@ void Handler::startNewViewRBF() {
   if (just.getRData().getPropv() == this->view
       && just.getRData().getPhase() == PH1_NEWVIEW
       && just.getSigns().getSize() == 1) {
-    MsgNewViewComb msg(just.getRData(),just.getSigns().get(0));
+    MsgNewViewRBF msg(just.getRData(),just.getSigns().get(0));
     if (amCurrentLeader()) {
       handleEarlierMessagesRBF();
       handleNewviewRBF(msg);
@@ -3500,7 +3499,7 @@ void Handler::startNewViewRBF() {
 //TODO: check if MsgNewViewComb needs replacement
 // For leaders to start preparing
 void Handler::prepareRBF(){
-  std::set<MsgNewViewComb> newviews = this->log.getNewViewComb(this->view,this->qsize);
+  std::set<MsgNewViewRBF> newviews = this->log.getNewViewComb(this->view,this->qsize);
   if (newviews.size() == this->qsize) {
     Accum acc = newviews2accRBF(newviews);
 
@@ -3515,7 +3514,7 @@ void Handler::prepareRBF(){
         if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.hash().toString() << KNRM << std::endl;
         this->blocks[this->view]=block;
 
-        MsgPrepareComb msgPrep(justPrep.getRData(),justPrep.getSigns());
+        MsgPrepareRBF msgPrep(justPrep.getRData(),justPrep.getSigns());
 
         if (DEBUG1) std::cout << KBLU << nfo() << "ldr-prepare:" << msgPrep.signs.getSize() << KNRM << std::endl;
         if (msgPrep.signs.getSize() == 1) {
@@ -3524,7 +3523,7 @@ void Handler::prepareRBF(){
           auto start = std::chrono::steady_clock::now();
 
           // This one goes to the backups
-          MsgLdrPrepareComb msgLdrPrep(acc,block,sig);
+          MsgLdrPrepareRBF msgLdrPrep(acc,block,sig);
           Peers recipients = remove_from_peers(this->myid);
           sendMsgLdrPrepareRBF(msgLdrPrep,recipients);
 
@@ -3548,13 +3547,13 @@ void Handler::preCommitRBF(RData data) {
   Signs signs = (this->log).getPrepareRBF(data.getPropv(),this->qsize);
   // We should not need to check the size of 'signs' as this function should only be called, when this is possible
   if (signs.getSize() == this->qsize) {
-    MsgPrepareComb msgPrep(data,signs);
+    MsgPrepareRBF msgPrep(data,signs);
     Peers recipients = remove_from_peers(this->myid);
     sendMsgPrepareRBF(msgPrep,recipients);
 
     // The leader also stores the prepare message
     Just justPc = callTEEstoreRBF(Just(data,signs));
-    MsgPreCommitComb msgPc(justPc.getRData(),justPc.getSigns());
+    MsgPreCommitRBF msgPc(justPc.getRData(),justPc.getSigns());
 
     // We store our own commit in the log
     if (this->qsize <= this->log.storePcRBF(msgPc)) {
@@ -3568,7 +3567,7 @@ void Handler::decideRBF(RData data) {
   View view = data.getPropv();
   Signs signs = (this->log).getPrecommitRBF(view,this->qsize);
   if (signs.getSize() == this->qsize) {
-    MsgPreCommitComb msgPc(data,signs);
+    MsgPreCommitRBF msgPc(data,signs);
     Peers recipients = remove_from_peers(this->myid);
     sendMsgPreCommitRBF(msgPc,recipients);
 
@@ -3587,7 +3586,7 @@ void Handler::respondToLdrPrepareRBF(Block block, Accum acc){
 void Handler::respondToPrepareRBF(MsgPrepareComb msg) {
   Just justPc = callTEEstoreRBF(Just(msg.data,msg.signs));
   if (DEBUG1) { std::cout << KMAG << nfo() << "TEEstoreRBF just:" << justPc.prettyPrint() << KNRM << std::endl; }
-  MsgPreCommitComb msgPc(justPc.getRData(),justPc.getSigns());
+  MsgPreCommitRBF msgPc(justPc.getRData(),justPc.getSigns());
   Peers recipients = keep_from_peers(getCurrentLeader());
   sendMsgPreCommitComb(msgPc,recipients);
 }
@@ -3608,8 +3607,8 @@ Accum Handler::newviews2accRBF(std::set<MsgNewViewComb> newviews){
   Signs ss;
 
   unsigned int i = 0;
-  for (std::set<MsgNewViewComb>::iterator it=newviews.begin(); it!=newviews.end() && i < MAX_NUM_SIGNATURES; ++it, i++) {
-    MsgNewViewComb msg = (MsgNewViewComb)*it;
+  for (std::set<MsgNewViewRBF>::iterator it=newviews.begin(); it!=newviews.end() && i < MAX_NUM_SIGNATURES; ++it, i++) {
+    MsgNewViewRBF msg = (MsgNewViewRBF)*it;
     if (i == 0) { rdata = msg.data; ss.add(msg.sign); } else { if (msg.data == rdata) { ss.add(msg.sign); } }
     justs[i] = Just(msg.data,msg.sign);
     if (DEBUG1) std::cout << KBLU << nfo() << "newview:" << msg.prettyPrint() << KNRM << std::endl;
@@ -3726,8 +3725,8 @@ Just Handler::callTEEstoreRBF(Just j){
   return just;
 }
 
-//TODO: check MsgNewViewComb still valid under RBF
-void Handler::handleNewviewRBF(MsgNewViewComb msg){
+
+void Handler::handleNewviewRBF(MsgNewViewRBF msg){
   auto start = std::chrono::steady_clock::now();
   if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
   View v = msg.data.getPropv();
@@ -3744,7 +3743,7 @@ void Handler::handleNewviewRBF(MsgNewViewComb msg){
   stats.addTotalNvTime(time);
 }
 
-void Handler::handlePrepareRBF(MsgPrepareComb msg){
+void Handler::handlePrepareRBF(MsgPrepareRBF msg){
   auto start = std::chrono::steady_clock::now();
   if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
   RData data = msg.data;
@@ -3769,7 +3768,7 @@ void Handler::handlePrepareRBF(MsgPrepareComb msg){
 }
 
 //TODO: check MsgLdrPrepareComb message type valid for RBF
-void Handler::handleLdrPrepareRBF(MsgLdrPrepareComb msg) {
+void Handler::handleLdrPrepareRBF(MsgLdrPrepareRBF msg) {
   auto start = std::chrono::steady_clock::now();
   if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
   Accum acc   = msg.acc;
@@ -3807,7 +3806,7 @@ void Handler::handleLdrPrepareRBF(MsgLdrPrepareComb msg) {
 
 }
 
-void Handler::handlePreCommitRBF(MsgPreCommitComb msg){
+void Handler::handlePreCommitRBF(MsgPreCommitRBF msg){
   auto start = std::chrono::steady_clock::now();
   if (DEBUG1) std::cout << KBLU << nfo() << "handling:" << msg.prettyPrint() << KNRM << std::endl;
   RData data = msg.data;
@@ -3831,25 +3830,28 @@ void Handler::handlePreCommitRBF(MsgPreCommitComb msg){
   stats.addTotalHandleTime(time);
 }
 
-void Handler::handle_newviewrbf(MsgNewViewComb msg, const PeerNet::conn_t &conn) {
+void Handler::handle_newviewrbf(MsgNewViewRBF msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgNewViewRBF");
   handleNewviewRBF(msg);
 }
 
-void Handler::handle_preparerbf(MsgPrepareComb msg, const PeerNet::conn_t &conn) {
+void Handler::handle_preparerbf(MsgPrepareRBF msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgPrepareRBF");
   handlePrepareComb(msg);
 }
 
-void Handler::handle_ldrpreparerbf(MsgLdrPrepareComb msg, const PeerNet::conn_t &conn) {
-  if (DEBUGT) printNowTime("handling MsgLdrPrepareComb");
+void Handler::handle_ldrpreparerbf(MsgLdrPrepareRBF msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgLdrPrepareRBF");
   handleLdrPrepareRBF(msg);
 }
 
-void Handler::handle_precommitrbf(MsgPreCommitComb msg, const PeerNet::conn_t &conn) {
+void Handler::handle_precommitrbf(MsgPreCommitRBF msg, const PeerNet::conn_t &conn) {
+  if (DEBUGT) printNowTime("handling MsgPreCommitRBF");
   handlePreCommitRBF(msg);
 }
 
 //TODO: check MsgLdrPrepareComb type still valid
-bool Handler::verifyLdrPrepareRBF(MsgLdrPrepareComb msg) {
+bool Handler::verifyLdrPrepareRBF(MsgLdrPrepareRBF msg) {
   Accum acc   = msg.acc;
   Block block = msg.block;
   RData rdataLdrPrep(block.hash(),acc.getView(),acc.getPreph(),acc.getPrepv(),PH1_PREPARE);
@@ -3857,7 +3859,7 @@ bool Handler::verifyLdrPrepareRBF(MsgLdrPrepareComb msg) {
   return Sverify(signs,this->myid,this->nodes,rdataLdrPrep.toString());
 }
 
-bool Handler::verifyPreCommitRBFCert(MsgPreCommitComb msg) {
+bool Handler::verifyPreCommitRBFCert(MsgPreCommitRBF msg) {
   Signs signs = msg.signs;
   if (signs.getSize() == this->qsize) {
     return Sverify(signs,this->myid,this->nodes,msg.data.toString());
