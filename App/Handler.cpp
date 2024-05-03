@@ -953,6 +953,31 @@ void Handler::sendMsgPreCommitComb(MsgPreCommitComb msg, Peers recipients) {
   if (DEBUGT) printNowTime("sending MsgPreCommitComb");
 }
 
+//RBF
+void Handler::sendMsgNewViewRBF(MsgNewViewRBF msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgNewViewRBF");
+}
+
+void Handler::sendMsgLdrPrepareRBF(MsgLdrPrepareRBF msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgLdrPrepareRBF");
+}
+
+void Handler::sendMsgPrepareRBF(MsgPrepareRBF msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPrepareRBF");
+}
+
+void Handler::sendMsgPreCommitRBF(MsgPreCommitRBF msg, Peers recipients) {
+  if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;
+  this->pnet.multicast_msg(msg, getPeerids(recipients));
+  if (DEBUGT) printNowTime("sending MsgPreCommitRBF");
+}
+
 
 void Handler::sendMsgNewViewFree(MsgNewViewFree msg, Peers recipients) {
   if (DEBUG1) std::cout << KBLU << nfo() << "sending:" << msg.prettyPrint() << "->" << recipients2string(recipients) << KNRM << std::endl;

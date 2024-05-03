@@ -179,10 +179,10 @@ class Handler {
   void sendMsgPrepareAcc(MsgPrepareAcc msg, Peers recipients);
   void sendMsgPreCommitAcc(MsgPreCommitAcc msg, Peers recipients);
 
-  void sendMsgNewViewRBF(MsgNewViewComb msg, Peers recipients);
-  void sendMsgLdrPrepareRBF(MsgLdrPrepareComb msg, Peers recipients);
-  void sendMsgPrepareRBF(MsgPrepareComb msg, Peers recipients);
-  void sendMsgPreCommitRBF(MsgPreCommitComb msg, Peers recipients);
+  void sendMsgNewViewRBF(MsgNewViewRBF msg, Peers recipients);
+  void sendMsgLdrPrepareRBF(MsgLdrPrepareRBF msg, Peers recipients);
+  void sendMsgPrepareRBF(MsgPrepareRBF msg, Peers recipients);
+  void sendMsgPreCommitRBF(MsgPreCommitRBF msg, Peers recipients);
 
   void sendMsgNewViewComb(MsgNewViewComb msg, Peers recipients);
   void sendMsgLdrPrepareComb(MsgLdrPrepareComb msg, Peers recipients);
@@ -229,8 +229,8 @@ class Handler {
   bool verifyLdrPrepareComb(MsgLdrPrepareComb msg);
   bool verifyPreCommitCombCert(MsgPreCommitComb msg);
 
-  bool verifyLdrPrepareRBF(MsgLdrPrepareComb msg);
-  bool verifyPreCommitRBFCert(MsgPreCommitComb msg);
+  bool verifyLdrPrepareRBF(MsgLdrPrepareRBF msg);
+  bool verifyPreCommitRBFCert(MsgPreCommitRBF msg);
 
   bool verifyLdrPrepareFree(HAccum acc, Block block);
   bool verifyPreCommitFreeCert(MsgPreCommitFree msg);
