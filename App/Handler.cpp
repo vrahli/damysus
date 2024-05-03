@@ -3066,8 +3066,8 @@ void Handler::prepareComb() {
       // This one we'll store, and wait until we have this->qsize of them
       Just justPrep = callTEEprepareComb(block.hash(),acc);
       if (justPrep.isSet()) {
-        if (DEBUG1) std::cout << KBLU << nfo() << "Comb1 storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
-        if (DEBUG1) std::cout << KBLU << nfo() << "Comb2 storing block for view=" << this->view << ":" << block.hash().toString() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.hash().toString() << KNRM << std::endl;
         this->blocks[this->view]=block;
 
         MsgPrepareComb msgPrep(justPrep.getRData(),justPrep.getSigns());
@@ -3136,7 +3136,7 @@ bool Handler::verifyLdrPrepareComb(MsgLdrPrepareComb msg) {
 void Handler::respondToLdrPrepareComb(Block block, Accum acc) {
   Just justPrep = callTEEprepareComb(block.hash(),acc);
   if (justPrep.isSet()) {
-    if (DEBUG1) std::cout << KBLU << nfo() << "LdrComb storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
     this->blocks[this->view]=block;
 
     MsgPrepareComb msgPrep(justPrep.getRData(),justPrep.getSigns());
@@ -3535,8 +3535,8 @@ void Handler::prepareRBF(){
       // This one we'll store, and wait until we have this->qsize of them
       Just justPrep = callTEEprepareRBF(block.hash(),acc);
       if (justPrep.isSet()) {
-        if (DEBUG1) std::cout << KBLU << nfo() << "prepRBF storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
-        if (DEBUG1) std::cout << KBLU << nfo() << "prepRBF1 storing block for view=" << this->view << ":" << block.hash().toString() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.hash().toString() << KNRM << std::endl;
         this->blocks[this->view]=block;
 
         MsgPrepareRBF msgPrep(justPrep.getRData(),justPrep.getSigns());
@@ -3606,7 +3606,7 @@ void Handler::decideRBF(RData data) {
 void Handler::respondToLdrPrepareRBF(Block block, Accum acc){
   Just justPrep = callTEEprepareRBF(block.hash(),acc);
   if (justPrep.isSet()) {
-    if (DEBUG1) std::cout << KBLU << nfo() << "LdrRBF storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+    if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
     this->blocks[this->view]=block;
 
     MsgPrepareRBF msgPrep(justPrep.getRData(),justPrep.getSigns());
@@ -3978,8 +3978,8 @@ void Handler::prepareFree() {
       // This one we'll store, and wait until we have this->qsize of them
       //HJust justPrep = callTEEprepareFree(hash);
 //      if (justPrep.isSet()) {
-        if (DEBUG1) std::cout << KBLU << nfo() << "FREE storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
-        if (DEBUG1) std::cout << KBLU << nfo() << "FREE1 storing block for view=" << this->view << ":" << hash.toString() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << block.prettyPrint() << KNRM << std::endl;
+        if (DEBUG1) std::cout << KBLU << nfo() << "storing block for view=" << this->view << ":" << hash.toString() << KNRM << std::endl;
         this->blocks[this->view]=block;
 
         //if (DEBUG1) std::cout << KBLU << nfo() << "ldr-prepare:" << msgPrep.signs.getSize() << KNRM << std::endl;

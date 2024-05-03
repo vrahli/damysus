@@ -7,7 +7,7 @@
 
 // debug switches
 #define DEBUG   false
-#define DEBUG0  true
+#define DEBUG0  false
 #define DEBUG1  false
 #define DEBUG2  false
 // to print timing info

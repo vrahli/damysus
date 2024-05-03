@@ -1,4 +1,5 @@
 config
 stats/
-/App/params.h
+./App/params.h
 .vscode
+*.txt
