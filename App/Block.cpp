@@ -9,19 +9,24 @@
 
 
 void Block::serialize(salticidae::DataStream &data) const {
-  data << this->set << this->prevHash << this->size;
-  for (int i = 0; i < MAX_NUM_TRANSACTIONS; i++) {
-    data << this->transactions[i];
-  }
+  //if (DEBUG1X) std::cout << KBLU << "[" << this->id << "]size=" << data.size() << KNRM << std::endl;
+  data << this->id << this->set << this->prevHash << this->size;
+  //auto start = std::chrono::steady_clock::now();
+  //data.put_data(this->transactions);
+  for (int i = 0; i < MAX_NUM_TRANSACTIONS; i++) { data << this->transactions[i]; }
+  //auto end = std::chrono::steady_clock::now();
+  //double time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  //if (DEBUG1X) std::cout << KBLU << "[" << this->id << "]size=" << data.size() << ";serialization=" << time << KNRM << std::endl;
 }
 
 
 void Block::unserialize(salticidae::DataStream &data) {
-  data >> this->set >> this->prevHash >> this->size;
+  data >> this->id >> this->set >> this->prevHash >> this->size;
   for (int i = 0; i < MAX_NUM_TRANSACTIONS; i++) {
     data >> this->transactions[i];
   }
 }
+
 
 std::string Block::transactions2string() {
   std::string s;
@@ -33,7 +38,8 @@ std::string Block::transactions2string() {
 
 
 std::string Block::toString() {
-  std::string text = std::to_string(this->set)
+  std::string text = std::to_string(this->id)
+    + std::to_string(this->set)
     + this->prevHash.toString()
     + std::to_string(this->size)
     + transactions2string();
@@ -45,7 +51,8 @@ std::string Block::prettyPrint() {
   for (int i = 0; i < MAX_NUM_TRANSACTIONS && i < this->size; i++) {
     text += this->transactions[i].prettyPrint();
   }
-  return ("BLOCK[" + std::to_string(this->set)
+  return ("BLOCK[" + std::to_string(this->id)
+          + "," + std::to_string(this->set)
           + "," + this->prevHash.prettyPrint()
           + "," + std::to_string(this->size)
           + ",{" + text + "}]");
@@ -89,7 +96,8 @@ Block::Block() {
   this->set=true;
 }*/
 
-Block::Block(Hash prevHash, unsigned int size, Transaction transactions[MAX_NUM_TRANSACTIONS]) {
+Block::Block(unsigned int id, Hash prevHash, unsigned int size, Transaction transactions[MAX_NUM_TRANSACTIONS]) {
+  this->id=id;
   this->set=true;
   this->prevHash=prevHash;
   this->size=size;
@@ -103,3 +111,11 @@ bool Block::operator==(const Block& s) const {
   for (int i = 0; i < MAX_NUM_TRANSACTIONS && i < this->size; i++) { if (!(transactions[i] == s.transactions[i])) { return false; } }
   return true;
 }
+
+
+/*
+unsigned int Block::size() {
+  return (sizeof(unsigned int) + sizeof(bool) + sizeof(Hash) + sizeof(unsigned int)
+          + (MAX_NUM_TRANSACTIONS * (sizeof(CID) + sizeof(TID) + (PAYLOAD_SIZE * sizeof(uint8_t)))));
+}
+*/

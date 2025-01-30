@@ -13,6 +13,7 @@
 
 class Block {
  private:
+  unsigned int id; // id of the block
   bool set; // true if the block is not the dummy block
   Hash prevHash;
   unsigned int size = 0; // number of non-dummy transactions
@@ -24,7 +25,7 @@ class Block {
   Block(); // retruns the genesis block
   Block(bool b); // retruns the genesis block if b=true; and the dummy block otherwise
   //Block(Hash prevHash);
-  Block(Hash prevHash, unsigned int size, Transaction transactions[MAX_NUM_TRANSACTIONS]); // creates an extension of 'block'
+  Block(unsigned int id, Hash prevHash, unsigned int size, Transaction transactions[MAX_NUM_TRANSACTIONS]); // creates an extension of 'block'
 
   bool extends(Hash h);
   Hash hash();
@@ -40,6 +41,8 @@ class Block {
   std::string prettyPrint();
 
   bool operator==(const Block& s) const;
+
+  //unsigned int size();
 };
 
 

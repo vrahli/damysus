@@ -783,9 +783,9 @@ Auths Log::getPrecommitFree(View view, unsigned int n) {
 
 
 
-unsigned int Log::storeNvOp(MsgNewViewOPA msg) {
-  View v = msg.prep.getView();
-//  PID signer = msg.prep.auth.getId();
+unsigned int Log::storeNvOp(OPprepare prep) {
+  View v = prep.getView();
+//  PID signer = prep.auth.getId();
 
   std::map<View,std::set<OPprepare>>::iterator it1 = this->newviewsOPa.find(v);
   if (it1 != this->newviewsOPa.end()) { // there is already an entry for this view
@@ -793,13 +793,13 @@ unsigned int Log::storeNvOp(MsgNewViewOPA msg) {
 
     // if there's already a stored prepared message, we don't do anything
     if (msgs.size() == 0) {
-      msgs.insert(msg.prep);
+      msgs.insert(prep);
       this->newviewsOPa[v]=msgs;
     }
     return msgs.size();
 
   } else { // there is no entry for this view
-    this->newviewsOPa[v]={msg.prep};
+    this->newviewsOPa[v]={prep};
     if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
     return 1;
   }
@@ -808,33 +808,51 @@ unsigned int Log::storeNvOp(MsgNewViewOPA msg) {
 }
 
 
-bool msgNewViewOpFrom(std::set<OPnvblock> msgs, PID i, View x) {
-  for (std::set<OPnvblock>::iterator it=msgs.begin(); it!=msgs.end(); ++it) {
-    OPnvblock msg = (OPnvblock)*it;
-    if (i == msg.store.getAuth().getId()) { return true; }
+bool msgNewViewOpFrom(std::set<OPnvcert> certs, PID i, View x) {
+  for (std::set<OPnvcert>::iterator it=certs.begin(); it!=certs.end(); ++it) {
+    OPnvcert cert = (OPnvcert)*it;
+    if (i == cert.store.getAuth().getId()) { return true; }
   }
   return false;
 }
 
 
-unsigned int Log::storeNvOp(MsgNewViewOPB msg) {
-  View v = msg.nv.store.getView();
-  PID  i = msg.nv.store.getAuth().getId();
-  View x = msg.nv.store.getV();
+unsigned int Log::storeNvOp(OPnvblock newnv) {
+  View v = newnv.cert.store.getView();
+  PID  i = newnv.cert.store.getAuth().getId();
+  View x = newnv.cert.store.getV();
 
-  std::map<View,std::set<OPnvblock>>::iterator it1 = this->newviewsOPb.find(v);
+  std::map<View,std::set<OPnvblocks>>::iterator it1 = this->newviewsOPb.find(v);
   if (it1 != this->newviewsOPb.end()) { // there is already an entry for this view
-    std::set<OPnvblock> msgs = it1->second;
+    std::set<OPnvblocks> msgs = it1->second;
 
-    // if there's already a stored prepared message form i, we don't do anything
-    if (!msgNewViewOpFrom(msgs,i,x)) {
-      msgs.insert(msg.nv);
-      this->newviewsOPb[v]=msgs;
+    // if there is an entry, there should be only one
+    std::set<OPnvblocks>::iterator it2 = msgs.begin();
+    if (it2 != msgs.end()) {
+      OPnvblocks nv = (OPnvblocks)*it2;
+
+      if (DEBUG1) { std::cout << KGRN << "current nvblocks:" << nv.prettyPrint() << KNRM << std::endl; }
+      if (DEBUG1) { std::cout << KGRN << "adding nvblock:" << newnv.prettyPrint() << KNRM << std::endl; }
+
+      // if there's already a stored prepared message form i, we don't do anything
+      if (i != nv.nv.cert.store.getAuth().getId() && !msgNewViewOpFrom(nv.certs.certs,i,x)) {
+        if (x > nv.nv.cert.store.getV()) {
+          // a new highest
+          nv.new_block(newnv);
+        } else {
+          // not a new highest
+          nv.insert(newnv.cert);
+        }
+
+        //msgs.insert(newnv);
+        this->newviewsOPb[v]={nv};
+      }
+      return (1 + nv.certs.certs.size());
+
     }
-    return msgs.size();
 
   } else { // there is no entry for this view
-    this->newviewsOPb[v]={msg.nv};
+    this->newviewsOPb[v]={OPnvblocks(newnv)};
     if (DEBUG) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
     return 1;
   }
@@ -843,17 +861,39 @@ unsigned int Log::storeNvOp(MsgNewViewOPB msg) {
 }
 
 
-std::set<OPnvblock> Log::getNvOps(View view, unsigned int n) {
-  std::set<OPnvblock> ret;
-  std::map<View,std::set<OPnvblock>>::iterator it1 = this->newviewsOPb.find(view);
-  if (it1 != this->newviewsOPb.end()) { // there is already an entry for this view
-    std::set<OPnvblock> msgs = it1->second;
-    for (std::set<OPnvblock>::iterator it=msgs.begin(); ret.size() < n && it!=msgs.end(); ++it) {
-      OPnvblock msg = (OPnvblock)*it;
-      ret.insert(msg);
+OPnvblocks Log::getNvOpbs(View view) {
+  //std::set<OPnvblock> ret;
+  std::map<View,std::set<OPnvblocks>>::iterator it1 = this->newviewsOPb.find(view);
+  if (it1 != this->newviewsOPb.end()) { // there is an entry for this view
+    std::set<OPnvblocks> msgs = it1->second;
+
+    // if there is an entry, there should be only one
+    std::set<OPnvblocks>::iterator it2 = msgs.begin();
+    if (it2 != msgs.end()) {
+      return (OPnvblocks)*it2;
     }
+
   }
-  return ret;
+
+  return OPnvblocks();
+}
+
+
+OPprepare Log::getNvOpas(View view) {
+  //std::set<OPnvblock> ret;
+  std::map<View,std::set<OPprepare>>::iterator it1 = this->newviewsOPa.find(view);
+  if (it1 != this->newviewsOPa.end()) { // there is an entry for this view
+    std::set<OPprepare> msgs = it1->second;
+
+    // if there is an entry, there should be only one
+    std::set<OPprepare>::iterator it2 = msgs.begin();
+    if (it2 != msgs.end()) {
+      return (OPprepare)*it2;
+    }
+
+  }
+
+  return OPprepare();
 }
 
 
@@ -894,10 +934,10 @@ OPprepare Log::getOPstores(View view, unsigned int n) {
   std::map<View,std::set<OPstore>>::iterator it1 = this->storesOP.find(view);
   if (it1 != this->storesOP.end()) { // there is already an entry for this view
     std::set<OPstore> msgs = it1->second;
-    if (DEBUG1) { std::cout << KGRN << "making prepare (" << msgs.size() << ")" << KNRM << std::endl; }
+    //if (DEBUG1) { std::cout << KGRN << "making prepare (" << msgs.size() << ")" << KNRM << std::endl; }
     for (std::set<OPstore>::iterator it=msgs.begin(); ret.getAuths().getSize() < n && it!=msgs.end(); ++it) {
       OPstore msg = (OPstore)*it;
-      if (DEBUG1) { std::cout << KGRN << "store:" << msg.getHash().toString() << KNRM << std::endl; }
+      //if (DEBUG1) { std::cout << KGRN << "store:" << msg.getHash().toString() << KNRM << std::endl; }
       ret.insert(msg);
     }
   }
@@ -969,22 +1009,60 @@ OPprepare Log::getOPprepare(View view) {
 }
 
 
-unsigned int Log::storeVoteOp(OPvote msg) {
+void Log::storeAccumOp(OPaccum acc) {
+  View v = acc.getView();
+
+  std::map<View,std::set<OPaccum>>::iterator it1 = this->accumsOP.find(v);
+  if (it1 != this->accumsOP.end()) { // there is already an entry for this view
+    std::set<OPaccum> accs = it1->second;
+
+    // We only store 1 value
+    if (accs.size() == 0) {
+      accs.insert(acc);
+      this->accumsOP[v]=accs;
+    }
+
+  } else { // there is no entry for this view
+    this->accumsOP[v]={acc};
+    if (DEBUG1) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+  }
+}
+
+
+OPaccum Log::getAccOp(View view) {
+  OPaccum ret;
+  std::map<View,std::set<OPaccum>>::iterator it1 = this->accumsOP.find(view);
+  if (it1 != this->accumsOP.end()) { // there is already an entry for this view
+    std::set<OPaccum> accs = it1->second;
+    if (accs.size() > 0) {
+      std::set<OPaccum>::iterator it=accs.begin();
+      ret = (OPaccum)*it;
+    }
+  }
+  return ret;
+}
+
+
+unsigned int Log::storeVoteOp(OPvote msg, unsigned int* m) {
   View v = msg.getView();
 
   std::map<View,std::set<OPvote>>::iterator it1 = this->votesOP.find(v);
   if (it1 != this->votesOP.end()) { // there is already an entry for this view
     std::set<OPvote> msgs = it1->second;
+    if (DEBUG1) { std::cout << KGRN << "storeVoteOp:found an entry for this view (" << v << "):" << msgs.size() << KNRM << std::endl; }
 
     std::set<OPvote>::iterator it2 = msgs.begin();
     while (it2 != msgs.end()) {
       OPvote vote = (OPvote)*it2;
       if (msg.getHash() == vote.getHash()) {
+        *m = vote.getAuths().getSize();
         msgs.erase(it2);
+        if (DEBUG1) { std::cout << KGRN << "storeVoteOp:votes:" << vote.getAuths().prettyPrint() << ";" << msg.getAuths().prettyPrint() << KNRM << std::endl; }
         vote.insert(msg.getAuths());
         msgs.insert(vote);
         this->votesOP[v]=msgs;
-        return vote.getAuths().getSize();
+        unsigned int n = vote.getAuths().getSize();
+        return n;
       }
     }
 
@@ -992,7 +1070,7 @@ unsigned int Log::storeVoteOp(OPvote msg) {
 
   } else { // there is no entry for this view
     this->votesOP[v]={msg};
-    if (DEBUG1) { std::cout << KGRN << "no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
+    if (DEBUG1) { std::cout << KGRN << "storeVoteOp:no entry for this view (" << v << ") before; #=1" << KNRM << std::endl; }
     return msg.getAuths().getSize();
   }
 

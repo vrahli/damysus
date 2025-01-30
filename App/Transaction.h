@@ -14,7 +14,9 @@ class Transaction {
  private:
   CID clientid;
   TID transid; // transaction id (0 is reserved for dummy transactions)
-  unsigned char data[PAYLOAD_SIZE];
+  //unsigned char data[PAYLOAD_SIZE];
+  std::array<unsigned char,PAYLOAD_SIZE> data;
+  //bytearray_t data;
 
  public:
   Transaction();
@@ -28,11 +30,13 @@ class Transaction {
 
   void serialize(salticidae::DataStream &data) const;
   void unserialize(salticidae::DataStream &data);
-  std::string toString();
-  std::string prettyPrint();
+  std::string toString() const;
+  std::string prettyPrint() const;
 
   bool operator<(const Transaction& s) const;
   bool operator==(const Transaction& s) const;
+
+  unsigned int size();
 };
 
 

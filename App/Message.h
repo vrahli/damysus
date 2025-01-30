@@ -51,7 +51,7 @@ struct MsgTransaction {
     return "TRANSACTION[" + trans.prettyPrint() + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(Transaction) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << trans << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << trans << sign; }
 };
 
 struct MsgStart {
@@ -69,7 +69,7 @@ struct MsgStart {
     return "START[" + std::to_string(cid) + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(CID) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << cid << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << cid << sign; }
 };
 
 /*struct MsgStop {
@@ -104,7 +104,7 @@ struct MsgReply {
     return "REPLY[" + std::to_string(reply) + "]";
   }
   unsigned int sizeMsg() { return (sizeof(unsigned int)); }
-  void serialize(salticidae::DataStream &s) const { s << reply; }
+  //void serialize(salticidae::DataStream &s) const { s << reply; }
 };
 
 
@@ -129,7 +129,7 @@ struct MsgNewView {
     return "NEWVIEW[" + rdata.prettyPrint() + "," + signs.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Signs)); }
-  void serialize(salticidae::DataStream &s) const { s << rdata << signs; }
+  //void serialize(salticidae::DataStream &s) const { s << rdata << signs; }
 };
 
 // TODO: replace Signs by Sign
@@ -149,7 +149,7 @@ struct MsgLdrPrepare {
     return "LDRPREPARE[" + prop.prettyPrint() + "," + signs.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(Proposal) + sizeof(Signs)); }
-  void serialize(salticidae::DataStream &s) const { s << prop << signs; }
+  //void serialize(salticidae::DataStream &s) const { s << prop << signs; }
 };
 
 struct MsgPrepare {
@@ -167,7 +167,7 @@ struct MsgPrepare {
     return "PREPARE[" + rdata.prettyPrint() + "," + signs.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Signs)); }
-  void serialize(salticidae::DataStream &s) const { s << rdata << signs; }
+  //void serialize(salticidae::DataStream &s) const { s << rdata << signs; }
 };
 
 struct MsgPreCommit {
@@ -185,7 +185,7 @@ struct MsgPreCommit {
     return "PRECOMMIT[" + rdata.prettyPrint() + "," + signs.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Signs)); }
-  void serialize(salticidae::DataStream &s) const { s << rdata << signs; }
+  //void serialize(salticidae::DataStream &s) const { s << rdata << signs; }
 };
 
 struct MsgCommit {
@@ -203,7 +203,7 @@ struct MsgCommit {
     return "COMMIT[" + rdata.prettyPrint() + "," + signs.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Signs)); }
-  void serialize(salticidae::DataStream &s) const { s << rdata << signs; }
+  //void serialize(salticidae::DataStream &s) const { s << rdata << signs; }
 };
 
 
@@ -227,7 +227,7 @@ struct MsgNewViewAcc {
     return "NEWVIEW-ACCUM[" + cdata.prettyPrint() + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(CData<Void,Cert>) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << cdata << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << cdata << sign; }
 };
 
 struct MsgLdrPrepareAcc {
@@ -245,7 +245,7 @@ struct MsgLdrPrepareAcc {
     return "PREPARE-LDR-ACCUM[" + cdata.prettyPrint() + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(CData<Block,Accum>) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << cdata << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << cdata << sign; }
 };
 
 struct MsgPrepareAcc {
@@ -263,7 +263,7 @@ struct MsgPrepareAcc {
     return "PREPARE-ACCUM[" + cdata.prettyPrint() + "," + signs.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(CData<Hash,Void>) + sizeof(Signs)); }
-  void serialize(salticidae::DataStream &s) const { s << cdata << signs; }
+  //void serialize(salticidae::DataStream &s) const { s << cdata << signs; }
 };
 
 struct MsgPreCommitAcc {
@@ -281,7 +281,7 @@ struct MsgPreCommitAcc {
     return "PRECOMMIT-ACCUM[" + cdata.prettyPrint() + "," + signs.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(CData<Hash,Void>) + sizeof(Signs)); }
-  void serialize(salticidae::DataStream &s) const { s << cdata << signs; }
+  //void serialize(salticidae::DataStream &s) const { s << cdata << signs; }
 };
 
 
@@ -305,7 +305,7 @@ struct MsgNewViewComb {
     return "NEWVIEW-COMB[" + data.prettyPrint() + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << data << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << data << sign; }
 };
 
 struct MsgLdrPrepareComb {
@@ -324,7 +324,7 @@ struct MsgLdrPrepareComb {
     return "PREPARE-LDR-COMB[" + acc.prettyPrint() + "," + block.prettyPrint() + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(Accum) + sizeof(Block) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << acc << block << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << acc << block << sign; }
 };
 
 struct MsgPrepareComb {
@@ -342,7 +342,7 @@ struct MsgPrepareComb {
     return "PREPARE-COMB[" + data.prettyPrint() + "," + signs.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Signs)); }
-  void serialize(salticidae::DataStream &s) const { s << data << signs; }
+  //void serialize(salticidae::DataStream &s) const { s << data << signs; }
 };
 
 struct MsgPreCommitComb {
@@ -360,7 +360,7 @@ struct MsgPreCommitComb {
     return "PRECOMMIT-COMB[" + data.prettyPrint() + "," + signs.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Signs)); }
-  void serialize(salticidae::DataStream &s) const { s << data << signs; }
+  //void serialize(salticidae::DataStream &s) const { s << data << signs; }
 };
 
 
@@ -385,7 +385,7 @@ struct MsgNewViewFree {
     return "NEWVIEW-FREE[" + data.prettyPrint() + "," + auth.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(FData) + sizeof(Auth)); }
-  void serialize(salticidae::DataStream &s) const { s << data << auth; }
+  //void serialize(salticidae::DataStream &s) const { s << data << auth; }
 };
 
 
@@ -406,7 +406,7 @@ struct MsgLdrPrepareFree {
     return "PREPARE-LDR-FREE[" + acc.prettyPrint() + "," + block.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(HAccum) + sizeof(Block)); }
-  void serialize(salticidae::DataStream &s) const { s << acc << block; }
+  //void serialize(salticidae::DataStream &s) const { s << acc << block; }
 };
 
 struct MsgBckPrepareFree {
@@ -424,7 +424,7 @@ struct MsgBckPrepareFree {
     return "PREPARE-BCK-FREE[" + std::to_string(view) + "," + auth.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(View) + sizeof(Auth)); }
-  void serialize(salticidae::DataStream &s) const { s << view << auth; }
+  //void serialize(salticidae::DataStream &s) const { s << view << auth; }
 };
 
 struct MsgPrepareFree {
@@ -449,7 +449,7 @@ struct MsgPrepareFree {
     serialized << just;
     }*/
   //void set(Hash h, View v, Auth a) { hash = h; view = v; auth = a; }
-  void serialize(salticidae::DataStream &s) const { s << just; }
+  //void serialize(salticidae::DataStream &s) const { s << just; }
 };
 
 struct MsgPreCommitFree {
@@ -467,7 +467,7 @@ struct MsgPreCommitFree {
     return "PRECOMMIT-FREE[" + std::to_string(view) + "," + auths.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(View) + sizeof(Auths)); }
-  void serialize(salticidae::DataStream &s) const { s << view << auths; }
+  //void serialize(salticidae::DataStream &s) const { s << view << auths; }
 };
 
 
@@ -477,43 +477,36 @@ struct MsgPreCommitFree {
 
 struct OPcert {
   OPCtag tag;
-  union{ OPprepare prep; OPvote vote; OPaccum accum; };
+  union{ OPprepare prep; OPvote vote; };
   // Constructors
   OPcert()            : tag(OPCprep),prep(OPprepare()) {}
   OPcert(OPprepare p) : tag(OPCprep),prep(p)           {}
   OPcert(OPvote v)    : tag(OPCvote),vote(v)           {}
-  OPcert(OPaccum a)   : tag(OPCacc),accum(a)           {}
   // Printing
   std::string toString() {
     if (tag == OPCprep) { return prep.toString(); }
-    else if (tag == OPCvote) { return vote.toString(); }
-    return accum.toString();
+    else return vote.toString();
   }
   std::string prettyPrint() {
     if (tag == OPCprep) { return prep.prettyPrint(); }
-    else if (tag == OPCvote) { return vote.prettyPrint(); }
-    return accum.prettyPrint();
+    else return vote.prettyPrint();
   }
   std::string data() {
     if (tag == OPCprep) { return prep.data(); }
-    else if (tag == OPCvote) { return vote.data(); }
-    return accum.data();
+    else return vote.data();
   }
   // Getters
   Hash getHash() {
     if (tag == OPCprep) { return prep.getHash(); }
-    else if (tag == OPCvote) { return vote.getHash(); }
-    return accum.getHash();
+    else return vote.getHash();
   }
   View getView() {
     if (tag == OPCprep) { return prep.getView(); }
-    else if (tag == OPCvote) { return vote.getView(); }
-    return accum.getView();
+    else return vote.getView();
   }
   Auths getAuths() {
     if (tag == OPCprep) { return prep.getAuths(); }
-    else if (tag == OPCvote) { return vote.getAuths(); }
-    return Auths(accum.getAuth());
+    else return vote.getAuths();
   }
   // Setters
   void setPrep(OPprepare p) {
@@ -524,42 +517,113 @@ struct OPcert {
     tag = OPCvote;
     vote = v;
   }
-  void setAccum(OPaccum a) {
-    tag = OPCacc;
-    accum = a;
-  }
   // Serialization
   void serialize(salticidae::DataStream &data) const {
     data << tag;
     if (tag == OPCprep) { data << prep; }
-    else if (tag == OPCvote) { data << vote; }
-    else { data << accum; }
+    else data << vote;
   }
   void unserialize(salticidae::DataStream &data) {
     data >> tag;
     if (tag == OPCprep) { data >> prep; }
-    else if (tag == OPCvote) { data >> vote; }
-    else { data >> accum; }
+    else data >> vote;
   }
+};
+
+
+struct OPnvcert {
+  OPstore store;
+  OPcert cert;
+  // Constructors
+  OPnvcert() : store(OPstore()),cert(OPcert()) {}
+  OPnvcert(OPstore store, OPcert cert) : store(store),cert(cert) {}
+  std::string prettyPrint() {
+    return "NVC[" + store.prettyPrint() + "," + cert.prettyPrint() + "]";
+  }
+  std::string toString() {
+    return (store.toString() + cert.toString());
+  }
+  void serialize(salticidae::DataStream &s) const { s << store << cert; }
+  void unserialize(salticidae::DataStream &data) { data >> store >> cert; }
+  bool operator<(const OPnvcert& s) const { return store < s.store; }
 };
 
 
 struct OPnvblock {
   Block block;
-  OPstore store;
-  OPcert cert;
+  OPnvcert cert;
   // Constructors
-  OPnvblock() : block(Block()),store(OPstore()),cert(OPcert()) {}
-  OPnvblock(Block block, OPstore store, OPcert cert) : block(block),store(store),cert(cert) {}
+  OPnvblock() : block(Block()),cert(OPnvcert()) {}
+  OPnvblock(Block block, OPnvcert cert) : block(block),cert(cert) {}
   std::string prettyPrint() {
-    return "NV[" + block.prettyPrint() + "," + store.prettyPrint() + "," + cert.prettyPrint() + "]";
+    return "NVB[" + block.prettyPrint() + "," + cert.prettyPrint() + "]";
   }
   std::string toString() {
-    return (block.toString() + store.toString() + cert.toString());
+    return (block.toString() + cert.toString());
   }
-  void serialize(salticidae::DataStream &s) const { s << block << store << cert; }
-  void unserialize(salticidae::DataStream &data) { data >> block >> store >> cert; }
-  bool operator<(const OPnvblock& s) const { return store < s.store; }
+  void serialize(salticidae::DataStream &s) const { s << block << cert; }
+  void unserialize(salticidae::DataStream &data) { data >> block >> cert; }
+  bool operator<(const OPnvblock& s) const { return cert < s.cert; }
+};
+
+
+struct OPnvhash {
+  Hash hash;
+  OPnvcert cert;
+  // Constructors
+  OPnvhash() : hash(Hash()),cert(OPnvcert()) {}
+  OPnvhash(Hash hash, OPnvcert cert) : hash(hash),cert(cert) {}
+  std::string prettyPrint() {
+    return "NVH[" + hash.prettyPrint() + "," + cert.prettyPrint() + "]";
+  }
+  std::string toString() {
+    return (hash.toString() + cert.toString());
+  }
+  void serialize(salticidae::DataStream &s) const { s << hash << cert; }
+  void unserialize(salticidae::DataStream &data) { data >> hash >> cert; }
+  bool operator<(const OPnvhash& s) const { return cert < s.cert; }
+};
+
+
+struct OPnvcerts {
+  std::set<OPnvcert> certs;
+  // Constructors
+  OPnvcerts() : certs({}) {}
+  OPnvcerts(OPnvcert cert) : certs({cert}) {}
+  std::string prettyPrint() {
+    std::string s;
+    for (std::set<OPnvcert>::iterator it = certs.begin(); it!=certs.end(); ++it) {
+      OPnvcert c = (OPnvcert)*it;
+      s += "," + c.prettyPrint();
+    }
+    return s;
+  }
+  void insert(OPnvcert cert) { certs.insert(cert); }
+  std::string toString() {
+    std::string s;
+    for (std::set<OPnvcert>::iterator it = certs.begin(); it!=certs.end(); ++it) {
+      OPnvcert c = (OPnvcert)*it;
+      s += c.toString();
+    }
+    return s;
+  }
+};
+
+struct OPnvblocks {
+  OPnvblock nv;
+  OPnvcerts certs; // all stores in certs are meant to have a getView() == nv.cert.store.getView()
+  // Constructors
+  OPnvblocks() : nv(OPnvblock()),certs(OPnvcerts()) {}
+  OPnvblocks(OPnvblock nv) : nv(nv),certs(OPnvcerts()) {}
+  void new_block(OPnvblock new_nv) { certs.insert(nv.cert); nv = new_nv; }
+  void insert(OPnvcert cert) { certs.insert(cert); }
+  std::string prettyPrint() {
+    return "NVBS[" + nv.prettyPrint() + "," + certs.prettyPrint() + "]";
+  }
+  std::string toString() {
+    return (nv.toString() + certs.toString());
+  }
+  bool operator<(const OPnvblocks& s) const { return nv < s.nv; }
 };
 
 
@@ -594,11 +658,11 @@ struct OPnv {
   // Getters
   Hash getHash() {
     if (tag == OPNVa) { return prep.getHash(); }
-    return nv.store.getHash();
+    return nv.cert.store.getHash();
   }
   View getView() {
     if (tag == OPCprep) { return prep.getView(); }
-    return nv.store.getView();
+    return nv.cert.store.getView();
   }
   // Setters
   void setPrep(OPprepare p) {
@@ -669,7 +733,7 @@ struct MsgNewViewOPA {
   bool operator<(const MsgNewViewOPA& s) const { return (prep < s.prep); }
   std::string prettyPrint() { return "NEWVIEW-OPA[" + prep.prettyPrint() + "]"; }
   unsigned int sizeMsg() { return (sizeof(OPprepare)); }
-  void serialize(salticidae::DataStream &s) const { s << prep; }
+  //void serialize(salticidae::DataStream &s) const { s << prep; }
 };
 
 
@@ -682,19 +746,44 @@ struct MsgNewViewOPB {
   bool operator<(const MsgNewViewOPB& s) const { return (nv < s.nv); }
   std::string prettyPrint() { return "NEWVIEW-OPB[" + nv.prettyPrint() + "]"; }
   unsigned int sizeMsg() { return (sizeof(OPnvblock)); }
-  void serialize(salticidae::DataStream &s) const { s << nv; }
+  //void serialize(salticidae::DataStream &s) const { s << nv; }
 };
 
 
+// A special MsgNewViewOPB message for prepare certificates and without blocks
+struct MsgNewViewOPBB {
+  static const uint8_t opcode = HDR_NEWVIEW_OPBB;
+  salticidae::DataStream serialized;
+  OPstore store;
+  OPprepare prep;
+  MsgNewViewOPBB(const OPstore &store, const OPprepare &prep) : store(store),prep(prep) { serialized << store << prep; }
+  MsgNewViewOPBB(salticidae::DataStream &&s) { s >> store >> prep; }
+  bool operator<(const MsgNewViewOPBB& s) const { return (store < s.store); }
+  std::string prettyPrint() { return "NEWVIEW-OPBB[" + store.prettyPrint() + "," + prep.prettyPrint() + "]"; }
+  unsigned int sizeMsg() { return (sizeof(OPstore) + sizeof(OPprepare)); }
+  //void serialize(salticidae::DataStream &s) const { s << nv; }
+};
+
+
+// These messages are sent by the leaders to the replicas in the prepare phase, in the "good" cases
 struct MsgLdrPrepareOPA {
   static const uint8_t opcode = HDR_PREPARE_LDR_OPA;
   salticidae::DataStream serialized;
   Block block;
   OPproposal prop;
   OPprepare prep;
+  // OK
   MsgLdrPrepareOPA() : block(Block()),prop(OPproposal()),prep(OPprepare()) { serialized << block << prop << prep; }
   MsgLdrPrepareOPA(const MsgLdrPrepareOPA& m) : block(m.block),prop(m.prop),prep(m.prep) { serialized << block << prop << prep; }
   MsgLdrPrepareOPA(const Block &block, const OPproposal &prop, const OPprepare &prep) : block(block),prop(prop),prep(prep) { serialized << block << prop << prep; }
+  // OK
+  //MsgLdrPrepareOPA(const Block &block, const OPproposal &prop, const OPprepare &prep, const bool &b) : block(block),prop(prop),prep(prep) { }
+  // fails
+  MsgLdrPrepareOPA(const Block &block, const OPproposal &prop, const OPprepare &prep, const bool &b) : block(block),prop(prop),prep(prep) { serialized << 0; }
+  // fails
+  MsgLdrPrepareOPA(const Block &block) : block(Block()),prop(OPproposal()),prep(OPprepare()) { serialized << block << prop << prep; }
+  // fails
+  MsgLdrPrepareOPA(unsigned int n) : block(Block()),prop(OPproposal()),prep(OPprepare()) { serialized << block << prop << prep; }
   MsgLdrPrepareOPA(salticidae::DataStream &&s) { s >> block >> prop >> prep; }
   bool operator<(const MsgLdrPrepareOPA& s) const { return (prop < s.prop); }
   std::string prettyPrint() {
@@ -702,10 +791,11 @@ struct MsgLdrPrepareOPA {
   }
   std::string toString() { return block.toString() + prop.toString() + prep.toString(); }
   unsigned int sizeMsg() { return (sizeof(Block) + sizeof(OPproposal) + sizeof(OPprepare)); }
-  void serialize(salticidae::DataStream &s) const { s << block << prop << prep; }
+  //void serialize(salticidae::DataStream &s) const { s << block << prop << prep; }
 };
 
 
+// This is not used anymore
 struct MsgLdrPrepareOPB {
   static const uint8_t opcode = HDR_PREPARE_LDR_OPB;
   salticidae::DataStream serialized;
@@ -723,10 +813,11 @@ struct MsgLdrPrepareOPB {
   }
   std::string toString() { return block.toString() + prop.toString() + acc.toString() + prep.toString(); }
   unsigned int sizeMsg() { return (sizeof(Block) + sizeof(OPproposal) + sizeof(OPaccum) + sizeof(OPprepare)); }
-  void serialize(salticidae::DataStream &s) const { s << block << prop << acc << prep; }
+  //void serialize(salticidae::DataStream &s) const { s << block << prop << acc << prep; }
 };
 
 
+// These messages are sent by the leaders to the replicas at the end of the additional phase
 struct MsgLdrPrepareOPC {
   static const uint8_t opcode = HDR_PREPARE_LDR_OPC;
   salticidae::DataStream serialized;
@@ -739,11 +830,11 @@ struct MsgLdrPrepareOPC {
   MsgLdrPrepareOPC(salticidae::DataStream &&s) { s >> block >> prop >> vote; }
   bool operator<(const MsgLdrPrepareOPC& s) const { return (prop < s.prop); }
   std::string prettyPrint() {
-    return "PREPARE-LDR-OP[" + block.prettyPrint() + "," + prop.prettyPrint() + "," + vote.prettyPrint() + "]";
+    return "PREPARE-LDR-OPC[" + block.prettyPrint() + "," + prop.prettyPrint() + "," + vote.prettyPrint() + "]";
   }
   std::string toString() { return block.toString() + prop.toString() + vote.toString(); }
   unsigned int sizeMsg() { return (sizeof(Block) + sizeof(OPproposal) + sizeof(OPvote)); }
-  void serialize(salticidae::DataStream &s) const { s << block << prop << vote; }
+  //void serialize(salticidae::DataStream &s) const { s << block << prop << vote; }
 };
 
 
@@ -780,7 +871,7 @@ struct MsgBckPrepareOP {
     return "PREPARE-BCK-OP[" + store.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(OPstore)); }
-  void serialize(salticidae::DataStream &s) const { s << store; }
+  //void serialize(salticidae::DataStream &s) const { s << store; }
 };
 
 
@@ -793,7 +884,7 @@ struct MsgPreCommitOP {
   bool operator<(const MsgPreCommitOP& s) const { return (cert < s.cert); }
   std::string prettyPrint() { return "PRECOMMIT-OP[" + cert.prettyPrint() + "]"; }
   unsigned int sizeMsg() { return (sizeof(OPprepare)); }
-  void serialize(salticidae::DataStream &s) const { s << cert; }
+  //void serialize(salticidae::DataStream &s) const { s << cert; }
 };
 
 
@@ -810,7 +901,7 @@ struct MsgLdrAddOP {
   std::string prettyPrint() { return "ADD-LDR-OP[" + acc.prettyPrint() + "," + nv.prettyPrint() + "]"; }
   std::string toString() { return acc.toString() + nv.toString(); }
   unsigned int sizeMsg() { return (sizeof(OPaccum) + sizeof(OPnvblock)); }
-  void serialize(salticidae::DataStream &s) const { s << acc << nv; }
+  //void serialize(salticidae::DataStream &s) const { s << acc << nv; }
 };
 
 
@@ -826,7 +917,7 @@ struct MsgBckAddOP {
   std::string prettyPrint() { return "ADD-BCK-OP[" + vote.prettyPrint() + "]"; }
   std::string toString() { return vote.toString(); }
   unsigned int sizeMsg() { return (sizeof(OPvote)); }
-  void serialize(salticidae::DataStream &s) const { s << vote; }
+  //void serialize(salticidae::DataStream &s) const { s << vote; }
 };
 
 
@@ -849,7 +940,7 @@ struct MsgNewViewCh {
     return "NEWVIEW[" + data.prettyPrint() + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << data << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << data << sign; }
 };
 
 
@@ -869,7 +960,7 @@ struct MsgLdrPrepareCh {
     return "LDRPREPARE[" + block.prettyPrint() + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(JBlock) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << block << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << block << sign; }
 };
 
 
@@ -888,7 +979,7 @@ struct MsgPrepareCh {
     return "PREPARE[" + data.prettyPrint() + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << data << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << data << sign; }
 };
 
 
@@ -912,7 +1003,7 @@ struct MsgNewViewChComb {
     return "NEWVIEW[" + data.prettyPrint() + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << data << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << data << sign; }
 };
 
 
@@ -932,7 +1023,7 @@ struct MsgLdrPrepareChComb {
     return "LDRPREPARE[" + block.prettyPrint() + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(CBlock) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << block << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << block << sign; }
 };
 
 
@@ -951,7 +1042,7 @@ struct MsgPrepareChComb {
     return "PREPARE[" + data.prettyPrint() + "," + sign.prettyPrint() + "]";
   }
   unsigned int sizeMsg() { return (sizeof(RData) + sizeof(Sign)); }
-  void serialize(salticidae::DataStream &s) const { s << data << sign; }
+  //void serialize(salticidae::DataStream &s) const { s << data << sign; }
 };
 
 

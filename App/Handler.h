@@ -4,6 +4,7 @@
 
 #include <map>
 #include <set>
+#include <random>
 
 #include "Message.h"
 #include "Nodes.h"
@@ -21,7 +22,7 @@
 
 // ------------------------------------
 // SGX related stuff
-#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(CHAINED_CHEAP_AND_QUICK)
+#if defined(BASIC_CHEAP) || defined(BASIC_QUICK) || defined(BASIC_CHEAP_AND_QUICK) || defined(BASIC_FREE) || defined(BASIC_ONEP) || defined(BASIC_ONEPB) || defined(BASIC_ONEPC) || defined(CHAINED_CHEAP_AND_QUICK)
 //
 #include "Enclave_u.h"
 #include "sgx_urts.h"
@@ -73,7 +74,9 @@ class Handler {
 
  private:
   PID myid;
+  double initTimeout;            // timeout after which nodes start a new view (initial value)
   double timeout;                // timeout after which nodes start a new view
+  unsigned int opdist;           // OP cases
   unsigned int numFaults;        // number of faults
   unsigned int qsize;            // quorum size
   unsigned int total;            // total number of nodes
@@ -103,6 +106,7 @@ class Handler {
 
   std::list<Transaction> transactions; // current waiting to be processed
   std::map<View,Block> blocks; // blocks received in each view
+  std::map<View,bool> prepared; // whether a view was prepared -> true for fast mode, false for slow mode
   std::map<View,JBlock> jblocks; // blocks received in each view (Chained baseline)
   std::map<View,CBlock> cblocks; // blocks received in each view (Chained Cheap&Quick)
   Log log; // log of messages
@@ -195,6 +199,7 @@ class Handler {
   void sendMsgPreCommitOP(MsgPreCommitOP msg, Peers recipients);
   void sendMsgNewViewOP(MsgNewViewOPA msg, Peers recipients);
   void sendMsgNewViewOP(MsgNewViewOPB msg, Peers recipients);
+  void sendMsgNewViewOP(MsgNewViewOPBB msg, Peers recipients);
   void sendMsgBckPrepareOP(MsgBckPrepareOP msg, Peers recipients);
   void sendMsgLdrAddOP(MsgLdrAddOP msg, Peers recipients);
   void sendMsgBckAddOP(MsgBckAddOP msg, Peers recipients);
@@ -421,6 +426,9 @@ class Handler {
 
   void handleEarlierMessagesOP();
 
+  MsgNewViewOPB genMsgNewViewOPB();
+  MsgNewViewOPBB genMsgNewViewOPBB();
+
   OPproposal callTEEprepareOP(Hash h);
   OPstore callTEEstoreOP(OPproposal prop);
   bool callTEEverifyOP(Auths auths, std::string s);
@@ -433,15 +441,18 @@ class Handler {
   bool verifyLdrPrepareOP(MsgLdrPrepareOPB msg);
   bool verifyLdrPrepareOP(MsgLdrPrepareOPC msg);
 
+  void startNewViewOPA(OPprepare prep);
+  void startNewViewOPB();
   void startNewViewOP();
 
   void executeOP(OPprepare cert);
   void preCommitOP(View v);
   void prepareOp(OPprepare prep);
-  void prepareOpAcc(OPaccum acc, OPprepare prep);
+  void prepareOp_debug(OPprepare prep);
+  void prepareOpAcc(OPaccum acc, OPstore store, OPprepare prep);
   void prepareOpVote(OPvote vote);
   OPnvblock highestNewViewOpb(std::set<OPnvblock> *newviews);
-  OPaccum newviews2accOp(OPnvblock high, std::set<OPnvblock> others);
+  OPaccum newviews2accOp(OPnvblock high, std::set<OPnvcert> others);
   void prepareOpb(View v);
   void respondToLdrPrepareOP(Block block, OPproposal prop, OPcert cert);
   void respondToPreCommitOP(OPprepare cert);
@@ -450,8 +461,10 @@ class Handler {
   bool validAddOp(View v, OPaccum acc, OPnvblock nv);
   bool validOPvote(OPvote vote);
 
+  void handleNewviewOP(OPprepare prep);
   void handleNewviewOP(MsgNewViewOPA msg);
   void handleNewviewOP(MsgNewViewOPB msg);
+  void handleNewviewOP(MsgNewViewOPBB msg);
   void handlePreCommitOP(MsgPreCommitOP msg);
   void handleLdrPrepareOP(MsgLdrPrepareOPA msg);
   void handleLdrPrepareOP(MsgLdrPrepareOPB msg);
@@ -462,6 +475,7 @@ class Handler {
 
   void handle_newviewopa(MsgNewViewOPA msg, const PeerNet::conn_t &conn);
   void handle_newviewopb(MsgNewViewOPB msg, const PeerNet::conn_t &conn);
+  void handle_newviewopbb(MsgNewViewOPBB msg, const PeerNet::conn_t &conn);
   void handle_precommitop(MsgPreCommitOP msg, const PeerNet::conn_t &conn);
   void handle_ldrprepareopa(MsgLdrPrepareOPA msg, const PeerNet::conn_t &conn);
   void handle_ldrprepareopb(MsgLdrPrepareOPB msg, const PeerNet::conn_t &conn);
@@ -535,7 +549,7 @@ class Handler {
   void handle_ldrprepare_ch_comb(MsgLdrPrepareChComb msg, const PeerNet::conn_t &conn);
 
  public:
-  Handler(KeysFun kf, PID id, unsigned long int timeout, unsigned int constFactor, unsigned int numFaults, unsigned int maxViews, Nodes nodes, KEY priv, PeerNet::Config pconf, ClientNet::Config cconf);
+  Handler(KeysFun kf, PID id, unsigned long int timeout, unsigned int opdist, unsigned int constFactor, unsigned int numFaults, unsigned int maxViews, Nodes nodes, KEY priv, PeerNet::Config pconf, ClientNet::Config cconf);
 };
 
 

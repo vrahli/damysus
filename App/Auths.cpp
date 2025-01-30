@@ -117,8 +117,11 @@ std::string Auths::printSigners() {
 }
 
 void Auths::add(Auth auth) {
-  this->auths[this->size]=auth;
-  this->size++;
+  if (this->size < MAX_NUM_SIGNATURES) {
+    //if (DEBUG1) { std::cout << KYEL << "Auths:add:" << MAX_NUM_SIGNATURES << ":" << this->size << KNRM << std::endl; }
+    this->auths[this->size]=auth;
+    this->size++;
+  }
 }
 
 void Auths::addUpto(Auths others, unsigned int n) {

@@ -37,11 +37,12 @@ class Log {
   std::map<View,std::tuple<HAccum>> ldrpreparesFree;
 
   std::map<View,std::set<OPprepare>> newviewsOPa;
-  std::map<View,std::set<OPnvblock>> newviewsOPb;
+  std::map<View,std::set<OPnvblocks>> newviewsOPb;
   std::map<View,std::set<OPstore>> storesOP;
   std::map<View,std::tuple<LdrPrepareOP>> ldrpreparesOP;
   std::map<View,std::set<OPprepare>> preparesOP;
   std::map<View,std::set<OPvote>> votesOP;
+  std::map<View,std::set<OPaccum>> accumsOP;
 /*
   std::map<View,std::tuple<MsgPrepareFree>> preparesOP;
 */
@@ -80,17 +81,20 @@ class Log {
   unsigned int storePcFree(MsgPreCommitFree msg);
   unsigned int storeLdrPrepFree(HAccum msg);
 
-  unsigned int storeNvOp(MsgNewViewOPA msg);
-  unsigned int storeNvOp(MsgNewViewOPB msg);
-  std::set<OPnvblock> getNvOps(View view, unsigned int n);
+  unsigned int storeNvOp(OPprepare prep);  // from a MsgNewViewOPA
+  unsigned int storeNvOp(OPnvblock newnv); // from a MsgNewViewOPB
+  OPnvblocks getNvOpbs(View view);
+  OPprepare getNvOpas(View view);
   unsigned int storeStoreOp(OPstore store);
   OPprepare getOPstores(View view, unsigned int n);
   unsigned int storeLdrPrepOp(LdrPrepareOP msg);
   LdrPrepareOP getLdrPrepareOp(View view);
   unsigned int storePrepareOp(OPprepare prep);
   OPprepare getOPprepare(View view);
-  unsigned int storeVoteOp(OPvote vote);
+  unsigned int storeVoteOp(OPvote vote, unsigned int* m);
   OPvote getOPvote(View view, unsigned int n);
+  void storeAccumOp(OPaccum acc);
+  OPaccum getAccOp(View view);
 
   unsigned int storeNvCh(MsgNewViewCh msg);
   unsigned int storePrepCh(MsgPrepareCh msg);

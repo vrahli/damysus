@@ -360,7 +360,7 @@ int main(int argc, char const *argv[]) {
                    sizeof(MsgBckPrepareFree),
                    sizeof(MsgPrepareFree),
                    sizeof(MsgPreCommitFree)});
-  #elif defined(BASIC_ONEP)
+  #elif defined(BASIC_ONEP) || defined(BASIC_ONEPB) || defined(BASIC_ONEPC)
   size = std::max({size,
                    sizeof(MsgNewViewOPA),
                    sizeof(MsgNewViewOPB),

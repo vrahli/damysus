@@ -177,62 +177,56 @@ sgx_status_t OP_TEEstore(opproposal_t *just, opstore_t *res) {
 }
 
 
-/*
-sgx_status_t OP_TEEaccum(fjust_t *j, fjusts_t *js, hash_t *prp, haccum_t *res) {
+sgx_status_t OP_TEEaccum(opstore_t *j, opstores_t *js, opaccum_t *res) {
   sgx_status_t status = SGX_SUCCESS;
 
-  View v = j->data.view;
-  View highest = j->data.justv;
-  hash_t hash = j->data.justh;
+  View v       = j->view;
+  hash_t hash  = j->hash;
+  View highest = j->v;
   std::set<PID> signers;
   signers.insert(j->auth.id);
 
   for (int i = 0; i < MAX_NUM_SIGNATURES-1 && i < OPqsize-1; i++) {
-    fjust_t just   = js->justs[i];
-    fdata_t data   = just.data;
-    auth_t  auth   = just.auth;
-    PID     signer = auth.id;
-    std::string text = std::to_string(data.justv) + op_hash2str(data.justh) + std::to_string(data.view);
-    if (data.view == v
+    opstore_t just   = js->stores[i];
+    View      v1     = just.view;
+    hash_t    hash1  = just.hash;
+    View      v2     = just.v;
+    auth_t    auth   = just.auth;
+    PID       signer = auth.id;
+    std::string text = std::to_string(v1) + op_hash2str(hash1) + std::to_string(v2);
+    if (v == v1
         && signers.find(signer) == signers.end()
         && op_verify(text,auth)
-        && highest >= data.justv) {
+        && highest >= v2) {
       signers.insert(signer);
     }
   }
 
   unsigned int size = signers.size();
   //ocall_print(("ENCLAVE:TEEaccum" + std::to_string(size)).c_str());
-  std::string text = std::to_string(true) + std::to_string(v) + std::to_string(highest) + op_hash2str(hash) + std::to_string(size);
+  NVkind kind = NVkb;
+  std::string text = std::to_string(true) + std::to_string(kind) + std::to_string(v) + op_hash2str(hash) + std::to_string(size);
   res->auth = op_authenticate(text);
-  res->set = true;
+  res->set  = true;
+  res->kind = kind;
   res->view = v;
-  res->prepv = highest;
   res->hash = hash;
   res->size = size;
-
-  // prepare part
-  if (OPphase == PH2B && v == OPview) {
-    std::string sh = op_hash2str(*prp);
-    std::string textp = sh + std::to_string(OPview);
-    res->authp = op_authenticate(textp);
-  } else { res->set = false; }
 
   return status;
 }
 
 
-sgx_status_t OP_TEEaccumSp(ofjust_t *just, hash_t *prp, haccum_t *res) {
+sgx_status_t OP_TEEaccumSp(opprepare_t *just, opaccum_t *res) {
   sgx_status_t status = SGX_SUCCESS;
 
-  fdata_t data  = just->data;
+  View    view  = just->view;
+  hash_t  hash  = just->hash;
+  View    v     = just->v;
   auths_t auths = just->auths;
-  View    view  = data.view;
-  hash_t  justh = data.justh;
-  View    justv = data.justv;
 
   std::set<PID> signers;
-  std::string text = std::to_string(justv) + op_hash2str(justh) + std::to_string(view);
+  std::string text = std::to_string(view) + op_hash2str(hash) + std::to_string(v);
 
   for (int i = 0; i < MAX_NUM_SIGNATURES && i < OPqsize && i < auths.size; i++) {
     auth_t auth = auths.auths[i];
@@ -242,21 +236,14 @@ sgx_status_t OP_TEEaccumSp(ofjust_t *just, hash_t *prp, haccum_t *res) {
 
   unsigned int size = signers.size();
   //ocall_print(("ENCLAVE:OP_TEEaccumSp:" + std::to_string(auths.size) + ":" + std::to_string(size)).c_str());
-  std::string atext = std::to_string(true) + std::to_string(view) + std::to_string(justv) + op_hash2str(justh) + std::to_string(size);
-  res->auth = op_authenticate(atext);
-  res->set = true;
-  res->view = view;
-  res->prepv = justv;
-  res->hash = justh;
-  res->size = size;
-
-  // prepare part
-  if (OPphase == PH2B && view == OPview) {
-    std::string sh = op_hash2str(*prp);
-    std::string textp = sh + std::to_string(OPview);
-    res->authp = op_authenticate(textp);
-  } else { res->set = false; }
+  NVkind kind = NVka;
+  std::string atext = std::to_string(true) + std::to_string(kind) + std::to_string(view) + op_hash2str(hash) + std::to_string(size);
+  res->auth  = op_authenticate(atext);
+  res->set   = true;
+  res->kind  = kind;
+  res->view  = view;
+  res->hash  = hash;
+  res->size  = size;
 
   return status;
 }
-*/

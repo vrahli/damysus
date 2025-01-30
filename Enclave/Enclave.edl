@@ -44,6 +44,8 @@ enclave {
         public sgx_status_t OP_TEEprepare([in] hash_t *hash, [out] opproposal_t *res);
         public sgx_status_t OP_TEEvote([in] hash_t *hash, [out] opvote_t *res);
         public sgx_status_t OP_TEEstore([in] opproposal_t *just, [out] opstore_t *res);
+        public sgx_status_t OP_TEEaccum([in] opstore_t *j, [in] opstores_t *js, [out] opaccum_t *res);
+        public sgx_status_t OP_TEEaccumSp([in] opprepare_t *just, [out] opaccum_t *res);
         public sgx_status_t OP_initialize_variables([in] PID *me, [in] unsigned int *q);
 
         /* Chained-Cheap */

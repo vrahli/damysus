@@ -23,6 +23,8 @@
 #include "KeysFun.h"
 #include "Handler.h"
 
+#include "salticidae/conn.h"
+
 
 
 int main(int argc, char const *argv[]) {
@@ -52,6 +54,10 @@ int main(int argc, char const *argv[]) {
   double timeout = 5; // timeout in seconds
   if (argc > 5) { sscanf(argv[5], "%lf", &timeout); }
   std::cout << KYEL << "[" << myid << "]timeout=" << timeout << KNRM << std::endl;
+
+  unsigned int opdist = 0; // OP cases
+  if (argc > 6) { sscanf(argv[6], "%d", &opdist); }
+  std::cout << KYEL << "[" << myid << "]opdist=" << opdist << KNRM << std::endl;
 
 
   // -- Public key
@@ -115,51 +121,54 @@ int main(int argc, char const *argv[]) {
 
   long unsigned int size = std::max({sizeof(MsgTransaction), sizeof(MsgReply), sizeof(MsgStart)});
 
-  #if defined(BASIC_CHEAP) || defined(BASIC_BASELINE)
+#if defined(BASIC_CHEAP) || defined(BASIC_BASELINE)
   size = std::max({size,
                    sizeof(MsgNewView),
                    sizeof(MsgPrepare),
                    sizeof(MsgLdrPrepare),
                    sizeof(MsgPreCommit),
                    sizeof(MsgCommit)});
-  #elif defined(BASIC_QUICK) || defined(BASIC_QUICK_DEBUG)
+#elif defined(BASIC_QUICK) || defined(BASIC_QUICK_DEBUG)
   size = std::max({size,
                    sizeof(MsgNewViewAcc),
                    sizeof(MsgLdrPrepareAcc),
                    sizeof(MsgPrepareAcc),
                    sizeof(MsgPreCommitAcc)});
-  #elif defined(BASIC_CHEAP_AND_QUICK)
+#elif defined(BASIC_CHEAP_AND_QUICK)
   size = std::max({size,
                    sizeof(MsgNewViewComb),
                    sizeof(MsgLdrPrepareComb),
                    sizeof(MsgPrepareComb),
                    sizeof(MsgPreCommitComb)});
-  #elif defined(BASIC_FREE)
+#elif defined(BASIC_FREE)
   size = std::max({size,
                    sizeof(MsgNewViewFree),
                    sizeof(MsgLdrPrepareFree),
                    sizeof(MsgBckPrepareFree),
                    sizeof(MsgPrepareFree),
                    sizeof(MsgPreCommitFree)});
-  #elif defined(BASIC_ONEP)
+#elif defined(BASIC_ONEP) || defined(BASIC_ONEPB) || defined(BASIC_ONEPC)
   size = std::max({size,
                    sizeof(MsgNewViewOPA),
                    sizeof(MsgNewViewOPB),
                    sizeof(MsgLdrPrepareOPA),
                    sizeof(MsgLdrPrepareOPB),
+                   sizeof(MsgLdrPrepareOPC),
                    sizeof(MsgBckPrepareOP),
-                   sizeof(MsgPreCommitOP)});
-  #elif defined(CHAINED_BASELINE)
+                   sizeof(MsgPreCommitOP),
+                   sizeof(MsgLdrAddOP),
+                   sizeof(MsgBckAddOP)});
+#elif defined(CHAINED_BASELINE)
   size = std::max({size,
                    sizeof(MsgNewViewCh),
                    sizeof(MsgLdrPrepareCh),
                    sizeof(MsgPrepareCh)});
-  #elif defined(CHAINED_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK_DEBUG)
+#elif defined(CHAINED_CHEAP_AND_QUICK) || defined(CHAINED_CHEAP_AND_QUICK_DEBUG)
   size = std::max({size,
                    sizeof(MsgNewViewChComb),
                    sizeof(MsgLdrPrepareChComb),
                    sizeof(MsgPrepareChComb)});
-  #endif
+#endif
 
   if (DEBUG0) {
     std::cout << KYEL << "[" << myid << "]sizes"
@@ -183,17 +192,33 @@ int main(int argc, char const *argv[]) {
               << ":bckpreparefree=" << sizeof(MsgBckPrepareFree)
               << ":preparefree="    << sizeof(MsgPrepareFree)
               << ":precommitfree="  << sizeof(MsgPreCommitFree)
+              << ";newviewopa="     << sizeof(MsgNewViewOPA)
+              << ";newviewopb="     << sizeof(MsgNewViewOPB)
+              << ";ldrprepareopa="  << sizeof(MsgLdrPrepareOPA)
+              << ";ldrprepareopb="  << sizeof(MsgLdrPrepareOPB)
+              << ";ldrprepareopc="  << sizeof(MsgLdrPrepareOPC)
+              << ";bckprepareop="   << sizeof(MsgBckPrepareOP)
+              << ";precommitop="    << sizeof(MsgPreCommitOP)
+              << ";ldraddop="       << sizeof(MsgLdrAddOP)
+              << ";bckaddop="       << sizeof(MsgBckAddOP)
               << KNRM << std::endl;
   }
   if (DEBUG0) std::cout << KYEL << "[" << myid << "]max-msg-size=" << size << KNRM << std::endl;
-  PeerNet::Config pconfig;
+  salticidae::ConnPool::Config config;
+  //config.nworker(2);
+  //config.recv_chunk_size(200000);
+  //config.max_recv_buff_size(200000);
+  //config.max_send_buff_size(200000);
+  PeerNet::Config pconfig(config);
   // TODO: for some reason 'size' is not quite right
-  pconfig.max_msg_size(2*size);
+  //size = 2 * size;
+  //size = size + (size / 10);
+  pconfig.max_msg_size(size);
   ClientNet::Config cconfig;
-  cconfig.max_msg_size(2*size);
+  cconfig.max_msg_size(size);
   //config.ping_period(2);
   if (DEBUG1) std::cout << KYEL << "[" << myid << "]starting handler" << KNRM << std::endl;
-  Handler handler(kf,myid,timeout,constFactor,numFaults,numViews,nodes,priv,pconfig,cconfig);
+  Handler handler(kf,myid,timeout,opdist,constFactor,numFaults,numViews,nodes,priv,pconfig,cconfig);
 
   return 0;
 };

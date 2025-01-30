@@ -2,6 +2,8 @@
 #define USER_TYPES_H
 
 
+//#include <array>
+
 #include <stdbool.h>
 
 // Interface to the Enclave
@@ -21,6 +23,7 @@ typedef struct _pids_t
 typedef struct _hash_t
 {
   unsigned char hash[SHA256_DIGEST_LENGTH];
+  //std::array<unsigned char,SHA256_DIGEST_LENGTH> hash;
   bool set;
 } hash_t;
 
@@ -226,6 +229,19 @@ typedef struct _opstore_t
   View v;
   auth_t auth;
 } opstore_t;
+
+typedef struct _opstores_t
+{
+  opstore_t stores[MAX_NUM_SIGNATURES-1];
+} opstores_t;
+
+typedef struct _opprepare_t
+{
+  View view;
+  hash_t hash;
+  View v;
+  auths_t auths;
+} opprepare_t;
 
 typedef struct _opproposal_t
 {

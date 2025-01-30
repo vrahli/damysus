@@ -38,7 +38,7 @@ void OPvote::insert(Auths auths) {
 
 
 std::string OPvote::prettyPrint() {
-  return ("PROP[" + (this->hash).prettyPrint()
+  return ("VOTE[" + (this->hash).prettyPrint()
           + "," + std::to_string(this->view)
           + "," + (this->auths).prettyPrint()
           + "]");

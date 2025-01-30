@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
+#include <algorithm>
 #include <string>
 #include <cstring>
 
@@ -8,17 +9,21 @@
 
 
 bool Hash::getSet()  { return this->set;  }
-unsigned char * Hash::getHash() { return this->hash; }
+unsigned char * Hash::getHash() { return &(this->hash[0]); }
 bool Hash::isDummy() { return !this->set; }
 
 void Hash::serialize(salticidae::DataStream &data) const {
-  for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) { data << this->hash[i]; }
+  data.put_data(this->hash);
+  //for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) { data << this->hash[i]; }
   data << this->set;
 }
 
 
 void Hash::unserialize(salticidae::DataStream &data) {
-  for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) { data >> this->hash[i]; }
+  unsigned int n = SHA256_DIGEST_LENGTH * sizeof(uint8_t);
+  const uint8_t *arr = data.get_data_inplace(n);
+  std::copy_n(arr, n, std::begin(this->hash));
+  //for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) { data >> this->hash[i]; }
   data >> this->set;
 }
 
@@ -35,12 +40,20 @@ Hash::Hash(bool b) {
 
 
 Hash::Hash(unsigned char hash[SHA256_DIGEST_LENGTH]) {
-  memcpy(this->hash,hash,SHA256_DIGEST_LENGTH);
+  std::copy_n(hash, SHA256_DIGEST_LENGTH, std::begin(this->hash));
+  //memcpy(this->hash,hash,SHA256_DIGEST_LENGTH);
   this->set=true;
 }
 
 Hash::Hash(bool b, unsigned char hash[SHA256_DIGEST_LENGTH]) {
-  memcpy(this->hash,hash,SHA256_DIGEST_LENGTH);
+  std::copy_n(hash, SHA256_DIGEST_LENGTH, std::begin(this->hash));
+  //memcpy(this->hash,hash,SHA256_DIGEST_LENGTH);
+  this->set=b;
+}
+
+Hash::Hash(bool b, hasharray hash) {
+  std::copy_n(std::begin(hash), SHA256_DIGEST_LENGTH, std::begin(this->hash));
+  //memcpy(this->hash,hash,SHA256_DIGEST_LENGTH);
   this->set=b;
 }
 
@@ -61,13 +74,14 @@ std::string Hash::prettyPrint() {
 }
 
 std::string Hash::toString() {
-  std::string text;
-  for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) { text += this->hash[i]; }
+  std::string text(this->hash.begin(), this->hash.end());
+  //for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) { text += this->hash[i]; }
   text += std::to_string(this->set);
   return text;
 }
 
 bool Hash::operator==(const Hash& s) const {
-  for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) { if (hash[i] != s.hash[i]) { return false; } }
-  return true;
+  //for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) { if (hash[i] != s.hash[i]) { return false; } }
+  //return true;
+  return (hash == s.hash);
 }

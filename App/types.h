@@ -46,13 +46,14 @@ typedef uint8_t HEADER;
 
 #define HDR_NEWVIEW_OPA      0x27
 #define HDR_NEWVIEW_OPB      0x28
-#define HDR_PREPARE_LDR_OPA  0x29
-#define HDR_PREPARE_LDR_OPB  0x30
-#define HDR_PREPARE_LDR_OPC  0x31
-#define HDR_PREPARE_BCK_OP   0x32
-#define HDR_PRECOMMIT_OP     0x33
-#define HDR_ADD_LDR_OP       0x34
-#define HDR_ADD_BCK_OP       0x35
+#define HDR_NEWVIEW_OPBB     0x29
+#define HDR_PREPARE_LDR_OPA  0x30
+#define HDR_PREPARE_LDR_OPB  0x31
+#define HDR_PREPARE_LDR_OPC  0x32
+#define HDR_PREPARE_BCK_OP   0x33
+#define HDR_PRECOMMIT_OP     0x34
+#define HDR_ADD_LDR_OP       0x35
+#define HDR_ADD_BCK_OP       0x36
 
 typedef uint8_t Phase1;
 
@@ -80,6 +81,8 @@ typedef unsigned int TID; // transaction ids
 typedef unsigned int PORT;
 typedef unsigned int View;
 typedef unsigned int Value;
+
+//typedef std::array<unsigned char,SHA256_DIGEST_LENGTH> hasharray;
 
 typedef uint8_t OPphase;
 
